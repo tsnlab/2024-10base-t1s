@@ -88,7 +88,7 @@ int main() {
         perror("Socket creation failed");
         return 1;
     }
-    
+
     // Receive ARP Reply
     while (1) {
         int len = recv(sock, buffer, sizeof(buffer), 0);
@@ -102,7 +102,7 @@ int main() {
             arp = (struct arp_hdr *) (buffer + sizeof(struct eth_hdr));
             if (ntohs(arp->oper) == 2) { // ARP Reply
                 printf("Received ARP reply from %d.%d.%d.%d\n",
-                        arp->sender_ip[0], arp->sender_ip[0], arp->sender_ip[0], arp->sender_ip[0]);
+                        arp->sender_ip[0], arp->sender_ip[1], arp->sender_ip[2], arp->sender_ip[3]);
                 add_to_arp_table(arp->sender_ip, arp->sender_mac);
                 print_arp_table();
                 break; // Exit after receiving one reply
