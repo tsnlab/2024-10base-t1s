@@ -1,0 +1,24 @@
+name: Lint Basics
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: shellcheck
+        uses: ludeeus/action-shellcheck@master
+        # # Uncomment this and edit to ignore some paths like submodules
+        # with:
+        #   ignore_paths: >-
+        #     bpftool
+        #     xdp-tools
+      - name: Final newline
+        uses: Logerfo/newline-action@0.0.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          config-path: .github/newline.yml
