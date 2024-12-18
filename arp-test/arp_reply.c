@@ -82,6 +82,13 @@ int main() {
     struct eth_hdr *eth = (struct eth_hdr *)buffer;
     struct arp_hdr *arp = (struct arp_hdr *) (buffer + sizeof(struct eth_hdr));
 
+    // Open raw socket    
+    sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    if (sock < 0) {
+        perror("Socket creation failed");
+        return 1;
+    }
+    
     // Receive ARP Reply
     while (1) {
         int len = recv(sock, buffer, sizeof(buffer), 0);

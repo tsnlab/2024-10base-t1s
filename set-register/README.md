@@ -1,4 +1,4 @@
-#set-register
+# set-register
 
 This code is downloaded from [onsemi](https://www.onsemi.com/products/interfaces/ethernet-controllers/NCN26010)
 
