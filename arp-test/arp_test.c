@@ -1,6 +1,6 @@
 #include <arp_test.h>
 #include <hardware_dependent.h>
-
+#include <spi.h>
 // ARP table
 struct arp_entry g_arpTable[MAX_ENTRIES];
 uint8_t g_arpTableCount = 0u;
@@ -35,9 +35,9 @@ void ConvertEndianness(uint32_t valueToConvert, uint32_t *convertedValue)
 ARP_ReturnType AddtoArpTable(unsigned char *ip, unsigned char *mac)
 {
     ARP_ReturnType ret = ARP_E_ERROR;
-    uint8_t i = 0u;
+    uint8_t i;
 
-    for(i; i < g_arpTableCount; i++) {
+    for(i = 0u; i < g_arpTableCount; i++) {
         if(memcmp(g_arpTable[i].ip, ip, 4u) == 0) {
             /* IP already exists, update MAC */
             memcpy(g_arpTable[i].mac, mac, 6u);
@@ -58,10 +58,10 @@ ARP_ReturnType AddtoArpTable(unsigned char *ip, unsigned char *mac)
 
 // Function to print the ARP table
 void PrintArpTable(void) {
-    uint8_t i = 0u;
+    uint8_t i;
 
     printf("\nARP Table:\n");
-    for (i; i < g_arpTableCount; i++) {
+    for (i = 0u; i < g_arpTableCount; i++) {
         printf("IP: %d.%d.%d.%d, MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
         g_arpTable[i].ip[0], g_arpTable[i].ip[1], g_arpTable[i].ip[2], g_arpTable[i].ip[3],
         g_arpTable[i].mac[0], g_arpTable[i].mac[1], g_arpTable[i].mac[2],
@@ -131,7 +131,7 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
     if (datatransferRxFooter.stVarRxFooterBits.DV && 
         !datatransferRxFooter.stVarRxFooterBits.EXST) {
         
-        uint16_t actual_length = datatransferRxFooter.stVarRxFooterBits.EBO + 1;
+        actual_length = datatransferRxFooter.stVarRxFooterBits.EBO + 1;
         memcpy(arp_reply_buffer, &rxBuffer[HEADER_FOOTER_SIZE], actual_length);
         *length = actual_length;
         return ARP_E_SUCCESS;

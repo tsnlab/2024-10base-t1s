@@ -51,4 +51,11 @@ struct arp_entry {
     unsigned char mac[6];
 };
 
-#endif
+typedef enum {
+    ARP_E_SUCCESS = 0,
+    ARP_E_ERROR,
+} ARP_ReturnType;
+
+ARP_ReturnType ArpTest(void);
+
+#endif /* ARP_TEST_H */

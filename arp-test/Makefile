@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -I./inc
 LDFLAGS = -lpigpio -lpthread -lrt
 
-SRCS = main.c arp_test.c
+SRCS = main.c arp_test.c spi.c
 OBJS = $(SRCS:.c=.o)
 TARGET = arp_test
 

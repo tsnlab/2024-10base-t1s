@@ -9,18 +9,6 @@
 #define HEADER_FOOTER_SIZE			 (uint8_t)4
 #define SIZE_OF_MAC_ADDR			 (uint8_t)6
 
-typedef enum {
-    ARP_E_SUCCESS = 0,
-    ARP_E_ERROR,
-} ARP_ReturnType;
-
-typedef enum {
-	SPI_E_SUCCESS = 0,
-	SPI_E_UNKNOWN_ERROR,
-	SPI_E_INIT_ERROR,
-	SPI_E_ISR_INIT_ERROR,
-} SPI_ReturnType;
-
 typedef enum
 {
 	DNC_COMMANDTYPE_CONTROL = 0,
@@ -95,4 +83,4 @@ typedef struct
     uint32_t data;
 } stRemoteConfigurationCommand_t;
 
-#endif
+#endif /* HARDWARE_DEPENDENT_H */

@@ -1,9 +1,9 @@
 #include <arp_test.h>
 #include <hardware_dependent.h>
+#include <spi.h>
 
 int main(int argc, char *argv[]) {
     ARP_ReturnType arpRet = ARP_E_ERROR;
-    bool bservermode = false;
 	SPI_ReturnType spiRet = SPI_E_UNKNOWN_ERROR;
     //PLCA setting must be done before arp_test
 
