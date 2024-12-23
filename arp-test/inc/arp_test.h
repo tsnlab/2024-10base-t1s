@@ -1,6 +1,13 @@
+#ifndef ARP_TEST_H
+#define ARP_TEST_H
+
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/ethernet.h>
@@ -43,3 +50,5 @@ struct arp_entry {
     unsigned char ip[4];
     unsigned char mac[6];
 };
+
+#endif
