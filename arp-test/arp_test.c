@@ -70,13 +70,84 @@ void PrintArpTable(void) {
 }
 
 ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
-    uint8_t txBuffer[68] = {0u, };
-    uint8_t rxBuffer[68] = {0u, };
+    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
+    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
+    uint8_t bufferIndex = 0u;
+    uint8_t i = 0u;
+    uint8_t j = 0u;
+    
+    // 간단한 테스트 이더넷 패킷 생성
+    uint8_t test_packet[] = {
+        // Ethernet Header (14 bytes)
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,  // Destination MAC (broadcast)
+        0xd8, 0x3a, 0xdd, 0x44, 0xab, 0x0f,  // Source MAC
+        0x08, 0x06,                          // EtherType (ARP = 0x0806)
+        
+        // ARP Payload (첫 부분만 - 테스트용)
+        0x00, 0x01,                          // Hardware type (Ethernet)
+        0x08, 0x00,                          // Protocol type (IPv4)
+        0x06,                                // Hardware size
+        0x04                                 // Protocol size
+    };
+    uint16_t test_packet_length = sizeof(test_packet);
+
+    static uDataHeaderFooter_t dataTransferHeader = {0u, };
+    
+    // header setting
+    dataTransferHeader.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
+    dataTransferHeader.stVarTxHeadBits.SEQ = (uint8_t)(~dataTransferHeader.stVarTxHeadBits.SEQ);
+    dataTransferHeader.stVarTxHeadBits.NORX = 0;
+    dataTransferHeader.stVarTxHeadBits.DV = 1;
+    dataTransferHeader.stVarTxHeadBits.SV = 1;  // start chunk
+    dataTransferHeader.stVarTxHeadBits.EV = 1;  // end chunk (single chunk)
+    dataTransferHeader.stVarTxHeadBits.EBO = test_packet_length - 1;  // 테스트 패킷 길이 사용
+    dataTransferHeader.stVarTxHeadBits.P = (!GetParity(dataTransferHeader.dataFrameHeadFoot));
+
+    // copy header
+    for (int8_t headerByteCount = 3; headerByteCount >= 0; headerByteCount--) {
+        txBuffer[bufferIndex++] = dataTransferHeader.dataFrameHeaderBuffer[headerByteCount];
+    }
+
+    // copy test packet instead of ARP data
+    memcpy(&txBuffer[bufferIndex], test_packet, test_packet_length);
+    
+    // transfer
+    if(SPI_E_SUCCESS != SPI_Transfer((uint8_t *)&rxBuffer[0], (uint8_t *)&txBuffer[0], 
+                                    (uint16_t)(bufferIndex + test_packet_length))) {
+        return ARP_E_REQUEST_FAILED;
+    }
+    
+    printf("txBuffer when Requesting: \n");
+    for (i = 0u; i < 7u; i++) {
+        for (j = 0u; j < 10u; j++) {
+            printf("%02x ", txBuffer[i * 10 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
+    printf("rxBuffer when Requesting: \n");
+    for (i = 0u; i < 7u; i++) {
+        for (j = 0u; j < 10u; j++) {
+            printf("%02x ", rxBuffer[i * 10 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
+    return ARP_E_SUCCESS;
+}
+
+/* Original code
+ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
+    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
+    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
     uint8_t bufferIndex = 0u;
     uint8_t i = 0u;
     uint8_t j = 0u;
     static uDataHeaderFooter_t dataTransferHeader = {0u, };
-        // header setting
+    
+    // header setting
     dataTransferHeader.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
     dataTransferHeader.stVarTxHeadBits.SEQ = (uint8_t)(~dataTransferHeader.stVarTxHeadBits.SEQ);
     dataTransferHeader.stVarTxHeadBits.NORX = 0;
@@ -119,25 +190,102 @@ ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
 
     return ARP_E_SUCCESS;
 }
+*/
 
 ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
-    uint8_t txBuffer[68] = {0u, };
-    uint8_t rxBuffer[68] = {0u, };
-    static uDataHeaderFooter_t dataTransferHeader = {0u, };
+    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
+    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
+    static uDataHeaderFooter_t dataTransferFooter = {0u, };
     uDataHeaderFooter_t datatransferRxFooter;
     uint32_t bigEndianRxFooter = 0u;
-    uint16_t expected_size = 68u; // ARP reply size
+    uint16_t expected_size = 32; // test packet (20bytes) + header/footer (4+4bytes) + justincase
+    uint8_t i = 0u;
+    uint8_t j = 0u;
+
+    // receive dummy header setting
+    dataTransferFooter.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
+    dataTransferFooter.stVarTxHeadBits.NORX = 0;
+    dataTransferFooter.stVarTxHeadBits.DV = 0;  // receive mode
+    dataTransferFooter.stVarTxHeadBits.P = (!GetParity(dataTransferFooter.dataFrameHeadFoot));
+
+    // copy footer (4 bytes)
+    for (int8_t footerByteCount = 3; footerByteCount >= 0; footerByteCount--) {
+        txBuffer[footerByteCount] = dataTransferFooter.dataFrameHeaderBuffer[footerByteCount];
+    }
+
+    // receive buffer
+    SPI_Transfer((uint8_t *)&rxBuffer[0], (uint8_t *)&txBuffer[0], expected_size);
+
+    printf("txBuffer when Receiving: \n");
+    for (i = 0u; i < 7u; i++) {
+        for (j = 0u; j < 10u; j++) {
+            printf("%02x ", txBuffer[i * 10 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
+    printf("rxBuffer when Receiving: \n");
+    for (i = 0u; i < 7u; i++) {
+        for (j = 0u; j < 10u; j++) {
+            printf("%02x ", rxBuffer[i * 10 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
+    // Footer check
+    memmove((uint8_t *)&datatransferRxFooter.dataFrameHeadFoot, 
+            &rxBuffer[expected_size - HEADER_FOOTER_SIZE], 
+            HEADER_FOOTER_SIZE);
+    ConvertEndianness(datatransferRxFooter.dataFrameHeadFoot, &bigEndianRxFooter);
+    datatransferRxFooter.dataFrameHeadFoot = bigEndianRxFooter;
+
+    // receive data validation
+    if (datatransferRxFooter.stVarRxFooterBits.DV && 
+        !datatransferRxFooter.stVarRxFooterBits.EXST) {
+        
+        uint16_t actual_length = datatransferRxFooter.stVarRxFooterBits.EBO + 1;
+        memcpy(arp_reply_buffer, &rxBuffer[HEADER_FOOTER_SIZE], actual_length);
+        *length = actual_length;
+
+        // Ethernet packet check
+        printf("Received Ethernet packet:\n");
+        printf("Destination MAC: ");
+        for(i = 0; i < 6; i++) {
+            printf("%02x:", arp_reply_buffer[i]);
+        }
+        printf("\nSource MAC: ");
+        for(i = 6; i < 12; i++) {
+            printf("%02x:", arp_reply_buffer[i]);
+        }
+        printf("\nEtherType: %02x%02x\n", arp_reply_buffer[12], arp_reply_buffer[13]);
+        
+        return ARP_E_SUCCESS;
+    }
+
+    return ARP_E_REPLY_FAILED;
+}
+
+/* Original code
+ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
+    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
+    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
+    static uDataHeaderFooter_t dataTransferFooter = {0u, };
+    uDataHeaderFooter_t datatransferRxFooter;
+    uint32_t bigEndianRxFooter = 0u;
+    uint16_t expected_size = MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE; // ARP reply size
     uint16_t actual_length = 0u; // actual length of received data
     uint8_t i = 0u;
     uint8_t j = 0u;
     // receive dummy header setting
-    dataTransferHeader.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
-    dataTransferHeader.stVarTxHeadBits.NORX = 0;
-    dataTransferHeader.stVarTxHeadBits.P = (!GetParity(dataTransferHeader.dataFrameHeadFoot));
+    dataTransferFooter.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
+    dataTransferFooter.stVarTxHeadBits.NORX = 0;
+    dataTransferFooter.stVarTxHeadBits.P = (!GetParity(dataTransferFooter.dataFrameHeadFoot));
 
     // copy header (4 bytes)
-    for (int8_t headerByteCount = 3; headerByteCount >= 0; headerByteCount--) {
-        txBuffer[headerByteCount] = dataTransferHeader.dataFrameHeaderBuffer[headerByteCount];
+    for (int8_t footerByteCount = 3; footerByteCount >= 0; footerByteCount--) {
+        txBuffer[footerByteCount] = dataTransferFooter.dataFrameHeaderBuffer[footerByteCount];
     }
 
     // receive try (ARP reply size)
@@ -170,7 +318,7 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
 
     // receive data validation
     if (datatransferRxFooter.stVarRxFooterBits.DV && 
-        !datatransferRxFooter.stVarRxFooterBits.EXST) {
+        !datatransferRxFooterBits.EXST) {
         
         actual_length = datatransferRxFooter.stVarRxFooterBits.EBO + 1;
         memcpy(arp_reply_buffer, &rxBuffer[HEADER_FOOTER_SIZE], actual_length);
@@ -180,6 +328,7 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
 
     return ARP_E_REPLY_FAILED;
 }
+*/
 
 ARP_ReturnType ArpTest(void) {
     ARP_ReturnType ret = ARP_E_REQUEST_FAILED;
@@ -211,7 +360,7 @@ ARP_ReturnType ArpTest(void) {
         printf("ARP request failed, the error code is %d\n", ret);
     }
 
-    // Receive ARP Reply
+/*    // Receive ARP Reply
     ret = ARPReply(buffer, &received_length);
     if (ret != ARP_E_SUCCESS) {
         printf("ARP reply failed, the error code is %d\n", ret);
@@ -233,6 +382,6 @@ ARP_ReturnType ArpTest(void) {
     if (ret != ARP_E_SUCCESS) {
         printf("Second ARP reply failed, the error code is %d\n", ret);
     }
-
+*/
     return ret;
 }
