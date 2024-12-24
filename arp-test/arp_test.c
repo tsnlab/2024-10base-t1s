@@ -34,7 +34,7 @@ void ConvertEndianness(uint32_t valueToConvert, uint32_t *convertedValue)
 // Function to add an entry to the ARP table
 ARP_ReturnType AddtoArpTable(unsigned char *ip, unsigned char *mac)
 {
-    ARP_ReturnType ret = ARP_E_ERROR;
+    ARP_ReturnType ret = ARP_E_REQUEST_FAILED;
     uint8_t i;
 
     for(i = 0u; i < g_arpTableCount; i++) {
@@ -73,6 +73,8 @@ ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
     uint8_t txBuffer[100] = {0u, };
     uint8_t rxBuffer[100] = {0u, };
     uint8_t bufferIndex = 0u;
+    uint8_t i = 0u;
+    uint8_t j = 0u;
     static uDataHeaderFooter_t dataTransferHeader = {0u, };
         // header setting
     dataTransferHeader.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
@@ -93,8 +95,28 @@ ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
     memcpy(&txBuffer[bufferIndex], arp_request_buffer, length);
     
     // transfer
-    SPI_Transfer((uint8_t *)&rxBuffer[0], (uint8_t *)&txBuffer[0], (uint16_t)(bufferIndex + length));
+    if(SPI_E_SUCCESS != SPI_Transfer((uint8_t *)&rxBuffer[0], (uint8_t *)&txBuffer[0], (uint16_t)(bufferIndex + length))) {
+        return ARP_E_REQUEST_FAILED;
+    }
     
+    printf("txBuffer when Requesting: \n");
+    for (i = 0u; i < 10u; i++) {
+        for (j = 0u; j < 10u; j++) {
+            printf("%02x ", txBuffer[i * 10 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
+    printf("rxBuffer when Requesting: \n");
+    for (i = 0u; i < 10u; i++) {
+        for (j = 0u; j < 10u; j++) {
+            printf("%02x ", rxBuffer[i * 10 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
     return ARP_E_SUCCESS;
 }
 
@@ -106,7 +128,8 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
     uint32_t bigEndianRxFooter = 0u;
     uint16_t expected_size = 68u; // ARP reply size
     uint16_t actual_length = 0u; // actual length of received data
-
+    uint8_t i = 0u;
+    uint8_t j = 0u;
     // receive dummy header setting
     dataTransferHeader.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
     dataTransferHeader.stVarTxHeadBits.NORX = 0;
@@ -119,6 +142,24 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
 
     // receive try (ARP reply size)
     SPI_Transfer((uint8_t *)&rxBuffer[0], (uint8_t *)&txBuffer[0], expected_size);
+
+    printf("txBuffer when Receiving: \n");
+    for (i = 0u; i < 10u; i++) {
+        for (j = 0u; j < 10u; j++) {
+            printf("%02x ", txBuffer[i * 10 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
+    printf("rxBuffer when Receiving: \n");
+    for (i = 0u; i < 10u; i++) {
+        for (j = 0u; j < 10u; j++) {
+            printf("%02x ", rxBuffer[i * 10 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
 
     // Footer check
     memmove((uint8_t *)&datatransferRxFooter.dataFrameHeadFoot, 
@@ -137,11 +178,11 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
         return ARP_E_SUCCESS;
     }
 
-    return ARP_E_ERROR;
+    return ARP_E_REPLY_FAILED;
 }
 
 ARP_ReturnType ArpTest(void) {
-    ARP_ReturnType ret = ARP_E_ERROR;
+    ARP_ReturnType ret = ARP_E_REQUEST_FAILED;
     uint16_t received_length = 0u;
 
     unsigned char buffer[PACKET_SIZE_ARP] = {0u, }; // Ethernet (14) + ARP (28)
@@ -150,7 +191,7 @@ ARP_ReturnType ArpTest(void) {
     
     // Fill Ethernet header
     memset(eth->dest_mac, 0xFF, 6); // Broadcast
-    memcpy(eth->src_mac, "\x20\x2b\x20\x61\x0f\x3f", 6); // Replace with your MAC
+    memcpy(eth->src_mac, "\xd8\x3a\xdd\x44\xab\x0f", 6); // Replace with your MAC
     eth->ethertype = htons(0x0806); // ARP Ethertype
 
     // Fill ARP header
@@ -159,18 +200,21 @@ ARP_ReturnType ArpTest(void) {
     arp->hlen = 6u; // MAC size
     arp->plen = 4u; // IP size
     arp->oper = htons(1u); // ARP Request
-    memcpy(arp->sender_mac, "\x20\x2b\x20\x61\x0f\x3f", 6u); // Replace with your MAC
+    memcpy(arp->sender_mac, "\xd8\x3a\xdd\x44\xab\x0f", 6u); // Replace with your MAC
+    inet_pton(AF_INET, "172.16.11.201", arp->sender_ip); // Replace with your IP
     memset(arp->target_mac, 0x00, 6u); // Unknown
-  
+    inet_pton(AF_INET, "172.16.11.203", arp->target_ip); // Replace with target IP
+
     // Send ARP request
-    if (ARPRequest(buffer, sizeof(buffer)) != ARP_E_SUCCESS) {
-        printf("ARP request failed\n");
+    ret = ARPRequest(buffer, sizeof(buffer));
+    if (ret != ARP_E_SUCCESS) {
+        printf("ARP request failed, the error code is %d\n", ret);
     }
 
     // Receive ARP Reply
-
-    if (ARPReply(buffer, &received_length) != ARP_E_SUCCESS) {
-        printf("ARP reply failed\n");
+    ret = ARPReply(buffer, &received_length);
+    if (ret != ARP_E_SUCCESS) {
+        printf("ARP reply failed, the error code is %d\n", ret);
     }
         eth = (struct eth_hdr *)buffer;
         if (ntohs(eth->ethertype) == 0x0806) { // Check if ARP
@@ -184,6 +228,11 @@ ARP_ReturnType ArpTest(void) {
                 ret = ARP_E_SUCCESS;
             }
     }
-  
+    //Debug code
+    ret = ARPReply(buffer, &received_length);
+    if (ret != ARP_E_SUCCESS) {
+        printf("Second ARP reply failed, the error code is %d\n", ret);
+    }
+
     return ret;
 }

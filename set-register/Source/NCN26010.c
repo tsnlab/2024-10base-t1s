@@ -1472,13 +1472,13 @@ uint32_t T1S_Transmit(uint8_t* p_tapDataBuffer, uint16_t num_bytes_to_transmit)
 		if (sentChunkCount == (numberOfChunksToSend-1))
 		{
 			SPI_Transfer((uint8_t *)&rxBuffer[0], (uint8_t *)&txBuffer[0], (uint16_t)numberOfBytesToSend);
-			/*printf("\n");
+			printf("\nStart of Transmit Bytes in Bulk Data transfer \n");
 			for (uint16_t txIndexCount = 0; txIndexCount < numberOfBytesToSend; txIndexCount++)
 			{
 				printf("0x%02X ", txBuffer[txIndexCount]);
 			}
 			printf("\nEnd of Transmit Bytes in Bulk Data transfer \n");
-			*/
+			
 		}
 	}
 	
