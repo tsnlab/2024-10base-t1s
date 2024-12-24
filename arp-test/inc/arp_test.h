@@ -53,7 +53,9 @@ struct arp_entry {
 
 typedef enum {
     ARP_E_SUCCESS = 0,
-    ARP_E_ERROR,
+    ARP_E_REQUEST_FAILED,
+    ARP_E_REPLY_FAILED,
+    ARP_E_UNKNOWN_ERROR,
 } ARP_ReturnType;
 
 ARP_ReturnType ArpTest(void);

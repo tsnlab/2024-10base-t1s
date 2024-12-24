@@ -21,7 +21,7 @@ SPI_ReturnType SPI_Init(void) {
   }
 
   spiHandle = spiOpen(SPI_CHANNEL, SPI_COMM_SPEED, SPI_FLAGS);
-  if (spiHandle > 0) {
+  if (spiHandle >= 0) {
       return SPI_E_SUCCESS;
   }
   else {
@@ -45,7 +45,7 @@ SPI_ReturnType SPI_Transfer(uint8_t* rxBuffer, uint8_t* txBuffer, uint16_t lengt
 SPI_ReturnType SPI_Cleanup(void) { 
     SPI_ReturnType ret = SPI_E_UNKNOWN_ERROR;
     
-    if (spiHandle > 0) {
+    if (spiHandle >= 0) {
         spiClose(spiHandle);
         ret = SPI_E_SUCCESS;
     }
