@@ -47,7 +47,7 @@
 #define FCS_POLYNOMIAL 				(uint32_t)0xEDB88320
 #define SIZE_OF_FCS					(uint8_t)4
 
-//#define DEBUG_ENABLE				// Debug mode MACRO to enable printf statement
+#define DEBUG_ENABLE				// Debug mode MACRO to enable printf statement
 /*************************************************************************************************
 *  Type definitions Enums and Unions                                                             *
 *************************************************************************************************/

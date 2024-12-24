@@ -366,6 +366,7 @@ int main(int argc , char *argv[])
 				continue;
 			}	
 			T1S_ConfigurePLCA((uint8_t) plcaID, (uint8_t) plcaMaxID, true);
+			printf("Configuring PLCA , Node ID :%d, max_node_ID : %d\n", plcaID, plcaMaxID);
 		}
 		else if (strcmp(argv[argCount], "ServerMode") == 0) // ServerMode check
 		{

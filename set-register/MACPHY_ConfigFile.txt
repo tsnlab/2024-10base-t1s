@@ -1,14 +1,38 @@
-# NCN26010 MACPHY Config File
+# LAN 8651 Reset
+0 3 1
+# disable collision detection(for PLCA)
+4 87 83
+# PLCA Setting (uncomment if Coordinator)
+# 4 CA02 200
+# PLCA Setting (uncomment if Follower)
+# 4 CA02 801
+# PLCA Enable
+4 CA01 8000
+# Set MAC Address
+1 22 29DD3AD8
+# Set MAC Address
+1 23 14E24
+# Allow Unicast, Multicast
+1 1 C0
+# Enable MAC TX, RX
+1 0 C
+# Reset Clear
+0 8 40
+# Set SYNC
+0 4 8006
+
+
+#NCN26010 MACPHY Config File
 
 # enable MAC RX and TX
-0 0003 00000001
-1 0000 00000103
+#0 0003 00000001
+#1 0000 00000103
 
 # PHY register, bring link up
-0 FF00 00001000
+#0 FF00 00001000
 
 # set LEDs to RX and TX activity
-c 0012 8D8F
+#c 0012 8D8F
 
 # Uncomment the line below to set PLCA node to 0 and node count to 8
 # 4 CA02 00000800
@@ -22,7 +46,7 @@ c 0012 8D8F
 # frame alligne with start of chunk
 # sync bit set --- ready to go
 
-0 0004 0000BCC6
+#0 0004 0000BCC6
 
 # MAC Filter, allow Broadcast and unicast
 # Uncoment the lines below to set mac Addess to 60:C0:BF:01:01:03

@@ -70,8 +70,8 @@ void PrintArpTable(void) {
 }
 
 ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
-    uint8_t txBuffer[100] = {0u, };
-    uint8_t rxBuffer[100] = {0u, };
+    uint8_t txBuffer[68] = {0u, };
+    uint8_t rxBuffer[68] = {0u, };
     uint8_t bufferIndex = 0u;
     uint8_t i = 0u;
     uint8_t j = 0u;
@@ -100,7 +100,7 @@ ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
     }
     
     printf("txBuffer when Requesting: \n");
-    for (i = 0u; i < 10u; i++) {
+    for (i = 0u; i < 7u; i++) {
         for (j = 0u; j < 10u; j++) {
             printf("%02x ", txBuffer[i * 10 + j]);
         }
@@ -109,7 +109,7 @@ ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
     printf("\n");
 
     printf("rxBuffer when Requesting: \n");
-    for (i = 0u; i < 10u; i++) {
+    for (i = 0u; i < 7u; i++) {
         for (j = 0u; j < 10u; j++) {
             printf("%02x ", rxBuffer[i * 10 + j]);
         }
@@ -121,8 +121,8 @@ ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
 }
 
 ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
-    uint8_t txBuffer[100] = {0u, };
-    uint8_t rxBuffer[100] = {0u, };
+    uint8_t txBuffer[68] = {0u, };
+    uint8_t rxBuffer[68] = {0u, };
     static uDataHeaderFooter_t dataTransferHeader = {0u, };
     uDataHeaderFooter_t datatransferRxFooter;
     uint32_t bigEndianRxFooter = 0u;
@@ -144,7 +144,7 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
     SPI_Transfer((uint8_t *)&rxBuffer[0], (uint8_t *)&txBuffer[0], expected_size);
 
     printf("txBuffer when Receiving: \n");
-    for (i = 0u; i < 10u; i++) {
+    for (i = 0u; i < 7u; i++) {
         for (j = 0u; j < 10u; j++) {
             printf("%02x ", txBuffer[i * 10 + j]);
         }
@@ -153,7 +153,7 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
     printf("\n");
 
     printf("rxBuffer when Receiving: \n");
-    for (i = 0u; i < 10u; i++) {
+    for (i = 0u; i < 7u; i++) {
         for (j = 0u; j < 10u; j++) {
             printf("%02x ", rxBuffer[i * 10 + j]);
         }
