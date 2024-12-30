@@ -3,16 +3,16 @@
 
 // sudo apt install pigpio
 #include <pigpio.h>
-#include <stdint.h>
 #include <stdbool.h>
-#include <string.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 typedef enum {
-	SPI_E_SUCCESS = 0,
-	SPI_E_UNKNOWN_ERROR,
-	SPI_E_INIT_ERROR,
-	SPI_E_ISR_INIT_ERROR,
+    SPI_E_SUCCESS = 0,
+    SPI_E_UNKNOWN_ERROR,
+    SPI_E_INIT_ERROR,
+    SPI_E_ISR_INIT_ERROR,
 } SPI_ReturnType;
 
 SPI_ReturnType SPI_Init(void);
@@ -20,6 +20,6 @@ SPI_ReturnType SPI_Transfer(uint8_t* rxBuffer, uint8_t* txBuffer, uint16_t lengt
 SPI_ReturnType SPI_Cleanup(void);
 
 bool GetParity(uint32_t valueToCalculateParity);
-void ConvertEndianness(uint32_t valueToConvert, uint32_t *convertedValue);
+void ConvertEndianness(uint32_t valueToConvert, uint32_t* convertedValue);
 
 #endif /* SPI_H */
