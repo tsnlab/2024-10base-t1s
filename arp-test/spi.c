@@ -12,7 +12,6 @@
 
 static int spiHandle;
 
-//Configures to send and recieve SPI data to the NCN26010. Return true on success
 SPI_ReturnType SPI_Init(void) {
 
   gpioCfgClock(1, 1, 1); //Settup sample rate to be 1 MHz.
@@ -29,7 +28,6 @@ SPI_ReturnType SPI_Init(void) {
   }
 }
 
-//transfer data over spi. Return true on success
 SPI_ReturnType SPI_Transfer(uint8_t* rxBuffer, uint8_t* txBuffer, uint16_t length) {
     int numTransfered = -1;
 
@@ -52,4 +50,30 @@ SPI_ReturnType SPI_Cleanup(void) {
 
     gpioTerminate();
     return ret;
+}
+
+bool GetParity(uint32_t valueToCalculateParity) 
+{
+	valueToCalculateParity ^= valueToCalculateParity >> 1;
+	valueToCalculateParity ^= valueToCalculateParity >> 2;
+	valueToCalculateParity = ((valueToCalculateParity & 0x11111111U) * 0x11111111U);
+	return ((valueToCalculateParity >> 28) & 1);
+}
+
+void ConvertEndianness(uint32_t valueToConvert, uint32_t *convertedValue)
+{
+  uint8_t position = 0;
+  uint8_t variableSize = (uint8_t)(sizeof(valueToConvert));
+  uint8_t tempVar = 0;
+  uint8_t convertedBytes[(sizeof(valueToConvert))] = {0};
+
+  bcopy((char *)&valueToConvert, convertedBytes, variableSize);      // cast and copy an uint32_t to a uint8_t array
+  position = variableSize - (uint8_t)1;
+  for (uint8_t byteIndex = 0; byteIndex < (variableSize/2); byteIndex++)  // swap bytes in this uint8_t array
+  {       
+      tempVar = (uint8_t)convertedBytes[byteIndex];
+      convertedBytes[byteIndex] = convertedBytes[position];
+      convertedBytes[position--] = tempVar;
+  }
+  bcopy(convertedBytes, (uint8_t *)convertedValue, variableSize);      // copy the swapped convertedBytes to an uint32_t
 }

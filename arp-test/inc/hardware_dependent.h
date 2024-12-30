@@ -2,9 +2,11 @@
 #ifndef HARDWARE_DEPENDENT_H
 #define HARDWARE_DEPENDENT_H
 
+#define MAX_CONTROL_CMD_LEN			 (uint8_t) (0x7F)
 #define MAX_PAYLOAD_BYTE             (uint8_t) 64 // ToDo This is configurable so need to change based on configuration
 #define EACH_REG_SIZE                (uint8_t) 4
-#define MAX_REG_DATA_ONECHUNK        (uint8_t) (MAX_PAYLOAD_BYTE/EACH_REG_SIZE)
+#define MAX_REG_DATA_ONECONTROLCMD	 (uint8_t) (MAX_CONTROL_CMD_LEN * EACH_REG_SIZE)
+#define MAX_REG_DATA_ONECHUNK        (uint8_t) (MAX_PAYLOAD_BYTE / EACH_REG_SIZE)
 #define MAX_DATA_DWORD_ONECHUNK      MAX_REG_DATA_ONECHUNK
 #define HEADER_FOOTER_SIZE			 (uint8_t)4
 #define SIZE_OF_MAC_ADDR			 (uint8_t)6
@@ -26,6 +28,38 @@ typedef enum
 	REG_COMMAND_TYPE_READ = 0,
 	REG_COMMAND_TYPE_WRITE
 } REG_COMMAND_TYPE;
+
+typedef struct
+{
+	uint8_t memoryMap;
+	uint8_t length;
+	uint16_t address;
+	uint32_t databuffer[MAX_CONTROL_CMD_LEN];
+}stControlCmdReg_t;
+
+typedef struct
+{
+	uint8_t startValid;
+	uint8_t startWordOffset;
+	uint8_t endValid;
+	uint8_t endValidOffset;
+	//uint32_t databuffer[MAX_DATA_DWORD_ONECHUNK];
+	uint8_t transmitCredits;
+	uint8_t receiveChunkAvailable;
+}stDataTransfer_t;
+
+typedef struct
+{
+	uint16_t totalBytesToTransfer;
+	stDataTransfer_t stVarEachChunkTransfer;
+}stBulkDataTransfer_t;
+
+typedef struct
+{
+	uint8_t destMACAddr[6];
+	uint8_t srcMACAddr[6];
+	uint16_t ethernetType;
+} stEthernetFrame_t;
 
 typedef union
 {
@@ -68,19 +102,5 @@ typedef union
 		uint32_t EXST	: 1;
 	}stVarRxFooterBits;
 } uDataHeaderFooter_t;
-
-typedef struct
-{
-	uDataHeaderFooter_t receivedFooter;
-	uint64_t timestamp;
-}stDataReceive_t;
-
-typedef struct
-{
-    uint8_t type;
-    uint8_t MMS;
-    uint16_t address;
-    uint32_t data;
-} stRemoteConfigurationCommand_t;
 
 #endif /* HARDWARE_DEPENDENT_H */

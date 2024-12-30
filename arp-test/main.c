@@ -12,9 +12,11 @@ int main(int argc, char *argv[]) {
 		printf("SPI_Init failed; the error code is %d\n", spiRet);
 	}
 
-    arpRet = ArpTest();
-    printf("Result of arp_test is %d\n", arpRet);
 
+
+/*     arpRet = ArpTest();
+    printf("Result of arp_test is %d\n", arpRet);
+ */
 	spiRet = SPI_Cleanup();
 	if (spiRet != SPI_E_SUCCESS) {
 		printf("SPI_Cleanup failed; the error code is %d\n", spiRet);
