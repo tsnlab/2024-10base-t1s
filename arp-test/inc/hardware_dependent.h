@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 /* This header file is based on RaspberryPi 4 and LAN8651 */
 #ifndef HARDWARE_DEPENDENT_H
 #define HARDWARE_DEPENDENT_H
@@ -60,6 +62,23 @@ typedef struct
 	uint8_t srcMACAddr[6];
 	uint16_t ethernetType;
 } stEthernetFrame_t;
+
+typedef union
+{
+	uint8_t controlHeaderArray[HEADER_FOOTER_SIZE];
+	uint32_t controlFrameHead;
+	struct stHeadFootBits
+	{
+		uint32_t P		: 1;
+		uint32_t LEN  	: 7;
+		uint32_t ADDR 	: 16;
+		uint32_t MMS	: 4;
+		uint32_t AID	: 1;
+		uint32_t WNR	: 1;
+		uint32_t HDRB	: 1;
+		uint32_t DNC	: 1;
+	}stVarHeadFootBits;
+} uCommandHeaderFooter_t;
 
 typedef union
 {
