@@ -51,21 +51,21 @@ SPI_ReturnType SPI_Cleanup(void) {
 }
 
 bool GetParity(uint32_t valueToCalculateParity) {
-    valueToCalculateParity ^= valueToCalculateParity >> 1;
-    valueToCalculateParity ^= valueToCalculateParity >> 2;
+    valueToCalculateParity ^= valueToCalculateParity >> 1u;
+    valueToCalculateParity ^= valueToCalculateParity >> 2u;
     valueToCalculateParity = ((valueToCalculateParity & 0x11111111U) * 0x11111111U);
-    return ((valueToCalculateParity >> 28) & 1);
+    return ((valueToCalculateParity >> 28u) & 1u);
 }
 
 void ConvertEndianness(uint32_t valueToConvert, uint32_t* convertedValue) {
-    uint8_t position = 0;
+    uint8_t position = 0u;
     uint8_t variableSize = (uint8_t)(sizeof(valueToConvert));
-    uint8_t tempVar = 0;
-    uint8_t convertedBytes[(sizeof(valueToConvert))] = {0};
+    uint8_t tempVar = 0u;
+    uint8_t convertedBytes[(sizeof(valueToConvert))] = {0u};
 
     bcopy((char*)&valueToConvert, convertedBytes, variableSize); // cast and copy an uint32_t to a uint8_t array
-    position = variableSize - (uint8_t)1;
-    for (uint8_t byteIndex = 0; byteIndex < (variableSize / 2); byteIndex++) // swap bytes in this uint8_t array
+    position = variableSize - (uint8_t)1u;
+    for (uint8_t byteIndex = 0u; byteIndex < (variableSize / 2u); byteIndex++) // swap bytes in this uint8_t array
     {
         tempVar = (uint8_t)convertedBytes[byteIndex];
         convertedBytes[byteIndex] = convertedBytes[position];
