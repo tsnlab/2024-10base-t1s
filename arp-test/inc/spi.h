@@ -15,4 +15,7 @@ SPI_ReturnType SPI_Init(void);
 SPI_ReturnType SPI_Transfer(uint8_t* rxBuffer, uint8_t* txBuffer, uint16_t length);
 SPI_ReturnType SPI_Cleanup(void);
 
+bool GetParity(uint32_t valueToCalculateParity);
+void ConvertEndianness(uint32_t valueToConvert, uint32_t *convertedValue);
+
 #endif /* SPI_H */

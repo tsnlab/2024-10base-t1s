@@ -1,38 +1,13 @@
 #include <arp_test.h>
 #include <hardware_dependent.h>
 #include <spi.h>
+
 // ARP table
 struct arp_entry g_arpTable[MAX_ENTRIES];
 uint8_t g_arpTableCount = 0u;
 
-bool GetParity(uint32_t valueToCalculateParity) 
-{
-	valueToCalculateParity ^= valueToCalculateParity >> 1;
-	valueToCalculateParity ^= valueToCalculateParity >> 2;
-	valueToCalculateParity = ((valueToCalculateParity & 0x11111111U) * 0x11111111U);
-	return ((valueToCalculateParity >> 28) & 1);
-}
-
-void ConvertEndianness(uint32_t valueToConvert, uint32_t *convertedValue)
-{
-  uint8_t position = 0;
-  uint8_t variableSize = (uint8_t)(sizeof(valueToConvert));
-  uint8_t tempVar = 0;
-  uint8_t convertedBytes[(sizeof(valueToConvert))] = {0};
-
-  bcopy((char *)&valueToConvert, convertedBytes, variableSize);      // cast and copy an uint32_t to a uint8_t array
-  position = variableSize - (uint8_t)1;
-  for (uint8_t byteIndex = 0; byteIndex < (variableSize/2); byteIndex++)  // swap bytes in this uint8_t array
-  {       
-      tempVar = (uint8_t)convertedBytes[byteIndex];
-      convertedBytes[byteIndex] = convertedBytes[position];
-      convertedBytes[position--] = tempVar;
-  }
-  bcopy(convertedBytes, (uint8_t *)convertedValue, variableSize);      // copy the swapped convertedBytes to an uint32_t
-}
-
 // Function to add an entry to the ARP table
-ARP_ReturnType AddtoArpTable(unsigned char *ip, unsigned char *mac)
+static ARP_ReturnType AddtoArpTable(unsigned char *ip, unsigned char *mac)
 {
     ARP_ReturnType ret = ARP_E_REQUEST_FAILED;
     uint8_t i;
@@ -57,7 +32,7 @@ ARP_ReturnType AddtoArpTable(unsigned char *ip, unsigned char *mac)
 }
 
 // Function to print the ARP table
-void PrintArpTable(void) {
+static void PrintArpTable(void) {
     uint8_t i;
 
     printf("\nARP Table:\n");
@@ -69,79 +44,9 @@ void PrintArpTable(void) {
     }
 }
 
-ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
-    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
-    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
-    uint8_t bufferIndex = 0u;
-    uint8_t i = 0u;
-    uint8_t j = 0u;
-    
-    // 간단한 테스트 이더넷 패킷 생성
-    uint8_t test_packet[] = {
-        // Ethernet Header (14 bytes)
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,  // Destination MAC (broadcast)
-        0xd8, 0x3a, 0xdd, 0x44, 0xab, 0x0f,  // Source MAC
-        0x08, 0x06,                          // EtherType (ARP = 0x0806)
-        
-        // ARP Payload (첫 부분만 - 테스트용)
-        0x00, 0x01,                          // Hardware type (Ethernet)
-        0x08, 0x00,                          // Protocol type (IPv4)
-        0x06,                                // Hardware size
-        0x04                                 // Protocol size
-    };
-    uint16_t test_packet_length = sizeof(test_packet);
-
-    static uDataHeaderFooter_t dataTransferHeader = {0u, };
-    
-    // header setting
-    dataTransferHeader.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
-    dataTransferHeader.stVarTxHeadBits.SEQ = (uint8_t)(~dataTransferHeader.stVarTxHeadBits.SEQ);
-    dataTransferHeader.stVarTxHeadBits.NORX = 0;
-    dataTransferHeader.stVarTxHeadBits.DV = 1;
-    dataTransferHeader.stVarTxHeadBits.SV = 1;  // start chunk
-    dataTransferHeader.stVarTxHeadBits.EV = 1;  // end chunk (single chunk)
-    dataTransferHeader.stVarTxHeadBits.EBO = test_packet_length - 1;  // 테스트 패킷 길이 사용
-    dataTransferHeader.stVarTxHeadBits.P = (!GetParity(dataTransferHeader.dataFrameHeadFoot));
-
-    // copy header
-    for (int8_t headerByteCount = 3; headerByteCount >= 0; headerByteCount--) {
-        txBuffer[bufferIndex++] = dataTransferHeader.dataFrameHeaderBuffer[headerByteCount];
-    }
-
-    // copy test packet instead of ARP data
-    memcpy(&txBuffer[bufferIndex], test_packet, test_packet_length);
-    
-    // transfer
-    if(SPI_E_SUCCESS != SPI_Transfer((uint8_t *)&rxBuffer[0], (uint8_t *)&txBuffer[0], 
-                                    (uint16_t)(bufferIndex + test_packet_length))) {
-        return ARP_E_REQUEST_FAILED;
-    }
-    
-    printf("txBuffer when Requesting: \n");
-    for (i = 0u; i < 7u; i++) {
-        for (j = 0u; j < 10u; j++) {
-            printf("%02x ", txBuffer[i * 10 + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    printf("rxBuffer when Requesting: \n");
-    for (i = 0u; i < 7u; i++) {
-        for (j = 0u; j < 10u; j++) {
-            printf("%02x ", rxBuffer[i * 10 + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    return ARP_E_SUCCESS;
-}
-
-/* Original code
-ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
-    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
-    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
+static ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
+    uint8_t txBuffer[100] = {0u, };
+    uint8_t rxBuffer[100] = {0u, };
     uint8_t bufferIndex = 0u;
     uint8_t i = 0u;
     uint8_t j = 0u;
@@ -192,10 +97,10 @@ ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
 }
 */
 
-ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
-    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
-    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u, };
-    static uDataHeaderFooter_t dataTransferFooter = {0u, };
+static ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
+    uint8_t txBuffer[100] = {0u, };
+    uint8_t rxBuffer[100] = {0u, };
+    static uDataHeaderFooter_t dataTransferHeader = {0u, };
     uDataHeaderFooter_t datatransferRxFooter;
     uint32_t bigEndianRxFooter = 0u;
     uint16_t expected_size = 32; // test packet (20bytes) + header/footer (4+4bytes) + justincase
