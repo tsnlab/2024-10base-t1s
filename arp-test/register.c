@@ -1,6 +1,8 @@
 #include <hardware_dependent.h>
 #include <spi.h>
 
+uint8_t g_maxPayloadSize;
+
 bool T1S_HW_ReadReg(stControlCmdReg_t *p_regInfoInput,  stControlCmdReg_t *p_readRegData)
 {
 	uint8_t bufferIndex = 0u;
@@ -211,12 +213,12 @@ bool T1S_HW_WriteReg(stControlCmdReg_t *p_regData)
 					g_maxPayloadSize = 64;
 					break;
 			}
-			print_message("CONFIG0 reg value is 0x%08x in WriteReg function\n", stVarReadRegData.databuffer[0]);
+			printf("CONFIG0 reg value is 0x%08x in WriteReg function\n", stVarReadRegData.databuffer[0]);
 		}		
 	}
 	else if (commandHeader.stVarHeadFootBits.MMS == 1)
 	{
-		CheckIfFCSEnabled();
+		// CheckIfFCSEnabled();
 	}
 	else
 	{
@@ -287,7 +289,7 @@ SPI_ReturnType ClearStatus(void)
 	}
 	else
 	{
-		print_message("STATUS0 reg value before clearing is 0x%08x\n", stVarReadRegData.databuffer[0]);
+		printf("STATUS0 reg value before clearing is 0x%08x\n", stVarReadRegData.databuffer[0]);
 	}
 
 	if (stVarReadRegData.databuffer[0] != 0x00000000) // If all values are not at default then set to default
@@ -304,7 +306,7 @@ SPI_ReturnType ClearStatus(void)
 		}
 		else
 		{
-			print_message("STATUS0 reg written with value 0x%08x successfully\n", stVarWriteRegInput.databuffer[0]);
+			printf("STATUS0 reg written with value 0x%08x successfully\n", stVarWriteRegInput.databuffer[0]);
 		}
 	}
 
@@ -318,7 +320,7 @@ SPI_ReturnType ClearStatus(void)
 	}
 	else
 	{
-		print_message("STATUS0 reg value after clearing is 0x%08x\n", stVarReadRegData.databuffer[0]);
+		printf("STATUS0 reg value after clearing is 0x%08x\n", stVarReadRegData.databuffer[0]);
 		return SPI_E_SUCCESS;
 	}
 }

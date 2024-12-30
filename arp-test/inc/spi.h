@@ -3,6 +3,10 @@
 
 // sudo apt install pigpio
 #include <pigpio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
 
 typedef enum {
 	SPI_E_SUCCESS = 0,

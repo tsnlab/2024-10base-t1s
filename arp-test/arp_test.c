@@ -95,12 +95,11 @@ static ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
 
     return ARP_E_SUCCESS;
 }
-*/
 
 static ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
     uint8_t txBuffer[100] = {0u, };
     uint8_t rxBuffer[100] = {0u, };
-    static uDataHeaderFooter_t dataTransferHeader = {0u, };
+    static uDataHeaderFooter_t dataTransferFooter = {0u, };
     uDataHeaderFooter_t datatransferRxFooter;
     uint32_t bigEndianRxFooter = 0u;
     uint16_t expected_size = 32; // test packet (20bytes) + header/footer (4+4bytes) + justincase
