@@ -17,13 +17,11 @@ bool InitRegister(PLCA_Mode_t mode) {
         WriteRegister(0x4u, 0xCA02u, 0x00000200u); // Coordinator(node 0), 2 nodes
         WriteRegister(0x1u, 0x0022u, 0x313D1AD1u); // Configure MAC Address (Temporary)
         WriteRegister(0x1u, 0x0023u, 0x000C0001u); // Configure MAC Address (Temporary)
-    }
-    else if (mode == PLCA_MODE_FOLLOWER) {
+    } else if (mode == PLCA_MODE_FOLLOWER) {
         WriteRegister(0x4u, 0xCA02u, 0x00000801u); // Follower, node 1
         WriteRegister(0x1u, 0x0022u, 0x10E13130u); // Configure MAC Address (Temporary)
         WriteRegister(0x1u, 0x0023u, 0x000F0110u); // Configure MAC Address (Temporary)
-    }
-    else {
+    } else {
         printf("Invalid mode: %d\n", mode);
         return false;
     }
