@@ -42,10 +42,10 @@ static void PrintArpTable(void) {
 }
 
 static ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
-    uint8_t txBuffer[100] = {
+    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {
         0u,
     };
-    uint8_t rxBuffer[100] = {
+    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {
         0u,
     };
     uint8_t bufferIndex = 0u;
@@ -57,12 +57,12 @@ static ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
 
     // header setting
     dataTransferHeader.stVarTxHeadBits.DNC = DNC_COMMANDTYPE_DATA;
-    dataTransferHeader.stVarTxHeadBits.SEQ = (uint8_t)(~dataTransferHeader.stVarTxHeadBits.SEQ);
-    dataTransferHeader.stVarTxHeadBits.NORX = 0;
-    dataTransferHeader.stVarTxHeadBits.DV = 1;
+    dataTransferHeader.stVarTxHeadBits.SEQ = 0; // TODO: check this if there are multiiple chunks
+    dataTransferHeader.stVarTxHeadBits.NORX = 0; // No Receive
+    dataTransferHeader.stVarTxHeadBits.DV = 1; // Data Valid
     dataTransferHeader.stVarTxHeadBits.SV = 1; // start chunk
     dataTransferHeader.stVarTxHeadBits.EV = 1; // end chunk (single chunk)
-    dataTransferHeader.stVarTxHeadBits.EBO = length - 1;
+    dataTransferHeader.stVarTxHeadBits.EBO = 63; // TODO: check this if there are multiiple chunks
     dataTransferHeader.stVarTxHeadBits.P = (!GetParity(dataTransferHeader.dataFrameHeadFoot));
 
     // copy header
@@ -82,6 +82,10 @@ static ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
     printf("txBuffer when Requesting: \n");
     for (i = 0u; i < 7u; i++) {
         for (j = 0u; j < 10u; j++) {
+            if (i * 10 + j >= MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE) {
+                printf("...");
+                break;
+            }
             printf("%02x ", txBuffer[i * 10 + j]);
         }
         printf("\n");
@@ -91,6 +95,10 @@ static ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
     printf("rxBuffer when Requesting: \n");
     for (i = 0u; i < 7u; i++) {
         for (j = 0u; j < 10u; j++) {
+            if (i * 10 + j >= MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE) {
+                printf("...");
+                break;
+            }
             printf("%02x ", rxBuffer[i * 10 + j]);
         }
         printf("\n");
@@ -101,10 +109,10 @@ static ARP_ReturnType ARPRequest(uint8_t* arp_request_buffer, uint16_t length) {
 }
 
 static ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
-    uint8_t txBuffer[100] = {
+    uint8_t txBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {
         0u,
     };
-    uint8_t rxBuffer[100] = {
+    uint8_t rxBuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {
         0u,
     };
     static uDataHeaderFooter_t dataTransferFooter = {
@@ -133,6 +141,10 @@ static ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
     printf("txBuffer when Receiving: \n");
     for (i = 0u; i < 7u; i++) {
         for (j = 0u; j < 10u; j++) {
+            if (i * 10 + j >= MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE) {
+                printf("...");
+                break;
+            }
             printf("%02x ", txBuffer[i * 10 + j]);
         }
         printf("\n");
@@ -142,6 +154,10 @@ static ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
     printf("rxBuffer when Receiving: \n");
     for (i = 0u; i < 7u; i++) {
         for (j = 0u; j < 10u; j++) {
+            if (i * 10 + j >= MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE) {
+                printf("...");
+                break;
+            }
             printf("%02x ", rxBuffer[i * 10 + j]);
         }
         printf("\n");
@@ -153,6 +169,15 @@ static ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
             HEADER_FOOTER_SIZE);
     ConvertEndianness(datatransferRxFooter.dataFrameHeadFoot, &bigEndianRxFooter);
     datatransferRxFooter.dataFrameHeadFoot = bigEndianRxFooter;
+
+#ifdef DEBUG_MODE
+    printf("datatransferRxFooter: \n");
+    printf("EXST: %u\n", datatransferRxFooter.stVarRxFooterBits.EXST);
+    printf("HDRB: %u\n", datatransferRxFooter.stVarRxFooterBits.HDRB); 
+    printf("SYNC: %u\n", datatransferRxFooter.stVarRxFooterBits.SYNC);
+    printf("DV: %u\n", datatransferRxFooter.stVarRxFooterBits.DV);
+    printf("Raw value: 0x%08x\n", datatransferRxFooter.dataFrameHeadFoot);
+#endif
 
     // receive data validation
     if (datatransferRxFooter.stVarRxFooterBits.DV && !datatransferRxFooter.stVarRxFooterBits.EXST) {
@@ -242,7 +267,7 @@ ARP_ReturnType ARPReply(uint8_t* arp_reply_buffer, uint16_t* length) {
 }
 */
 
-ARP_ReturnType ArpTest(void) {
+ARP_ReturnType ArpTest(PLCA_Mode_t plcaMode) {
     ARP_ReturnType ret = ARP_E_REQUEST_FAILED;
     uint16_t received_length = 0u;
 
@@ -268,34 +293,34 @@ ARP_ReturnType ArpTest(void) {
     memset(arp->target_mac, 0x00, 6u);                       // Unknown
     inet_pton(AF_INET, "172.16.11.203", arp->target_ip);     // Replace with target IP
 
-    // Send ARP request
-    ret = ARPRequest(buffer, sizeof(buffer));
-    if (ret != ARP_E_SUCCESS) {
-        printf("ARP request failed, the error code is %d\n", ret);
-    }
-
-    /*    // Receive ARP Reply
+    if (plcaMode == PLCA_MODE_COORDINATOR) {
+        // Send ARP request
+        ret = ARPRequest(buffer, sizeof(buffer));
+        if (ret != ARP_E_SUCCESS) {
+            printf("ARP request failed, the error code is %d\n", ret);
+        }
+    } else if (plcaMode == PLCA_MODE_FOLLOWER) {
+        // Receive ARP Reply
         ret = ARPReply(buffer, &received_length);
         if (ret != ARP_E_SUCCESS) {
             printf("ARP reply failed, the error code is %d\n", ret);
         }
-            eth = (struct eth_hdr *)buffer;
-            if (ntohs(eth->ethertype) == 0x0806) { // Check if ARP
-                arp = (struct arp_hdr *) (buffer + sizeof(struct eth_hdr));
-                if (ntohs(arp->oper) == 2) { // ARP Reply
+
+        if (ntohs(eth->ethertype) == 0x0806) { // Check if ARP
+            arp = (struct arp_hdr *) (buffer + sizeof(struct eth_hdr));
+            if (ntohs(arp->oper) == 2) { // ARP Reply
                     printf("Received ARP reply from %d.%d.%d.%d\n",
                             arp->sender_ip[0], arp->sender_ip[1], arp->sender_ip[2], arp->sender_ip[3]);
                     AddtoArpTable(arp->sender_ip, arp->sender_mac);
                     PrintArpTable();
+                ret = ARP_E_SUCCESS;
+            }
+        }
 
-                    ret = ARP_E_SUCCESS;
-                }
-        }
-        //Debug code
-        ret = ARPReply(buffer, &received_length);
-        if (ret != ARP_E_SUCCESS) {
-            printf("Second ARP reply failed, the error code is %d\n", ret);
-        }
-    */
+    } else {
+        printf("Invalid PLCA mode\n");
+    }
+
+
     return ret;
 }

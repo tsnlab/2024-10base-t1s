@@ -100,7 +100,7 @@ typedef union {
         uint32_t SV : 1;
         uint32_t DV : 1;
         uint32_t VS : 2;
-        uint32_t RCA : 5;
+        uint32_t RBA : 5;
         uint32_t SYNC : 1;
         uint32_t HDRB : 1;
         uint32_t EXST : 1;

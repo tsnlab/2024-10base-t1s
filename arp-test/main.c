@@ -5,9 +5,10 @@
 int main(int argc, char* argv[]) {
     ARP_ReturnType arpRet = ARP_E_UNKNOWN_ERROR;
     SPI_ReturnType spiRet = SPI_E_UNKNOWN_ERROR;
-    PLCA_Mode_t plcaMode = PLCA_MODE_COORDINATOR;
+    PLCA_Mode_t plcaMode = PLCA_MODE_INVALID;
     bool regInitStatus = false;
     uint8_t argCount;
+    uint32_t regValue;
 
     spiRet = SPI_Init();
 #ifdef DEBUG_MODE
@@ -43,10 +44,16 @@ int main(int argc, char* argv[]) {
 #endif
     }
 
-    /*
-        arpRet = ArpTest();
-        printf("Result of arp_test is %d\n", arpRet);
-     */
+    arpRet = ArpTest(plcaMode);
+    printf("Result of arp_test is %d\n", arpRet);
+
+#ifdef DEBUG_MODE
+    regValue = ReadRegister(0x01u, 0x0001u);
+    printf("MAC_NCFGR value after ARP test is %x\n", regValue);
+    regValue = ReadRegister(0x01u, 0x020Au);
+    printf("STATS2 value after ARP test is %x\n", regValue);
+#endif
+
     spiRet = SPI_Cleanup();
 #ifdef DEBUG_MODE
     if (spiRet != SPI_E_SUCCESS) {

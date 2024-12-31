@@ -22,6 +22,7 @@ SPI_ReturnType SPI_Cleanup(void);
 typedef enum {
     PLCA_MODE_COORDINATOR = 0,
     PLCA_MODE_FOLLOWER = 1,
+    PLCA_MODE_INVALID = 2,
 } PLCA_Mode_t;
 
 uint32_t ReadRegister(uint8_t MMS, uint16_t Address);

@@ -58,6 +58,6 @@ typedef enum {
     ARP_E_UNKNOWN_ERROR,
 } ARP_ReturnType;
 
-ARP_ReturnType ArpTest(void);
+ARP_ReturnType ArpTest(PLCA_Mode_t plcaMode);
 
 #endif /* ARP_TEST_H */
