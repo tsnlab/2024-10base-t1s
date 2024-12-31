@@ -3,6 +3,39 @@
 
 uint8_t g_maxPayloadSize;
 
+bool InitRegister(PLCA_Mode_t mode) {
+    uint32_t regValue;
+    WriteRegister(0x0u, 0x0003u, 0x00000001u); // Reset LAN8651
+
+    regValue = ReadRegister(0x4u, 0x0087u);
+    WriteRegister(0x4u, 0x0087u, regValue | (1u << 15)); // Initial logic(disable collision detection); Set bit 15
+
+    // PLCA Configuration based on mode
+    // TODO: This process is temporary and assumes that there are only two nodes.
+    // TODO: Should be changed to get node info. from the command line.
+    if (mode == PLCA_MODE_COORDINATOR) {
+        WriteRegister(0x4u, 0xCA02u, 0x00000200u); // Coordinator(node 0), 2 nodes
+        WriteRegister(0x1u, 0x0022u, 0x313D1AD1u); // Configure MAC Address (Temporary)
+        WriteRegister(0x1u, 0x0023u, 0x000C0001u); // Configure MAC Address (Temporary)
+    }
+    else if (mode == PLCA_MODE_FOLLOWER) {
+        WriteRegister(0x4u, 0xCA02u, 0x00000801u); // Follower, node 1
+        WriteRegister(0x1u, 0x0022u, 0x10E13130u); // Configure MAC Address (Temporary)
+        WriteRegister(0x1u, 0x0023u, 0x000F0110u); // Configure MAC Address (Temporary)
+    }
+    else {
+        printf("Invalid mode: %d\n", mode);
+        return false;
+    }
+    WriteRegister(0x4u, 0xCA01u, 0x00008000u); // Enable PLCA
+    WriteRegister(0x1u, 0x0001u, 0x000000C0u); // Enable unicast, multicast
+    WriteRegister(0x1u, 0x0000u, 0x0000000Cu); // Enable MACPHY TX, RX
+    WriteRegister(0x0u, 0x0008u, 0x00000040u); // Clear RESETC
+    WriteRegister(0x0u, 0x0004u, 0x00008006u); // SYNC bit SET (last configuration)
+
+    return true;
+}
+
 bool T1S_HW_ReadReg(stControlCmdReg_t* p_regInfoInput, stControlCmdReg_t* p_readRegData) {
     uint8_t bufferIndex = 0u;
     const uint8_t ignoredEchoedBytes = 4u;
@@ -121,7 +154,7 @@ bool T1S_HW_WriteReg(stControlCmdReg_t* p_regData) {
     memmove((uint8_t*)&commandHeaderEchoed.controlFrameHead, &rxBuffer[ignoredEchoedBytes], HEADER_FOOTER_SIZE);
     ConvertEndianness(commandHeaderEchoed.controlFrameHead, &bigEndianHeader);
     commandHeaderEchoed.controlFrameHead = bigEndianHeader;
-
+    // TODO check this logic and modify it if needed
     if (commandHeader.stVarHeadFootBits.MMS == 0u) {
         stControlCmdReg_t stVarReadRegInfoInput;
         stControlCmdReg_t stVarReadRegData;

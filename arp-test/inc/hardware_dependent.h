@@ -4,6 +4,12 @@
 #ifndef HARDWARE_DEPENDENT_H
 #define HARDWARE_DEPENDENT_H
 
+#ifdef DEBUG_MODE
+#define DEBUG_PRINTF(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#else
+#define DEBUG_PRINTF(fmt, ...)
+#endif
+
 #define MAX_CONTROL_CMD_LEN (uint8_t)(0x7F)
 #define MAX_PAYLOAD_BYTE (uint8_t)64 // ToDo This is configurable so need to change based on configuration
 #define EACH_REG_SIZE (uint8_t)4
