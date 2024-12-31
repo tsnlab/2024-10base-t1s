@@ -25,6 +25,7 @@ typedef enum {
     PLCA_MODE_INVALID = 2,
 } PLCA_Mode_t;
 
+bool InitRegister(PLCA_Mode_t mode);
 uint32_t ReadRegister(uint8_t MMS, uint16_t Address);
 uint32_t WriteRegister(uint8_t MMS, uint16_t Address, uint32_t data);
 

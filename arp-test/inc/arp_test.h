@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <spi.h>
 
 #include <arpa/inet.h>
 #include <linux/if_packet.h>
