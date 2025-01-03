@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -Wall -I./inc -DDEBUG_MODE # -DDEBUG_MODE is used to enable debug mode
+CFLAGS = -Wall -I./src -I./include -DDEBUG_MODE # -DDEBUG_MODE is used to enable debug mode
 LDFLAGS = -lpigpio -lpthread -lrt
 
-SRCS = main.c arp_test.c spi.c register.c
+SRCS = src/main.c src/arp_test.c src/spi.c src/register.c
 OBJS = $(SRCS:.c=.o)
 TARGET = arp_test
 
