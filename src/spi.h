@@ -8,28 +8,28 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef enum {
+enum {
     SPI_E_SUCCESS = 0,
     SPI_E_UNKNOWN_ERROR,
     SPI_E_INIT_ERROR,
     SPI_E_ISR_INIT_ERROR,
-} SPI_ReturnType;
+};
 
-SPI_ReturnType SPI_Init(void);
-SPI_ReturnType SPI_Transfer(uint8_t* rxBuffer, uint8_t* txBuffer, uint16_t length);
-SPI_ReturnType SPI_Cleanup(void);
-
-typedef enum {
+enum {
     PLCA_MODE_COORDINATOR = 0,
     PLCA_MODE_FOLLOWER = 1,
     PLCA_MODE_INVALID = 2,
-} PLCA_Mode_t;
+};
 
-bool InitRegister(PLCA_Mode_t mode);
-uint32_t ReadRegister(uint8_t MMS, uint16_t Address);
-uint32_t WriteRegister(uint8_t MMS, uint16_t Address, uint32_t data);
+int spi_init(void);
+int spi_transfer(uint8_t* rxbuffer, uint8_t* txbuffer, uint16_t length);
+int spi_cleanup(void);
 
-bool GetParity(uint32_t valueToCalculateParity);
-void ConvertEndianness(uint32_t valueToConvert, uint32_t* convertedValue);
+bool init_register(int mode);
+uint32_t read_register(uint8_t MMS, uint16_t Address);
+uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data);
+
+bool get_parity(uint32_t valueToCalculateParity);
+void convert_endianness(uint32_t valueToConvert, uint32_t* convertedValue);
 
 #endif /* SPI_H */

@@ -1,48 +1,49 @@
-#include <arp_test.h>
-#include <hardware_dependent.h>
-#include <spi.h>
+#include "spi.h"
 
-#define DIO0_GPIO_PIN (uint32_t)23             //!< GPIO pin 23
-#define MACPHY_INTERRUPT_GPIO_PIN (uint32_t)25 //!< GPIO pin 25
-#define INTERRUPT_TIMEOUT (uint32_t)250        //!< 250ms timeout
-#define NO_INTERRUPT_TIMEOUT (uint32_t) - 1    //!< No timeout wait any amount of time until next interrupt
-#define SPI_COMM_SPEED (uint32_t)15000000      // 15MHz speed
-#define SPI_CHANNEL (uint32_t)0                // Channel 0
-#define SPI_FLAGS (uint32_t)0                  // No special setup
+#include "arch.h"
+#include "arp_test.h"
 
-static int spiHandle;
+#define DIO0_GPIO_PIN ((uint32_t)23)             //!< GPIO pin 23
+#define MACPHY_INTERRUPT_GPIO_PIN ((uint32_t)25) //!< GPIO pin 25
+#define INTERRUPT_TIMEOUT ((uint32_t)250)        //!< 250ms timeout
+#define NO_INTERRUPT_TIMEOUT ((uint32_t)-1)      //!< No timeout wait any amount of time until next interrupt
+#define SPI_COMM_SPEED ((uint32_t)15000000)      // 15MHz speed
+#define SPI_CHANNEL ((uint32_t)0)                // Channel 0
+#define SPI_FLAGS ((uint32_t)0)                  // No special setup
 
-SPI_ReturnType SPI_Init(void) {
+static int spihandle;
+
+int spi_init(void) {
 
     gpioCfgClock(1, 1, 1); // Settup sample rate to be 1 MHz.
     if (gpioInitialise() < 0) {
         return SPI_E_ISR_INIT_ERROR;
     }
 
-    spiHandle = spiOpen(SPI_CHANNEL, SPI_COMM_SPEED, SPI_FLAGS);
-    if (spiHandle >= 0) {
+    spihandle = spiOpen(SPI_CHANNEL, SPI_COMM_SPEED, SPI_FLAGS);
+    if (spihandle >= 0) {
         return SPI_E_SUCCESS;
     } else {
         return SPI_E_INIT_ERROR;
     }
 }
 
-SPI_ReturnType SPI_Transfer(uint8_t* rxBuffer, uint8_t* txBuffer, uint16_t length) {
-    int numTransfered = -1;
+int spi_transfer(uint8_t* rxbuffer, uint8_t* txbuffer, uint16_t length) {
+    int numtransfered = -1;
 
-    numTransfered = spiXfer(spiHandle, (char*)txBuffer, (char*)rxBuffer, length);
-    if (numTransfered > 0) {
+    numtransfered = spiXfer(spihandle, (char*)txbuffer, (char*)rxbuffer, length);
+    if (numtransfered > 0) {
         return SPI_E_SUCCESS;
     } else {
         return SPI_E_UNKNOWN_ERROR;
     }
 }
 
-SPI_ReturnType SPI_Cleanup(void) {
-    SPI_ReturnType ret = SPI_E_UNKNOWN_ERROR;
+int spi_cleanup(void) {
+    int ret = SPI_E_UNKNOWN_ERROR;
 
-    if (spiHandle >= 0) {
-        spiClose(spiHandle);
+    if (spihandle >= 0) {
+        spiClose(spihandle);
         ret = SPI_E_SUCCESS;
     }
 
@@ -50,26 +51,26 @@ SPI_ReturnType SPI_Cleanup(void) {
     return ret;
 }
 
-bool GetParity(uint32_t valueToCalculateParity) {
+bool get_parity(uint32_t valueToCalculateParity) {
     valueToCalculateParity ^= valueToCalculateParity >> 1u;
     valueToCalculateParity ^= valueToCalculateParity >> 2u;
     valueToCalculateParity = ((valueToCalculateParity & 0x11111111U) * 0x11111111U);
     return ((valueToCalculateParity >> 28u) & 1u);
 }
 
-void ConvertEndianness(uint32_t valueToConvert, uint32_t* convertedValue) {
+void convert_endianness(uint32_t valueToConvert, uint32_t* convertedValue) {
     uint8_t position = 0u;
-    uint8_t variableSize = (uint8_t)(sizeof(valueToConvert));
-    uint8_t tempVar = 0u;
-    uint8_t convertedBytes[(sizeof(valueToConvert))] = {0u};
+    uint8_t variablesize = (uint8_t)(sizeof(valueToConvert));
+    uint8_t tempvar = 0u;
+    uint8_t convertedbytes[(sizeof(valueToConvert))] = {0u};
 
-    bcopy((char*)&valueToConvert, convertedBytes, variableSize); // cast and copy an uint32_t to a uint8_t array
-    position = variableSize - (uint8_t)1u;
-    for (uint8_t byteIndex = 0u; byteIndex < (variableSize / 2u); byteIndex++) // swap bytes in this uint8_t array
+    bcopy((char*)&valueToConvert, convertedbytes, variablesize); // cast and copy an uint32_t to a uint8_t array
+    position = variablesize - (uint8_t)1u;
+    for (uint8_t byteIndex = 0u; byteIndex < (variablesize / 2u); byteIndex++) // swap bytes in this uint8_t array
     {
-        tempVar = (uint8_t)convertedBytes[byteIndex];
-        convertedBytes[byteIndex] = convertedBytes[position];
-        convertedBytes[position--] = tempVar;
+        tempvar = (uint8_t)convertedbytes[byteIndex];
+        convertedbytes[byteIndex] = convertedbytes[position];
+        convertedbytes[position--] = tempvar;
     }
-    bcopy(convertedBytes, (uint8_t*)convertedValue, variableSize); // copy the swapped convertedBytes to an uint32_t
+    bcopy(convertedbytes, (uint8_t*)convertedValue, variablesize); // copy the swapped convertedbytes to an uint32_t
 }

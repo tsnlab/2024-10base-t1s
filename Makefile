@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -I./src -I./include -DDEBUG_MODE # -DDEBUG_MODE is used to enable debug mode
+CFLAGS = -Wall -I./src -I./include -DDEBUG
 LDFLAGS = -lpigpio -lpthread -lrt
 
 SRCS = src/main.c src/arp_test.c src/spi.c src/register.c

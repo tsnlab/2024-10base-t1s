@@ -1,21 +1,19 @@
-#include <arp_test.h>
-#include <hardware_dependent.h>
-#include <spi.h>
+#include "arch.h"
+#include "arp_test.h"
+#include "spi.h"
 
 int main(int argc, char* argv[]) {
-    ARP_ReturnType arpRet = ARP_E_UNKNOWN_ERROR;
-    SPI_ReturnType spiRet = SPI_E_UNKNOWN_ERROR;
-    PLCA_Mode_t plcaMode = PLCA_MODE_INVALID;
-    bool regInitStatus = false;
-    uint8_t argCount;
-    uint32_t regValue;
+    int arp_ret = ARP_E_UNKNOWN_ERROR;
+    int spi_ret = SPI_E_UNKNOWN_ERROR;
+    int plca_mode = PLCA_MODE_INVALID;
+    bool reg_initstatus = false;
+    uint8_t argcount;
+    uint32_t regval;
 
-    spiRet = SPI_Init();
-#ifdef DEBUG_MODE
-    if (spiRet != SPI_E_SUCCESS) {
-        printf("SPI_Init failed; the error code is %d\n", spiRet);
+    spi_ret = spi_init();
+    if (spi_ret != SPI_E_SUCCESS) {
+        printf_debug("spi_init failed; the error code is %d\n", spi_ret);
     }
-#endif
 
     if (argc == 1u) {
         printf("No argument provided\n Usage: %s -c|-f|-h\n -c   : Coordinator mode\n -f   : Follower mode\n -h   : "
@@ -23,43 +21,37 @@ int main(int argc, char* argv[]) {
                argv[0]);
     }
     // Register initialization based on argument(c, f, h)
-    for (argCount = 1u; argCount < argc; argCount++) {
-        if (strcmp(argv[argCount], "-c") == 0) {
+    for (argcount = 1u; argcount < argc; argcount++) {
+        if (strcmp(argv[argcount], "-c") == 0) {
             printf("Coordinator mode\n");
-            plcaMode = PLCA_MODE_COORDINATOR;
-            regInitStatus = InitRegister(plcaMode);
-        } else if (strcmp(argv[argCount], "-f") == 0) {
+            plca_mode = PLCA_MODE_COORDINATOR;
+            reg_initstatus = init_register(plca_mode);
+        } else if (strcmp(argv[argcount], "-f") == 0) {
             printf("Follower mode\n");
-            plcaMode = PLCA_MODE_FOLLOWER;
-            regInitStatus = InitRegister(plcaMode);
-        } else if (strcmp(argv[argCount], "-h") == 0) {
+            plca_mode = PLCA_MODE_FOLLOWER;
+            reg_initstatus = init_register(plca_mode);
+        } else if (strcmp(argv[argcount], "-h") == 0) {
             printf(
                 "Help mode\n Usage: %s -c|-f|-h\n -c   : Coordinator mode\n -f   : Follower mode\n -h   : Help mode\n",
                 argv[0]);
         } else {
-            printf("Invalid argument: %s\n Usage: %s -c|-f|-h\n", argv[argCount], argv[0]);
+            printf("Invalid argument: %s\n Usage: %s -c|-f|-h\n", argv[argcount], argv[0]);
         }
-#ifdef DEBUG_MODE
-        printf("Register initialization %s\n", regInitStatus ? "successful" : "failed");
-#endif
+        printf_debug("Register initialization %s\n", reg_initstatus ? "successful" : "failed");
     }
 
-    arpRet = ArpTest(plcaMode);
-    printf("Result of arp_test is %d\n", arpRet);
+    arp_ret = arp_test(plca_mode);
+    printf("Result of arp_test is %d\n", arp_ret);
 
-#ifdef DEBUG_MODE
-    regValue = ReadRegister(0x01u, 0x0001u);
-    printf("MAC_NCFGR value after ARP test is %x\n", regValue);
-    regValue = ReadRegister(0x01u, 0x020Au);
-    printf("STATS2 value after ARP test is %x\n", regValue);
-#endif
+    regval = read_register(0x01u, 0x0001u);
+    printf_debug("MAC_NCFGR value after ARP test is %x\n", regval);
+    regval = read_register(0x01u, 0x020Au);
+    printf_debug("STATS2 value after ARP test is %x\n", regval);
 
-    spiRet = SPI_Cleanup();
-#ifdef DEBUG_MODE
-    if (spiRet != SPI_E_SUCCESS) {
-        printf("SPI_Cleanup failed; the error code is %d\n", spiRet);
+    spi_ret = spi_cleanup();
+    if (spi_ret != SPI_E_SUCCESS) {
+        printf_debug("spi_cleanup failed; the error code is %d\n", spi_ret);
     }
-#endif
 
-    return spiRet;
+    return spi_ret;
 }

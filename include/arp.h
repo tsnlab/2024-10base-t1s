@@ -9,6 +9,6 @@
  * int t1s_arp_send_reply(uint8_t* target_ip, uint8_t* target_mac);
  * bool t1s_arp_lookup(uint8_t* ip_addr, uint8_t* mac_addr);
  * void t1s_arp_cleanup();
-*/
+ */
 
 #endif

@@ -7,13 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <spi.h>
 
 #include <arpa/inet.h>
 #include <linux/if_packet.h>
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <sys/socket.h>
+
+#include "spi.h"
 
 #define MAX_ENTRIES 100
 #define PACKET_SIZE_ARP 42
@@ -52,13 +53,13 @@ struct arp_entry {
     unsigned char mac[6];
 };
 
-typedef enum {
+enum {
     ARP_E_SUCCESS = 0,
     ARP_E_REQUEST_FAILED,
     ARP_E_REPLY_FAILED,
     ARP_E_UNKNOWN_ERROR,
-} ARP_ReturnType;
+};
 
-ARP_ReturnType ArpTest(PLCA_Mode_t plcaMode);
+int arp_test(int plca_mode);
 
 #endif /* ARP_TEST_H */
