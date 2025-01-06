@@ -1,3 +1,5 @@
+#include <arpa/inet.h>
+
 #include "arch.h"
 #include "spi.h"
 
@@ -41,7 +43,6 @@ bool t1s_hw_readreg(struct st_ctrl_cmd_reg* p_regInfoInput, struct st_ctrl_cmd_r
     uint8_t txbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_FOOTER_SIZE + EACH_REG_SIZE] = {0u};
     uint8_t rxbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_FOOTER_SIZE + EACH_REG_SIZE] = {0u};
     uint16_t numberof_bytestosend = 0u;
-    uint32_t bigendian_header = 0u;
     union u_ctrl_header_footer commandheader;
     union u_ctrl_header_footer commandheader_echoed;
 
@@ -59,8 +60,7 @@ bool t1s_hw_readreg(struct st_ctrl_cmd_reg* p_regInfoInput, struct st_ctrl_cmd_r
     commandheader.st_ctrl_head_foot_bits.MMS = (uint32_t)p_regInfoInput->memorymap;
     commandheader.st_ctrl_head_foot_bits.ADDR = (uint32_t)p_regInfoInput->address;
     commandheader.st_ctrl_head_foot_bits.LEN = (uint32_t)(p_regInfoInput->length & 0x7Fu);
-    commandheader.st_ctrl_head_foot_bits.P = 0u;
-    commandheader.st_ctrl_head_foot_bits.P = (!get_parity(commandheader.ctrl_frame_head));
+    commandheader.st_ctrl_head_foot_bits.P = ((get_parity(commandheader.ctrl_frame_head) == 0) ? 1 : 0);
     for (int8_t header_byte_count = 3; header_byte_count >= 0; header_byte_count--) {
         txbuffer[bufferindex++] = commandheader.ctrl_header_array[header_byte_count];
     }
@@ -72,25 +72,21 @@ bool t1s_hw_readreg(struct st_ctrl_cmd_reg* p_regInfoInput, struct st_ctrl_cmd_r
     spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], numberof_bytestosend);
 
     memmove((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_FOOTER_SIZE);
-    convert_endianness(commandheader_echoed.ctrl_frame_head, &bigendian_header);
-    commandheader_echoed.ctrl_frame_head = bigendian_header;
+    commandheader_echoed.ctrl_frame_head = ntohl(commandheader_echoed.ctrl_frame_head);
 
     if (commandheader_echoed.st_ctrl_head_foot_bits.HDRB !=
         1u) // if MACPHY received header with parity error then it will be 1
     {
-        uint32_t endianness_convertedvalue = 0u;
         if (commandheader.st_ctrl_head_foot_bits.LEN == 0u) {
             memmove((uint8_t*)&p_readRegData->databuffer[0], &(rxbuffer[ignored_echoedbytes + HEADER_FOOTER_SIZE]),
                     EACH_REG_SIZE);
-            convert_endianness(p_readRegData->databuffer[0], &endianness_convertedvalue);
-            p_readRegData->databuffer[0] = endianness_convertedvalue;
+            p_readRegData->databuffer[0] = ntohl(p_readRegData->databuffer[0]);
         } else {
             for (uint8_t regCount = 0u; regCount <= commandheader.st_ctrl_head_foot_bits.LEN; regCount++) {
                 memmove((uint8_t*)&p_readRegData->databuffer[regCount],
                         &rxbuffer[ignored_echoedbytes + HEADER_FOOTER_SIZE + (EACH_REG_SIZE * regCount)],
                         EACH_REG_SIZE);
-                convert_endianness(p_readRegData->databuffer[regCount], &endianness_convertedvalue);
-                p_readRegData->databuffer[regCount] = endianness_convertedvalue;
+                p_readRegData->databuffer[regCount] = ntohl(p_readRegData->databuffer[regCount]);
             }
         }
         readstatus = true;
@@ -111,8 +107,6 @@ bool t1s_hw_writereg(struct st_ctrl_cmd_reg* p_regData) {
     const uint8_t ignored_echoedbytes = 4u;
     uint8_t txbuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u};
     uint8_t rxbuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {0u};
-    uint32_t bigendian_header = 0u;
-    uint32_t endianness_convertedvalue = 0u;
     union u_ctrl_header_footer commandheader;
     union u_ctrl_header_footer commandheader_echoed;
 
@@ -130,8 +124,7 @@ bool t1s_hw_writereg(struct st_ctrl_cmd_reg* p_regData) {
     commandheader.st_ctrl_head_foot_bits.MMS = (uint32_t)(p_regData->memorymap & 0x0Fu);
     commandheader.st_ctrl_head_foot_bits.ADDR = (uint32_t)p_regData->address;
     commandheader.st_ctrl_head_foot_bits.LEN = (uint32_t)(p_regData->length & 0x7Fu);
-    commandheader.st_ctrl_head_foot_bits.P = 0u;
-    commandheader.st_ctrl_head_foot_bits.P = (!get_parity(commandheader.ctrl_frame_head));
+    commandheader.st_ctrl_head_foot_bits.P = ((get_parity(commandheader.ctrl_frame_head) == 0) ? 1 : 0);
 
     for (int8_t header_byte_count = 3; header_byte_count >= 0; header_byte_count--) {
         txbuffer[bufferindex++] = commandheader.ctrl_header_array[header_byte_count];
@@ -140,8 +133,7 @@ bool t1s_hw_writereg(struct st_ctrl_cmd_reg* p_regData) {
     numberof_registerstosend = commandheader.st_ctrl_head_foot_bits.LEN + 1u;
 
     for (uint8_t controlRegIndex = 0u; controlRegIndex < numberof_registerstosend; controlRegIndex++) {
-        convert_endianness(p_regData->databuffer[controlRegIndex], &endianness_convertedvalue);
-        memcpy(&txbuffer[bufferindex], &endianness_convertedvalue, EACH_REG_SIZE);
+        txbuffer[bufferindex] = htonl(p_regData->databuffer[controlRegIndex]);
         bufferindex += EACH_REG_SIZE;
     }
 
@@ -152,8 +144,7 @@ bool t1s_hw_writereg(struct st_ctrl_cmd_reg* p_regData) {
     spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], numberof_bytestosend);
 
     memmove((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_FOOTER_SIZE);
-    convert_endianness(commandheader_echoed.ctrl_frame_head, &bigendian_header);
-    commandheader_echoed.ctrl_frame_head = bigendian_header;
+    commandheader_echoed.ctrl_frame_head = ntohl(commandheader_echoed.ctrl_frame_head);
     // TODO check this logic and modify it if needed
     if (commandheader.st_ctrl_head_foot_bits.MMS == 0u) {
         struct st_ctrl_cmd_reg st_readreg_infoinput;
@@ -272,7 +263,7 @@ int clear_status(void) {
     if (execution_status == false) {
         // ToDo Action to be taken if reading register fails
         printf("Reading STATUS0 register failed\n");
-        return SPI_E_UNKNOWN_ERROR;
+        return -SPI_E_UNKNOWN_ERROR;
     } else {
         printf("STATUS0 reg value after clearing is 0x%08x\n", st_readreg_data.databuffer[0]);
         return SPI_E_SUCCESS;

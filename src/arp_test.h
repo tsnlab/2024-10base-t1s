@@ -9,49 +9,38 @@
 #include <unistd.h>
 
 #include <arpa/inet.h>
+#include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/if_arp.h>
 #include <sys/socket.h>
 
 #include "spi.h"
 
-#define MAX_ENTRIES 100
-#define PACKET_SIZE_ARP 42
+#define MAX_ENTRIES (100)
 
-/* TODO fix eth_hdr to ethhdr, arp_hdr -> arphdr + @
- * There is ethhdr defined in <linux/if_header.h>
- * Also there is arphdr in <linux/if_arp.h> but without the sender/receiver addresses. */
+#define IPV4 // This project regards IPv4 for now
+#ifdef IPV4
 
-/* TODO Elaborate PACKET_SIZE_ARP
- * Length of Ethernet header is defined as ETH_HLEN, and Length of ARP header better be defined as sizeof(arphdr) +
- * 20(address field size in IPv4) */
+#define IP_LEN (4)
+#define PACKET_SIZE_ARP (sizeof(struct ethhdr) + sizeof(struct arphdr_ipv4))
 
-// Ethernet header
-struct eth_hdr {
-    unsigned char dest_mac[6];
-    unsigned char src_mac[6];
-    unsigned short ethertype;
+struct arphdr_ipv4 {
+    struct arphdr arp;
+    uint8_t sender_mac[ETH_ALEN];
+    uint8_t sender_ip[IP_LEN];
+    uint8_t target_mac[ETH_ALEN];
+    uint8_t target_ip[IP_LEN];
 };
 
-// ARP header
-struct arp_hdr {
-    unsigned short htype;
-    unsigned short ptype;
-    unsigned char hlen;
-    unsigned char plen;
-    unsigned short oper;
-    unsigned char sender_mac[6];
-    unsigned char sender_ip[4];
-    unsigned char target_mac[6];
-    unsigned char target_ip[4];
-};
-
-// ARP table entry
+// ARP table entry regarding IPv4
 struct arp_entry {
-    unsigned char ip[4];
-    unsigned char mac[6];
+    uint8_t ip[IP_LEN];
+    uint8_t mac[ETH_ALEN];
 };
+
+#endif /* IPV4 */
 
 enum {
     ARP_E_SUCCESS = 0,

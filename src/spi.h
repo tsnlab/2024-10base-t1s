@@ -17,8 +17,8 @@ enum {
 
 enum {
     PLCA_MODE_COORDINATOR = 0,
-    PLCA_MODE_FOLLOWER = 1,
-    PLCA_MODE_INVALID = 2,
+    PLCA_MODE_FOLLOWER,
+    PLCA_MODE_INVALID,
 };
 
 int spi_init(void);
@@ -29,7 +29,6 @@ bool init_register(int mode);
 uint32_t read_register(uint8_t MMS, uint16_t Address);
 uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data);
 
-bool get_parity(uint32_t valueToCalculateParity);
-void convert_endianness(uint32_t valueToConvert, uint32_t* convertedValue);
+uint8_t get_parity(uint32_t valueToCalculateParity);
 
 #endif /* SPI_H */
