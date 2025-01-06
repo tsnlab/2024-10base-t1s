@@ -49,7 +49,6 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
     uint8_t rxbuffer[MAX_PAYLOAD_BYTE + HEADER_FOOTER_SIZE] = {
         0u,
     };
-    uint8_t bufferindex = 0u;
     uint8_t i = 0u;
     uint8_t j = 0u;
     static union u_data_header_footer data_transfer_header = {
@@ -67,16 +66,15 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
     data_transfer_header.st_tx_header_bits.P = ((get_parity(data_transfer_header.data_frame_head_foot) == 0) ? 1 : 0);
 
     // copy header
-    for (int8_t header_byte_count = 3; header_byte_count >= 0; header_byte_count--) {
-        txbuffer[bufferindex++] = data_transfer_header.data_frame_header_buffer[header_byte_count];
-    }
+    data_transfer_header.data_frame_head_foot = htonl(data_transfer_header.data_frame_head_foot);
+    memcpy(txbuffer, &data_transfer_header.data_frame_head_foot, HEADER_FOOTER_SIZE);
 
     // copy ARP data
-    memcpy(&txbuffer[bufferindex], arp_request_buffer, length);
+    memcpy(&txbuffer[HEADER_FOOTER_SIZE], arp_request_buffer, length);
 
     // transfer
     if (SPI_E_SUCCESS !=
-        spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], (uint16_t)(bufferindex + length))) {
+        spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], (uint16_t)(HEADER_FOOTER_SIZE + length))) {
         return -ARP_E_REQUEST_FAILED;
     }
 
@@ -132,9 +130,8 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
     data_transfer_footer.st_tx_header_bits.P = ((get_parity(data_transfer_footer.data_frame_head_foot) == 0) ? 1 : 0);
 
     // copy footer (4 bytes)
-    for (int8_t footer_byte_count = 3; footer_byte_count >= 0; footer_byte_count--) {
-        txbuffer[footer_byte_count] = data_transfer_footer.data_frame_header_buffer[footer_byte_count];
-    }
+    bigendian_rx_footer = htonl(data_transfer_footer.data_frame_head_foot);
+    memcpy(txbuffer, &bigendian_rx_footer, HEADER_FOOTER_SIZE);
 
     // receive buffer
     spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], expected_size);

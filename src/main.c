@@ -17,11 +17,6 @@ int main(int argc, char* argv[]) {
         printf_debug("spi_init failed; the error code is %d\n", spi_ret);
     }
 
-    /*     if (argc == 1u) {
-            printf("No argument provided\n Usage: %s -c|-f|-h\n -c   : Coordinator mode\n"
-                   " -f   : Follower mode\n -h   : Help mode\n", argv[0]);
-        }
-     */
     // Register initialization based on argument(c, f, h)
     while ((opt = getopt(argc, argv, "cfh")) != -1) {
         switch (opt) {
