@@ -1,7 +1,7 @@
 #ifndef ARP_H
 #define ARP_H
 
-/* TODO This file is for exposed functions, and should be implemented as below */
+/* TODO: This file is for exposed functions, and should be implemented as below */
 
 /*
  * void t1s_arp_init(uint16_t cache_size);
