@@ -72,13 +72,10 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
     // copy ARP data
     memcpy(&txbuffer[HEADER_FOOTER_SIZE], arp_request_buffer, length);
 
-    // test
-    while(1){
         // transfer
         if (SPI_E_SUCCESS !=
             spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], (uint16_t)(HEADER_FOOTER_SIZE + length))) {
             return -ARP_E_REQUEST_FAILED;
-        }
     }
 
     printf("txbuffer when Requesting: \n");
@@ -137,9 +134,7 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
     memcpy(txbuffer, &bigendian_rx_footer, HEADER_FOOTER_SIZE);
 
     // receive buffer
-    while(1){ //test
         spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], expected_size);
-    }
 
     printf("txbuffer when Receiving: \n");
     for (i = 0; i < 7; i++) {

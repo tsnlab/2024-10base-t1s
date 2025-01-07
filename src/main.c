@@ -54,6 +54,19 @@ int main(int argc, char* argv[]) {
     printf_debug("MAC_NCFGR value after ARP test is %x\n", regval);
     regval = read_register(0x01u, 0x020Au);
     printf_debug("STATS2 value after ARP test is %x\n", regval);
+    regval = read_register(0x04u, 0xCA00u);
+    printf_debug("MMS4, 0xCA00 value after ARP test is %x\n", regval);
+    regval = read_register(0x04u, 0xCA01u);
+    printf_debug("MMS4, 0xCA01 value after ARP test is %x\n", regval);
+    regval = read_register(0x04u, 0xCA02u);
+    printf_debug("MMS4, 0xCA02 value after ARP test is %x\n", regval);
+    regval = read_register(0x04u, 0xCA03u);
+    printf_debug("MMS4, 0xCA03 value after ARP test is %x\n", regval);
+
+    //test
+    while(1) {
+
+    }
 
 cleanup:
     spi_ret = spi_cleanup();
