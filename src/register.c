@@ -126,10 +126,10 @@ bool t1s_hw_writereg(struct ctrl_cmd_reg* p_regData) {
     }
 
     numberof_registerstosend = commandheader.ctrl_head_bits.len + 1;
-
     for (uint8_t controlRegIndex = 0; controlRegIndex < numberof_registerstosend; controlRegIndex++) {
-        txbuffer[bufferindex] = htonl(p_regData->databuffer[controlRegIndex]);
-        bufferindex += REG_SIZE;
+        uint32_t data = htonl(p_regData->databuffer[controlRegIndex]);
+        memcpy(&txbuffer[bufferindex], &data, sizeof(uint32_t));
+        bufferindex += sizeof(uint32_t);
     }
 
     numberof_bytestosend =

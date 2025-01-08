@@ -165,8 +165,7 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
 
     // Footer check
     memmove((uint8_t*)&data_transfer_rx_footer.data_frame_foot, &rxbuffer[expected_size - FOOTER_SIZE], FOOTER_SIZE);
-    bigendian_rx_footer = ntohl(data_transfer_rx_footer.data_frame_foot);
-    data_transfer_rx_footer.data_frame_foot = bigendian_rx_footer;
+    data_transfer_rx_footer.data_frame_foot = ntohl(data_transfer_rx_footer.data_frame_foot);
 
     printf_debug("data_transfer_rx_footer: \n");
     printf_debug("exst: %u\n", data_transfer_rx_footer.rx_footer_bits.exst);
