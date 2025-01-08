@@ -3,9 +3,9 @@
 #include "arch.h"
 #include "arp_test.h"
 
-#define SPI_COMM_SPEED ((uint32_t)15000000) // 15MHz speed
-#define SPI_CHANNEL ((uint32_t)0)           // Channel 0
-#define SPI_FLAGS ((uint32_t)0)             // No special setup
+#define SPI_COMM_SPEED (15000000) // 15MHz speed
+#define SPI_CHANNEL (0)           // Channel 0
+#define SPI_FLAGS (0)             // No special setup
 
 static int spihandle;
 
@@ -48,8 +48,8 @@ int spi_cleanup(void) {
 }
 
 uint8_t get_parity(uint32_t valueToCalculateParity) {
-    valueToCalculateParity ^= valueToCalculateParity >> 1u;
-    valueToCalculateParity ^= valueToCalculateParity >> 2u;
-    valueToCalculateParity = ((valueToCalculateParity & 0x11111111U) * 0x11111111U);
-    return ((valueToCalculateParity >> 28u) & 1u);
+    valueToCalculateParity ^= valueToCalculateParity >> 1;
+    valueToCalculateParity ^= valueToCalculateParity >> 2;
+    valueToCalculateParity = ((valueToCalculateParity & 0x11111111) * 0x11111111);
+    return ((valueToCalculateParity >> 28) & 1);
 }

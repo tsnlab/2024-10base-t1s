@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
         printf_debug("Register initialization %s\n", reg_initstatus ? "successful" : "failed");
     }
 
-    if (optind < argc || argc == 1u) {
+    if (optind < argc || argc == 1) {
         printf("Invalid argument: %s\n Usage: %s -c|-f|-h\n", argv[optind], argv[0]);
         goto cleanup;
     }
@@ -50,22 +50,21 @@ int main(int argc, char* argv[]) {
     arp_ret = arp_test(plca_mode);
     printf("Result of arp_test is %d\n", arp_ret);
 
-    regval = read_register(0x01u, 0x0001u);
+    regval = read_register(0x01, 0x0001);
     printf_debug("MAC_NCFGR value after ARP test is %x\n", regval);
-    regval = read_register(0x01u, 0x020Au);
+    regval = read_register(0x01, 0x020A);
     printf_debug("STATS2 value after ARP test is %x\n", regval);
-    regval = read_register(0x04u, 0xCA00u);
+    regval = read_register(0x04, 0xCA00);
     printf_debug("MMS4, 0xCA00 value after ARP test is %x\n", regval);
-    regval = read_register(0x04u, 0xCA01u);
+    regval = read_register(0x04, 0xCA01);
     printf_debug("MMS4, 0xCA01 value after ARP test is %x\n", regval);
-    regval = read_register(0x04u, 0xCA02u);
+    regval = read_register(0x04, 0xCA02);
     printf_debug("MMS4, 0xCA02 value after ARP test is %x\n", regval);
-    regval = read_register(0x04u, 0xCA03u);
+    regval = read_register(0x04, 0xCA03);
     printf_debug("MMS4, 0xCA03 value after ARP test is %x\n", regval);
 
-    //test
-    while(1) {
-
+    // test
+    while (1) {
     }
 
 cleanup:
