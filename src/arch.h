@@ -43,7 +43,6 @@ struct ctrl_cmd_reg {
 };
 
 union ctrl_header {
-    uint8_t ctrl_header_array[HEADER_SIZE];
     uint32_t ctrl_frame_head;
     struct {
         uint32_t p : 1;

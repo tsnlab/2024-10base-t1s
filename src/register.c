@@ -37,14 +37,14 @@ bool init_register(int mode) {
 }
 
 bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_reg* p_readRegData) {
-    uint8_t bufferindex = 0;
-    const uint8_t ignored_echoedbytes = 4;
+    const uint8_t ignored_echoedbytes = HEADER_SIZE;
     bool readstatus = false;
     uint8_t txbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_SIZE + REG_SIZE] = {0};
-    uint8_t rxbuffer[MAX_REG_DATA_ONECONTROLCMD + FOOTER_SIZE + REG_SIZE] = {0};
+    uint8_t rxbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_SIZE + REG_SIZE] = {0};
     uint16_t numberof_bytestosend = 0;
     union ctrl_header commandheader;
     union ctrl_header commandheader_echoed;
+    uint32_t converted_commandheader;
 
     commandheader.ctrl_frame_head = 0;
     commandheader_echoed.ctrl_frame_head = 0;
@@ -60,28 +60,25 @@ bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_reg* p_
     commandheader.ctrl_head_bits.addr = (uint32_t)p_regInfoInput->address;
     commandheader.ctrl_head_bits.len = (uint32_t)(p_regInfoInput->length & 0x7F);
     commandheader.ctrl_head_bits.p = ((get_parity(commandheader.ctrl_frame_head) == 0) ? 1 : 0);
-    for (int8_t header_byte_count = 3; header_byte_count >= 0; header_byte_count--) {
-        txbuffer[bufferindex++] = commandheader.ctrl_header_array[header_byte_count];
-    }
 
-    numberof_bytestosend =
-        (uint16_t)(bufferindex + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) +
-                   ignored_echoedbytes); // Added extra 4 bytes because first 4 bytes during reception shall be ignored
+    converted_commandheader = htonl(commandheader.ctrl_frame_head);
+    memcpy(txbuffer, &converted_commandheader, HEADER_SIZE);
 
+    numberof_bytestosend = HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) + ignored_echoedbytes; // Added extra 4 bytes because first 4 bytes during reception shall be ignored
     spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], numberof_bytestosend);
 
-    memmove((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
+    memcpy((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
     commandheader_echoed.ctrl_frame_head = ntohl(commandheader_echoed.ctrl_frame_head);
 
     if (commandheader_echoed.ctrl_head_bits.hdrb != 1) // if MACPHY received header with parity error then it will be 1
     {
         if (commandheader.ctrl_head_bits.len == 0) {
-            memmove((uint8_t*)&p_readRegData->databuffer[0], &(rxbuffer[ignored_echoedbytes + FOOTER_SIZE]), REG_SIZE);
+            memcpy((uint8_t*)&p_readRegData->databuffer[0], &(rxbuffer[ignored_echoedbytes + HEADER_SIZE]), REG_SIZE);
             p_readRegData->databuffer[0] = ntohl(p_readRegData->databuffer[0]);
         } else {
             for (int regCount = 0; regCount <= commandheader.ctrl_head_bits.len; regCount++) {
-                memmove((uint8_t*)&p_readRegData->databuffer[regCount],
-                        &rxbuffer[ignored_echoedbytes + FOOTER_SIZE + (REG_SIZE * regCount)], REG_SIZE);
+                memcpy((uint8_t*)&p_readRegData->databuffer[regCount],
+                        &rxbuffer[ignored_echoedbytes + HEADER_SIZE + (REG_SIZE * regCount)], REG_SIZE);
                 p_readRegData->databuffer[regCount] = ntohl(p_readRegData->databuffer[regCount]);
             }
         }
@@ -95,16 +92,16 @@ bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_reg* p_
 }
 
 bool t1s_hw_writereg(struct ctrl_cmd_reg* p_regData) {
-    uint8_t bufferindex = 0;
     uint8_t numberof_bytestosend = 0;
     uint8_t numberof_registerstosend = 0;
     bool writestatus = true;
     bool execution_status = false;
-    const uint8_t ignored_echoedbytes = 4;
+    const uint8_t ignored_echoedbytes = HEADER_SIZE;
     uint8_t txbuffer[MAX_PAYLOAD_BYTE + HEADER_SIZE] = {0};
-    uint8_t rxbuffer[MAX_PAYLOAD_BYTE + FOOTER_SIZE] = {0};
+    uint8_t rxbuffer[MAX_PAYLOAD_BYTE + HEADER_SIZE] = {0};
     union ctrl_header commandheader;
     union ctrl_header commandheader_echoed;
+    uint32_t converted_commandheader;
 
     commandheader.ctrl_frame_head = commandheader_echoed.ctrl_frame_head = 0;
 
@@ -121,26 +118,21 @@ bool t1s_hw_writereg(struct ctrl_cmd_reg* p_regData) {
     commandheader.ctrl_head_bits.len = (uint32_t)(p_regData->length & 0x7F);
     commandheader.ctrl_head_bits.p = ((get_parity(commandheader.ctrl_frame_head) == 0) ? 1 : 0);
 
-    for (int8_t header_byte_count = 3; header_byte_count >= 0; header_byte_count--) {
-        txbuffer[bufferindex++] = commandheader.ctrl_header_array[header_byte_count];
-    }
+    converted_commandheader = htonl(commandheader.ctrl_frame_head);
+    memcpy(txbuffer, &converted_commandheader, HEADER_SIZE);
 
     numberof_registerstosend = commandheader.ctrl_head_bits.len + 1;
     for (uint8_t controlRegIndex = 0; controlRegIndex < numberof_registerstosend; controlRegIndex++) {
         uint32_t data = htonl(p_regData->databuffer[controlRegIndex]);
-        memcpy(&txbuffer[bufferindex], &data, sizeof(uint32_t));
-        bufferindex += sizeof(uint32_t);
+        memcpy(&txbuffer[HEADER_SIZE + controlRegIndex * REG_SIZE], &data, sizeof(uint32_t));
     }
 
-    numberof_bytestosend =
-        (uint8_t)(bufferindex +
-                  HEADER_SIZE); // Added extra 4 bytes because last 4 bytes of payload will be ignored by MACPHY
-
+    numberof_bytestosend = HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) + ignored_echoedbytes; // Added extra 4 bytes because last 4 bytes of payload will be ignored by MACPHY
     spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], numberof_bytestosend);
 
-    memmove((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], FOOTER_SIZE);
+    memcpy((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
     commandheader_echoed.ctrl_frame_head = ntohl(commandheader_echoed.ctrl_frame_head);
-    // TODO check this logic and modify it if needed
+    // TODO: check this logic and modify it if needed
     if (commandheader.ctrl_head_bits.mms == 0) {
         struct ctrl_cmd_reg readreg_infoinput;
         struct ctrl_cmd_reg readreg_data;
