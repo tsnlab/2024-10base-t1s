@@ -58,11 +58,11 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
 
     // header setting
     data_transfer_header.tx_header_bits.dnc = DNC_COMMANDTYPE_DATA;
-    data_transfer_header.tx_header_bits.seq = 1;  // TODO: check this if there are multiiple chunks
-    data_transfer_header.tx_header_bits.norx = 0; // No Receive
-    data_transfer_header.tx_header_bits.dv = 1;   // Data Valid
-    data_transfer_header.tx_header_bits.sv = 1;   // start chunk
-    data_transfer_header.tx_header_bits.ev = 1;   // end chunk (single chunk)
+    data_transfer_header.tx_header_bits.seq = 1;                   // TODO: check this if there are multiiple chunks
+    data_transfer_header.tx_header_bits.norx = 0;                  // No Receive
+    data_transfer_header.tx_header_bits.dv = 1;                    // Data Valid
+    data_transfer_header.tx_header_bits.sv = 1;                    // start chunk
+    data_transfer_header.tx_header_bits.ev = 1;                    // end chunk (single chunk)
     data_transfer_header.tx_header_bits.ebo = PACKET_SIZE_ARP - 1; // TODO: check this if there are multiiple chunks
     data_transfer_header.tx_header_bits.p = ((get_parity(data_transfer_header.data_frame_head) == 0) ? 1 : 0);
 
@@ -72,10 +72,9 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
 
     // copy ARP data
     memcpy(&txbuffer[HEADER_SIZE], arp_request_buffer, length);
-    
+
     // transfer
-    if (SPI_E_SUCCESS !=
-        spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], (uint16_t)(HEADER_SIZE + length))) {
+    if (SPI_E_SUCCESS != spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], sizeof(txbuffer))) {
         return -ARP_E_REQUEST_FAILED;
     }
 
@@ -135,7 +134,7 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
     memcpy(txbuffer, &bigendian_rx_footer, HEADER_SIZE);
 
     // receive buffer
-    spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], expected_size);
+    spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], sizeof(txbuffer));
 
     printf("txbuffer when Receiving: \n");
     for (i = 0; i < 7; i++) {
@@ -212,15 +211,15 @@ int arp_test(int plca_mode) {
     // Fill Ethernet header
     memset(eth->h_dest, 0xFF, ETH_ALEN);                         // Broadcast
     memcpy(eth->h_source, "\xd8\x3a\xdd\x44\xab\x0f", ETH_ALEN); // Replace with your MAC
-    eth->h_proto = htons(ETH_P_ARP);                         // ARP Ethertype
+    eth->h_proto = htons(ETH_P_ARP);                             // ARP Ethertype
 
     // Fill ARP header
     arp->arp.ar_hrd = htons(1);                                           // Ethernet
-    arp->arp.ar_pro = htons(ETH_P_IP);                                      // IPv4
-    arp->arp.ar_hln = ETH_ALEN;                                                  // MAC size
-    arp->arp.ar_pln = IP_LEN;                                                  // IP size
-    arp->arp.ar_op = htons(ARPOP_REQUEST);                                            // ARP Request
-    memcpy(arp->sender_mac, "\xd8\x3a\xdd\x44\xab\x0f", arp->arp.ar_hln); // Replace with your MAC
+    arp->arp.ar_pro = htons(ETH_P_IP);                                    // IPv4
+    arp->arp.ar_hln = ETH_ALEN;                                           // MAC size
+    arp->arp.ar_pln = IP_LEN;                                             // IP size
+    arp->arp.ar_op = htons(ARPOP_REQUEST);                                // ARP Request
+    memcpy(arp->sender_mac, "\xde\xad\xbe\xef\xbe\xef", arp->arp.ar_hln); // Replace with your MAC
     inet_pton(AF_INET, "172.16.11.201", arp->sender_ip);                  // Replace with your IP
     memset(arp->target_mac, 0x00, arp->arp.ar_hln);                       // Unknown
     inet_pton(AF_INET, "172.16.11.203", arp->target_ip);                  // Replace with target IP

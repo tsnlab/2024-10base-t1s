@@ -64,7 +64,9 @@ bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_reg* p_
     converted_commandheader = htonl(commandheader.ctrl_frame_head);
     memcpy(txbuffer, &converted_commandheader, HEADER_SIZE);
 
-    numberof_bytestosend = HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) + ignored_echoedbytes; // Added extra 4 bytes because first 4 bytes during reception shall be ignored
+    numberof_bytestosend =
+        HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) +
+        ignored_echoedbytes; // Added extra 4 bytes because first 4 bytes during reception shall be ignored
     spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], numberof_bytestosend);
 
     memcpy((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
@@ -78,7 +80,7 @@ bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_reg* p_
         } else {
             for (int regCount = 0; regCount <= commandheader.ctrl_head_bits.len; regCount++) {
                 memcpy((uint8_t*)&p_readRegData->databuffer[regCount],
-                        &rxbuffer[ignored_echoedbytes + HEADER_SIZE + (REG_SIZE * regCount)], REG_SIZE);
+                       &rxbuffer[ignored_echoedbytes + HEADER_SIZE + (REG_SIZE * regCount)], REG_SIZE);
                 p_readRegData->databuffer[regCount] = ntohl(p_readRegData->databuffer[regCount]);
             }
         }
@@ -127,7 +129,9 @@ bool t1s_hw_writereg(struct ctrl_cmd_reg* p_regData) {
         memcpy(&txbuffer[HEADER_SIZE + controlRegIndex * REG_SIZE], &data, sizeof(uint32_t));
     }
 
-    numberof_bytestosend = HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) + ignored_echoedbytes; // Added extra 4 bytes because last 4 bytes of payload will be ignored by MACPHY
+    numberof_bytestosend =
+        HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) +
+        ignored_echoedbytes; // Added extra 4 bytes because last 4 bytes of payload will be ignored by MACPHY
     spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], numberof_bytestosend);
 
     memcpy((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
