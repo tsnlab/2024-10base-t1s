@@ -226,19 +226,15 @@ int arp_test(int plca_mode) {
 
     if (plca_mode == PLCA_MODE_COORDINATOR) {
         // Send ARP request
-        while (1) {
-            ret = arp_request(buffer, sizeof(buffer));
-            if (ret != ARP_E_SUCCESS) {
-                printf("ARP request failed, the error code is %d\n", ret);
-            }
+        ret = arp_request(buffer, sizeof(buffer));
+        if (ret != ARP_E_SUCCESS) {
+            printf("ARP request failed, the error code is %d\n", ret);
         }
     } else if (plca_mode == PLCA_MODE_FOLLOWER) {
         // Receive ARP Reply
-        while (1) {
-            ret = arp_reply(buffer, &received_length);
-            if (ret != ARP_E_SUCCESS) {
-                printf("ARP reply failed, the error code is %d\n", ret);
-            }
+        ret = arp_reply(buffer, &received_length);
+        if (ret != ARP_E_SUCCESS) {
+            printf("ARP reply failed, the error code is %d\n", ret);
         }
 
         if (ntohs(eth->h_proto) == ETH_P_ARP) { // Check if ARP

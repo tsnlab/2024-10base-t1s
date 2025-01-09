@@ -63,10 +63,6 @@ int main(int argc, char* argv[]) {
     regval = read_register(0x04, 0xCA03);
     printf_debug("MMS4, 0xCA03 value after ARP test is %x\n", regval);
 
-    // test
-    while (1) {
-    }
-
 cleanup:
     spi_ret = spi_cleanup();
     if (spi_ret != SPI_E_SUCCESS) {
