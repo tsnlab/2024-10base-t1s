@@ -23,12 +23,12 @@ int main(int argc, char* argv[]) {
         case 'c':
             printf("Coordinator mode\n");
             plca_mode = PLCA_MODE_COORDINATOR;
-            reg_initstatus = init_register(plca_mode);
+            reg_initstatus = set_register(plca_mode);
             break;
         case 'f':
             printf("Follower mode\n");
             plca_mode = PLCA_MODE_FOLLOWER;
-            reg_initstatus = init_register(plca_mode);
+            reg_initstatus = set_register(plca_mode);
             break;
         case 'h':
             printf(
@@ -62,6 +62,8 @@ int main(int argc, char* argv[]) {
     printf_debug("MMS4, 0xCA02 value after ARP test is %x\n", regval);
     regval = read_register(0x04, 0xCA03);
     printf_debug("MMS4, 0xCA03 value after ARP test is %x\n", regval);
+    regval = read_register(0x00, 0x0004);
+    printf_debug("OA_CONFIG0 value after ARP test is %x\n", regval);
 
 cleanup:
     spi_ret = spi_cleanup();
