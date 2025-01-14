@@ -80,31 +80,31 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
         return -ARP_E_REQUEST_FAILED;
     }
 
-    printf("txbuffer when Requesting: \n");
+    printf_debug("txbuffer when Requesting: \n");
     for (i = 0; i < 7; i++) {
         for (j = 0; j < 10; j++) {
             if (i * 10 + j >= MAX_PAYLOAD_BYTE + HEADER_SIZE) {
-                printf("...");
+                printf_debug("...");
                 break;
             }
-            printf("%02x ", txbuffer[i * 10 + j]);
+            printf_debug("%02x ", txbuffer[i * 10 + j]);
         }
-        printf("\n");
+        printf_debug("\n");
     }
-    printf("\n");
+    printf_debug("\n");
 
-    printf("rxbuffer when Requesting: \n");
+    printf_debug("rxbuffer when Requesting: \n");
     for (i = 0; i < 7; i++) {
         for (j = 0; j < 10; j++) {
             if (i * 10 + j >= MAX_PAYLOAD_BYTE + FOOTER_SIZE) {
-                printf("...");
+                printf_debug("...");
                 break;
             }
-            printf("%02x ", rxbuffer[i * 10 + j]);
+            printf_debug("%02x ", rxbuffer[i * 10 + j]);
         }
-        printf("\n");
+        printf_debug("\n");
     }
-    printf("\n");
+    printf_debug("\n");
 
     return ARP_E_SUCCESS;
 }
@@ -120,52 +120,56 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
         0,
     };
     union data_footer data_transfer_rx_footer;
-    uint32_t bigendian_rx_footer = 0;
-    uint16_t expected_size = 32; // test packet (20bytes) + header/footer (4+4bytes) + justincase
     int i = 0;
     int j = 0;
 
     // receive dummy header setting
     data_transfer_header.tx_header_bits.dnc = DNC_COMMANDTYPE_DATA;
+    data_transfer_header.tx_header_bits.seq = 0;
     data_transfer_header.tx_header_bits.norx = 0;
     data_transfer_header.tx_header_bits.dv = 0; // receive mode
+    data_transfer_header.tx_header_bits.sv = 0;
+    data_transfer_header.tx_header_bits.ev = 0;
+    data_transfer_header.tx_header_bits.ebo = 0;
+    data_transfer_header.tx_header_bits.tsc = 0;
+    data_transfer_header.tx_header_bits.p = 0;
     data_transfer_header.tx_header_bits.p = ((get_parity(data_transfer_header.data_frame_head) == 0) ? 1 : 0);
 
-    // copy footer (4 bytes)
-    bigendian_rx_footer = htonl(data_transfer_header.data_frame_head);
-    memcpy(txbuffer, &bigendian_rx_footer, HEADER_SIZE);
+    // copy header
+    data_transfer_header.data_frame_head = htonl(data_transfer_header.data_frame_head);
+    memcpy(txbuffer, &data_transfer_header.data_frame_head, HEADER_SIZE);
 
     // receive buffer
     spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], sizeof(txbuffer));
 
-    printf("txbuffer when Receiving: \n");
+    printf_debug("txbuffer when Receiving: \n");
     for (i = 0; i < 7; i++) {
         for (j = 0; j < 10; j++) {
             if (i * 10 + j >= MAX_PAYLOAD_BYTE + HEADER_SIZE) {
-                printf("...");
+                printf_debug("...");
                 break;
             }
-            printf("%02x ", txbuffer[i * 10 + j]);
+            printf_debug("%02x ", txbuffer[i * 10 + j]);
         }
-        printf("\n");
+        printf_debug("\n");
     }
-    printf("\n");
+    printf_debug("\n");
 
-    printf("rxbuffer when Receiving: \n");
+    printf_debug("rxbuffer when Receiving: \n");
     for (i = 0; i < 7; i++) {
         for (j = 0; j < 10; j++) {
             if (i * 10 + j >= MAX_PAYLOAD_BYTE + FOOTER_SIZE) {
-                printf("...");
+                printf_debug("...");
                 break;
             }
-            printf("%02x ", rxbuffer[i * 10 + j]);
+            printf_debug("%02x ", rxbuffer[i * 10 + j]);
         }
-        printf("\n");
+        printf_debug("\n");
     }
-    printf("\n");
+    printf_debug("\n");
 
     // Footer check
-    memcpy((uint8_t*)&data_transfer_rx_footer.data_frame_foot, &rxbuffer[expected_size - FOOTER_SIZE], FOOTER_SIZE);
+    memcpy((uint8_t*)&data_transfer_rx_footer.data_frame_foot, &rxbuffer[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
     data_transfer_rx_footer.data_frame_foot = ntohl(data_transfer_rx_footer.data_frame_foot);
 
     printf_debug("data_transfer_rx_footer: \n");
@@ -179,20 +183,30 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
     if (data_transfer_rx_footer.rx_footer_bits.dv && !data_transfer_rx_footer.rx_footer_bits.exst) {
 
         uint16_t actual_length = data_transfer_rx_footer.rx_footer_bits.ebo + 1;
-        memcpy(arp_reply_buffer, &rxbuffer[FOOTER_SIZE], actual_length);
+        memcpy(arp_reply_buffer, &rxbuffer[0], actual_length);
         *length = actual_length;
 
         // Ethernet packet check
-        printf("Received Ethernet packet:\n");
         printf("Destination MAC: ");
-        for (i = 0; i < 6; i++) {
-            printf("%02x:", arp_reply_buffer[i]);
+        if (arp_reply_buffer[0] == 0xFF && arp_reply_buffer[1] == 0xFF && arp_reply_buffer[2] == 0xFF &&
+            arp_reply_buffer[3] == 0xFF && arp_reply_buffer[4] == 0xFF && arp_reply_buffer[5] == 0xFF) {
+            printf("Broadcast\n");
+        } else {
+            printf("%02x:%02x:%02x:%02x:%02x:%02x\n", // clang-format off
+                    arp_reply_buffer[0], arp_reply_buffer[1], arp_reply_buffer[2],
+                    arp_reply_buffer[3], arp_reply_buffer[4], arp_reply_buffer[5]);
         }
-        printf("\nSource MAC: ");
-        for (i = 6; i < 12; i++) {
-            printf("%02x:", arp_reply_buffer[i]);
+        printf("Source MAC: ");
+        printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
+                arp_reply_buffer[6], arp_reply_buffer[7], arp_reply_buffer[8],
+                arp_reply_buffer[9], arp_reply_buffer[10], arp_reply_buffer[11]);
+        printf("EtherType: %02x%02x",
+                arp_reply_buffer[12], arp_reply_buffer[13]); // clang-format on
+        if (arp_reply_buffer[12] == 0x08 && arp_reply_buffer[13] == 0x06) {
+            printf("(ARP)\n");
+        } else {
+            printf("(Unknown)\n");
         }
-        printf("\nEtherType: %02x%02x\n", arp_reply_buffer[12], arp_reply_buffer[13]);
 
         return ARP_E_SUCCESS;
     }
@@ -203,30 +217,29 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
 int arp_test(int plca_mode) {
     int ret = -ARP_E_REQUEST_FAILED;
     uint16_t received_length = 0;
-
-    unsigned char buffer[PACKET_SIZE_ARP] = {
+    unsigned char buffer[MAX_PAYLOAD_BYTE] = {
         0,
-    }; // Ethernet (14) + ARP (28)
+    };
     struct ethhdr* eth = (struct ethhdr*)buffer;
     struct arphdr_ipv4* arp = (struct arphdr_ipv4*)(buffer + sizeof(struct ethhdr));
 
-    // Fill Ethernet header
-    memset(eth->h_dest, 0xFF, ETH_ALEN);                         // Broadcast
-    memcpy(eth->h_source, "\xd8\x3a\xdd\x44\xab\x0f", ETH_ALEN); // Replace with your MAC
-    eth->h_proto = htons(ETH_P_ARP);                             // ARP Ethertype
-
-    // Fill ARP header
-    arp->arp.ar_hrd = htons(1);                                           // Ethernet
-    arp->arp.ar_pro = htons(ETH_P_IP);                                    // IPv4
-    arp->arp.ar_hln = ETH_ALEN;                                           // MAC size
-    arp->arp.ar_pln = IP_LEN;                                             // IP size
-    arp->arp.ar_op = htons(ARPOP_REQUEST);                                // ARP Request
-    memcpy(arp->sender_mac, "\xde\xad\xbe\xef\xbe\xef", arp->arp.ar_hln); // Replace with your MAC
-    inet_pton(AF_INET, "172.16.11.201", arp->sender_ip);                  // Replace with your IP
-    memset(arp->target_mac, 0x00, arp->arp.ar_hln);                       // Unknown
-    inet_pton(AF_INET, "172.16.11.203", arp->target_ip);                  // Replace with target IP
-
     if (plca_mode == PLCA_MODE_COORDINATOR) {
+        // Fill Ethernet header
+        memset(eth->h_dest, 0xFF, ETH_ALEN);                         // Broadcast
+        memcpy(eth->h_source, "\xd8\x3a\xdd\x44\xab\x0f", ETH_ALEN); // Replace with your MAC
+        eth->h_proto = htons(ETH_P_ARP);                             // ARP Ethertype
+
+        // Fill ARP header
+        arp->arp.ar_hrd = htons(1);                                           // Ethernet
+        arp->arp.ar_pro = htons(ETH_P_IP);                                    // IPv4
+        arp->arp.ar_hln = ETH_ALEN;                                           // MAC size
+        arp->arp.ar_pln = IP_LEN;                                             // IP size
+        arp->arp.ar_op = htons(ARPOP_REQUEST);                                // ARP Request
+        memcpy(arp->sender_mac, "\xde\xad\xbe\xef\xbe\xef", arp->arp.ar_hln); // Replace with your MAC
+        inet_pton(AF_INET, "172.16.11.201", arp->sender_ip);                  // Replace with your IP
+        memset(arp->target_mac, 0x00, arp->arp.ar_hln);                       // Unknown
+        inet_pton(AF_INET, "172.16.11.203", arp->target_ip);                  // Replace with target IP
+
         // Send ARP request
         ret = arp_request(buffer, sizeof(buffer));
         if (ret != ARP_E_SUCCESS) {
@@ -247,6 +260,12 @@ int arp_test(int plca_mode) {
                 add_to_arp_table(arp->sender_ip, arp->sender_mac);
                 print_arp_table();
                 ret = ARP_E_SUCCESS;
+            } else if (ntohs(arp->arp.ar_op) == ARPOP_REQUEST) { // ARP Request
+                printf("Received ARP request from %d.%d.%d.%d\n", arp->sender_ip[0], arp->sender_ip[1],
+                       arp->sender_ip[2], arp->sender_ip[3]);
+                ret = ARP_E_SUCCESS;
+            } else {
+                printf("ARP reply is not ARPOP_REPLY nor ARPOP_REQUEST\n");
             }
         }
 
