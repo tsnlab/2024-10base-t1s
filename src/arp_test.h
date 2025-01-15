@@ -20,6 +20,10 @@
 
 #define MAX_ENTRIES (100)
 
+#define MAC_ADDR "\xd8\x3a\xdd\x44\xab\x0f" // TODO: Change to your MAC address
+#define IP_ADDR "172.16.11.201"             // TODO: Change to your IP address
+#define TARGET_IP_ADDR "172.16.11.203"      // TODO: Change to target IP address
+
 #define IPV4 // This project regards IPv4 for now
 #ifdef IPV4
 

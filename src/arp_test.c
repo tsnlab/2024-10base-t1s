@@ -225,20 +225,20 @@ int arp_test(int plca_mode) {
 
     if (plca_mode == PLCA_MODE_COORDINATOR) {
         // Fill Ethernet header
-        memset(eth->h_dest, 0xFF, ETH_ALEN);                         // Broadcast
-        memcpy(eth->h_source, "\xd8\x3a\xdd\x44\xab\x0f", ETH_ALEN); // Replace with your MAC
-        eth->h_proto = htons(ETH_P_ARP);                             // ARP Ethertype
+        memset(eth->h_dest, 0xFF, ETH_ALEN); // Broadcast
+        memcpy(eth->h_source, MAC_ADDR, ETH_ALEN);
+        eth->h_proto = htons(ETH_P_ARP); // ARP Ethertype
 
         // Fill ARP header
-        arp->arp.ar_hrd = htons(1);                                           // Ethernet
-        arp->arp.ar_pro = htons(ETH_P_IP);                                    // IPv4
-        arp->arp.ar_hln = ETH_ALEN;                                           // MAC size
-        arp->arp.ar_pln = IP_LEN;                                             // IP size
-        arp->arp.ar_op = htons(ARPOP_REQUEST);                                // ARP Request
-        memcpy(arp->sender_mac, "\xde\xad\xbe\xef\xbe\xef", arp->arp.ar_hln); // Replace with your MAC
-        inet_pton(AF_INET, "172.16.11.201", arp->sender_ip);                  // Replace with your IP
-        memset(arp->target_mac, 0x00, arp->arp.ar_hln);                       // Unknown
-        inet_pton(AF_INET, "172.16.11.203", arp->target_ip);                  // Replace with target IP
+        arp->arp.ar_hrd = htons(1);            // Ethernet
+        arp->arp.ar_pro = htons(ETH_P_IP);     // IPv4
+        arp->arp.ar_hln = ETH_ALEN;            // MAC size
+        arp->arp.ar_pln = IP_LEN;              // IP size
+        arp->arp.ar_op = htons(ARPOP_REQUEST); // ARP Request
+        memcpy(arp->sender_mac, MAC_ADDR, arp->arp.ar_hln);
+        inet_pton(AF_INET, IP_ADDR, arp->sender_ip);
+        memset(arp->target_mac, 0x00, arp->arp.ar_hln); // Unknown
+        inet_pton(AF_INET, TARGET_IP_ADDR, arp->target_ip);
 
         // Send ARP request
         ret = arp_request(buffer, sizeof(buffer));
