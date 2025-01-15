@@ -57,20 +57,14 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
     };
 
     // header setting
+    memset(&data_transfer_header, 0, sizeof(data_transfer_header));
+
     data_transfer_header.tx_header_bits.dnc = DNC_COMMANDTYPE_DATA;
-    data_transfer_header.tx_header_bits.seq = 1;  // TODO: check this if there are multiiple chunks
-    data_transfer_header.tx_header_bits.norx = 0; // No Receive
-    data_transfer_header.tx_header_bits.rsvd1 = 0;
-    data_transfer_header.tx_header_bits.vs = 0;
-    data_transfer_header.tx_header_bits.dv = 1; // Data Valid
-    data_transfer_header.tx_header_bits.sv = 1; // start chunk
-    data_transfer_header.tx_header_bits.swo = 0;
-    data_transfer_header.tx_header_bits.rsvd2 = 0;
+    data_transfer_header.tx_header_bits.seq = 1;                   // TODO: check this if there are multiiple chunks
+    data_transfer_header.tx_header_bits.dv = 1;                    // Data Valid
+    data_transfer_header.tx_header_bits.sv = 1;                    // start chunk
     data_transfer_header.tx_header_bits.ev = 1;                    // end chunk (single chunk)
     data_transfer_header.tx_header_bits.ebo = PACKET_SIZE_ARP - 1; // TODO: check this if there are multiiple chunks
-    data_transfer_header.tx_header_bits.tsc = 0;
-    data_transfer_header.tx_header_bits.rsvd3 = 0;
-    data_transfer_header.tx_header_bits.p = 0;
     data_transfer_header.tx_header_bits.p = ((get_parity(data_transfer_header.data_frame_head) == 0) ? 1 : 0);
 
     // copy header
