@@ -57,10 +57,11 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
     };
 
     // header setting
-    memset(&data_transfer_header, 0, sizeof(data_transfer_header));
+    memset(&data_transfer_header.tx_header_bits, 0, sizeof(data_transfer_header.tx_header_bits));
 
     data_transfer_header.tx_header_bits.dnc = DNC_COMMANDTYPE_DATA;
     data_transfer_header.tx_header_bits.seq = 1;                   // TODO: check this if there are multiiple chunks
+    data_transfer_header.tx_header_bits.norx = 0;                  // No Receive
     data_transfer_header.tx_header_bits.dv = 1;                    // Data Valid
     data_transfer_header.tx_header_bits.sv = 1;                    // start chunk
     data_transfer_header.tx_header_bits.ev = 1;                    // end chunk (single chunk)
