@@ -50,15 +50,16 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
     uint8_t rxbuffer[MAX_PAYLOAD_BYTE + FOOTER_SIZE] = {
         0,
     };
-    static union data_header data_transfer_header = {
-        0,
-    };
+    static uint8_t seq_toggle = 1;
+    union data_header data_transfer_header;
+
+    data_transfer_header.data_frame_head = 0;
+    uint32_t be_header;
 
     // header setting
-    memset(&data_transfer_header.tx_header_bits, 0, sizeof(data_transfer_header.tx_header_bits));
-
     data_transfer_header.tx_header_bits.dnc = DNC_COMMANDTYPE_DATA;
-    data_transfer_header.tx_header_bits.seq = 1;                   // TODO: check this if there are multiiple chunks
+    data_transfer_header.tx_header_bits.seq = seq_toggle; // Data Block Sequence
+    seq_toggle = !seq_toggle;
     data_transfer_header.tx_header_bits.norx = 0;                  // No Receive
     data_transfer_header.tx_header_bits.dv = 1;                    // Data Valid
     data_transfer_header.tx_header_bits.sv = 1;                    // start chunk
@@ -67,14 +68,14 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
     data_transfer_header.tx_header_bits.p = ((get_parity(data_transfer_header.data_frame_head) == 0) ? 1 : 0);
 
     // copy header
-    data_transfer_header.data_frame_head = htonl(data_transfer_header.data_frame_head);
-    memcpy(txbuffer, &data_transfer_header.data_frame_head, HEADER_SIZE);
+    be_header = htonl(data_transfer_header.data_frame_head);
+    memcpy(txbuffer, &be_header, HEADER_SIZE);
 
     // copy ARP data
     memcpy(&txbuffer[HEADER_SIZE], arp_request_buffer, length);
 
     // transfer
-    if (SPI_E_SUCCESS != spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], sizeof(txbuffer))) {
+    if (SPI_E_SUCCESS != spi_transfer(rxbuffer, txbuffer, sizeof(txbuffer))) {
         return -ARP_E_REQUEST_FAILED;
     }
 
@@ -94,29 +95,26 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
     uint8_t rxbuffer[MAX_PAYLOAD_BYTE + FOOTER_SIZE] = {
         0,
     };
-    static union data_header data_transfer_header = {
-        0,
-    };
+    static uint8_t seq_toggle = 1;
+    union data_header data_transfer_header;
     union data_footer data_transfer_rx_footer;
+    uint32_t be_header;
+
+    data_transfer_header.data_frame_head = 0;
+    data_transfer_rx_footer.data_frame_foot = 0;
 
     // receive dummy header setting
     data_transfer_header.tx_header_bits.dnc = DNC_COMMANDTYPE_DATA;
-    data_transfer_header.tx_header_bits.seq = 0;
-    data_transfer_header.tx_header_bits.norx = 0;
-    data_transfer_header.tx_header_bits.dv = 0; // receive mode
-    data_transfer_header.tx_header_bits.sv = 0;
-    data_transfer_header.tx_header_bits.ev = 0;
-    data_transfer_header.tx_header_bits.ebo = 0;
-    data_transfer_header.tx_header_bits.tsc = 0;
-    data_transfer_header.tx_header_bits.p = 0;
+    data_transfer_header.tx_header_bits.seq = seq_toggle; // Other values are all 0 since this is receive mode
+    seq_toggle = !seq_toggle;
     data_transfer_header.tx_header_bits.p = ((get_parity(data_transfer_header.data_frame_head) == 0) ? 1 : 0);
 
     // copy header
-    data_transfer_header.data_frame_head = htonl(data_transfer_header.data_frame_head);
-    memcpy(txbuffer, &data_transfer_header.data_frame_head, HEADER_SIZE);
+    be_header = htonl(data_transfer_header.data_frame_head);
+    memcpy(txbuffer, &be_header, HEADER_SIZE);
 
     // receive buffer
-    spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], sizeof(txbuffer));
+    spi_transfer(rxbuffer, txbuffer, sizeof(txbuffer));
 
     // print buffer for debugging
     printf_debug("txbuffer when Receiving: \n");
@@ -139,7 +137,7 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
     if (data_transfer_rx_footer.rx_footer_bits.dv && !data_transfer_rx_footer.rx_footer_bits.exst) {
 
         uint16_t actual_length = data_transfer_rx_footer.rx_footer_bits.ebo + 1;
-        memcpy(arp_reply_buffer, &rxbuffer[0], actual_length);
+        memcpy(arp_reply_buffer, rxbuffer, actual_length);
         *length = actual_length;
 
         // Ethernet packet check
@@ -151,7 +149,7 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
         printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
                 arp_reply_buffer[6], arp_reply_buffer[7], arp_reply_buffer[8],
                 arp_reply_buffer[9], arp_reply_buffer[10], arp_reply_buffer[11]);
-        printf("EtherType: %02x%02x",
+        printf("EtherType: %02x%02x\n",
                 arp_reply_buffer[12], arp_reply_buffer[13]); // clang-format on
 
         return ARP_E_SUCCESS;

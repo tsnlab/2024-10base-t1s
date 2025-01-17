@@ -155,7 +155,7 @@ static bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_
     numberof_bytestosend =
         HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) +
         ignored_echoedbytes; // Added extra 4 bytes because first 4 bytes during reception shall be ignored
-    spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], numberof_bytestosend);
+    spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
 
     memcpy((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
     commandheader_echoed.ctrl_frame_head = ntohl(commandheader_echoed.ctrl_frame_head);
@@ -220,7 +220,7 @@ static bool t1s_hw_writereg(struct ctrl_cmd_reg* p_regData) {
     numberof_bytestosend =
         HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) +
         ignored_echoedbytes; // Added extra 4 bytes because last 4 bytes of payload will be ignored by MACPHY
-    spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], numberof_bytestosend);
+    spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
 
     memcpy((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
     commandheader_echoed.ctrl_frame_head = ntohl(commandheader_echoed.ctrl_frame_head);
