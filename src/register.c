@@ -172,7 +172,7 @@ static bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_
         }
         readstatus = true;
     } else {
-        // TODO Error handling if MACPHY received with header parity error
+        // TODO: Error handling if MACPHY received with header parity error
         printf("Parity Error READMACPHYReg header value : 0x%08x\n", commandheader_echoed.ctrl_frame_head);
     }
 

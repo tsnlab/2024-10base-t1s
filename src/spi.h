@@ -30,5 +30,6 @@ uint32_t read_register(uint8_t MMS, uint16_t Address);
 uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data);
 
 uint8_t get_parity(uint32_t valueToCalculateParity);
+void print_buffer(uint8_t* buffer, uint16_t length);
 
 #endif /* SPI_H */
