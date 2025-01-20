@@ -115,7 +115,7 @@ bool set_register(int mode) {
     set_sqi_register();
 #endif
 
-    write_register(MMS4, PLCA_CTRL1, 0x00008000); // Enable PLCA
+    write_register(MMS4, PLCA_CTRL0, 0x00008000); // Enable PLCA
     write_register(MMS1, MAC_NCFGR, 0x000000C0);  // Enable unicast, multicast
     write_register(MMS1, MAC_NCR, 0x0000000C);    // Enable MACPHY TX, RX
     write_register(MMS0, OA_STATUS0, 0x00000040); // Clear RESETC
