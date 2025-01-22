@@ -9,7 +9,7 @@
 
 static int spihandle;
 
-int spi_init(void) {
+static int spi_init(void) {
 
     gpioCfgClock(1, 1, 1); // Settup sample rate to be 1 MHz.
     if (gpioInitialise() < 0) {
@@ -22,6 +22,10 @@ int spi_init(void) {
     } else {
         return -SPI_E_INIT_ERROR;
     }
+}
+
+int api_spi_init(void) {
+    return spi_init();
 }
 
 int spi_transfer(uint8_t* rxbuffer, uint8_t* txbuffer, uint16_t length) {

@@ -1,0 +1,6 @@
+#ifndef API_DEVICE_API_DEVICE_DRIVER_H
+#define API_DEVICE_API_DEVICE_DRIVER_H
+
+int api_spi_init(void);
+
+#endif /* API_DEVICE_API_DEVICE_DRIVER_H */

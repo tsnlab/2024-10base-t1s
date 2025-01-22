@@ -5,7 +5,7 @@
 #include "register.h"
 #include "spi.h"
 
-int main(int argc, char* argv[]) {
+int drv_main(int argc, char* argv[]) {
     int arp_ret = ARP_E_UNKNOWN_ERROR;
     int spi_ret = SPI_E_UNKNOWN_ERROR;
     int plca_mode = PLCA_MODE_INVALID;
@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     int opt = 0;
     uint32_t regval;
 
-    spi_ret = spi_init();
+    spi_ret = api_spi_init();
     if (spi_ret != SPI_E_SUCCESS) {
         printf_debug("spi_init failed; the error code is %d\n", spi_ret);
     }

@@ -1,0 +1,7 @@
+#ifndef __ERROR_DEFINE_H__
+#define __ERROR_DEFINE_H__
+
+#define ERR_PARAMETER_MISSED -12
+#define ERR_INVALID_PARAMETER -13
+
+#endif // __ERROR_DEFINE_H__

@@ -21,7 +21,7 @@ enum {
     PLCA_MODE_INVALID,
 };
 
-int spi_init(void);
+int api_spi_init(void);
 int spi_transfer(uint8_t* rxbuffer, uint8_t* txbuffer, uint16_t length);
 int spi_cleanup(void);
 
