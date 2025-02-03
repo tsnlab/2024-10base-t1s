@@ -383,6 +383,13 @@ int do_run(int mode, int node_id, int node_cnt, uint64_t mac) {
 
 int api_read_register_in_mms(int mms);
 int do_read(int mms) {
+    int spi_ret;
+
+    spi_ret = api_spi_init();
+    if (spi_ret != 0) {
+        printf("spi_init failed; the error code is %d\n", spi_ret);
+        return -1;
+    }
     return api_read_register_in_mms(mms);
 }
 
