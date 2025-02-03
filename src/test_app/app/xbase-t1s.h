@@ -2,12 +2,12 @@
 #define APP_XBASE_T1S_H
 
 enum {
-    RUN_MODE_NORMAL,
-    RUN_MODE_LOOPBACK,
+    RUN_MODE_CLIENT,
+    RUN_MODE_SERVER,
     RUN_MODE_CNT,
 };
 
-#define DEFAULT_RUN_MODE RUN_MODE_NORMAL
+#define DEFAULT_RUN_MODE RUN_MODE_CLIENT
 
 typedef struct thread_arg {
     int mode;

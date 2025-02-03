@@ -124,6 +124,42 @@ bool set_register(int mode) {
     return true;
 }
 
+static bool configure_plca_to_mac_phy(int node_id, int node_cnt, uint64_t mac) {
+    uint32_t regval;
+
+    regval = read_register(MMS4, CDCTL0);             /* Collision Detector Control 0 */
+    write_register(MMS4, CDCTL0, regval | (1 << 15)); /* 1: Collision detection is enabled (default) */
+
+    /* Physical Layer Collision Avoidance */
+    regval = ((node_cnt & 0xFF) << 8) + (node_id & 0xFF);
+    write_register(MMS4, PLCA_CTRL1, 0x00000200); /* PLCA Control 1 Register */
+
+    /* MAC Specific Address 1 Mask Bottom */
+    regval = (uint32_t)(mac & 0xFFFFFFFF);
+    write_register(MMS1, MAC_SAB1, regval); /* MAC Specific Address 1 Mask Bottom */
+
+    regval = (uint32_t)((mac >> 32) & 0xFFFF);
+    write_register(MMS1, MAC_SAT1, regval); /* MAC Specific Address Mask 1 Top */
+
+    set_macphy_register(); // AN_LAN865x-Configuration
+#ifdef SQI
+    set_sqi_register();
+#endif
+
+    write_register(MMS4, PLCA_CTRL0, 0x00008000); // Enable PLCA
+    write_register(MMS1, MAC_NCFGR, 0x000000C0);  // Enable unicast, multicast
+    write_register(MMS1, MAC_NCR, 0x0000000C);    // Enable MACPHY TX, RX
+    write_register(MMS0, OA_STATUS0, 0x00000040); // Clear RESETC
+    write_register(MMS0, OA_CONFIG0, 0x00008006); // SYNC bit SET (last configuration)
+
+    return true;
+}
+
+/* PLCA configuration */
+bool api_configure_plca_to_mac_phy(int node_id, int node_cnt, uint64_t mac) {
+    return configure_plca_to_mac_phy(node_id, node_cnt, mac);
+}
+
 static bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_reg* p_readRegData) {
     const uint8_t ignored_echoedbytes = HEADER_SIZE;
     bool readstatus = false;
@@ -287,19 +323,19 @@ uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data) {
     }
 }
 
-uint32_t read_register(uint8_t MMS, uint16_t Address) {
+uint32_t read_register(uint8_t mms, uint16_t address) {
     bool execution_status = false;
     struct ctrl_cmd_reg readreg_infoinput;
     struct ctrl_cmd_reg readreg_data;
-    readreg_infoinput.memorymap = MMS;
+    readreg_infoinput.memorymap = mms;
     readreg_infoinput.length = 0;
-    readreg_infoinput.address = Address;
+    readreg_infoinput.address = address;
 
     execution_status = t1s_hw_readreg(&readreg_infoinput, &readreg_data);
     if (execution_status == true) {
         return readreg_data.databuffer[0];
     } else {
-        printf("ERROR: Register Read failed at MMS %d, Address %4x\n", MMS, Address);
+        printf("ERROR: Register Read failed at MMS %d, Address %4x\n", mms, address);
         return 0;
     }
 }

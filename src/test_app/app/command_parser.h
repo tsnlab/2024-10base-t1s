@@ -4,6 +4,7 @@
 #include <lib_menu.h>
 
 int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl);
+int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl);
 #if 0
 int process_fpga_readCmd(int argc, const char* argv[], menu_command_t* menu_tbl);
 int process_main_fpgaCmd(int argc, const char* argv[], menu_command_t* menu_tbl);

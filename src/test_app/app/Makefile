@@ -1,6 +1,6 @@
 include $(TOPDIR)/Makefile.inc
 
-APP_XBASE_T1S_OBJS = xbase-t1s.o command_parser.o thread.o
+APP_XBASE_T1S_OBJS = xbase-t1s.o command_parser.o thread.o buffer_handler.o
 
 OBJS = $(APP_XBASE_T1S_OBJS)
 
