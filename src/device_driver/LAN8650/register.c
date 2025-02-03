@@ -598,7 +598,7 @@ int clear_status(void) {
 static void dump_reginfo(uint8_t mms, struct reginfo* reginfo) {
 
     for (int i = 0; reginfo[i].address >= 0; i++) {
-        printf("address: 0x%04x - value: 0x%x - %s\n", reginfo[i].address,
+        printf("address: 0x%04x - value: 0x%08x - %s\n", reginfo[i].address,
                read_register(mms, (uint16_t)reginfo[i].address), reginfo[i].desc);
     }
 }
