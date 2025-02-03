@@ -24,17 +24,14 @@ menu_command_t main_command_tbl[] = {
      "         <Node ID> default value: 1 (0: Coordinator, 1 ~ 0xFE: Follower)\n"
      "      <Node Count> default value: 8 (2 ~ 0xFE)\n"
      "     <MAC address> default value: d8:3a:95:30:23:<Node ID+1>\n"},
-    {"read", EXECUTION_ATTR, process_main_read, "   show -m <Memory Map Selector> -a <Addressi(Hex)> -c <Count>\n",
-     "   Read register value\n"
-     "        <Memory Map Selector> default value: 0 (0x00: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
-     "                                                0x01: MAC Registers\n"
-     "                                                0x02: PHY PCS Registers\n"
-     "                                                0x03: PHY PMA/PMD Registers\n"
-     "                                                0x04: PHY Vendor Specific Registers\n"
-     "                                                0x0A: Miscellaneous Register Descriptions\n"
-     "                    <Address> default value: 0 (   -1: All registers in the Memory Map Selector group,\n"
-     "                                                0 >=0: Start address)\n"
-     "                      <Count> default value: 1\n"},
+    {"read", EXECUTION_ATTR, process_main_read, "   read -m <Memory Map Selector>\n",
+     "   Read all register values in Memory Map Selector\n"
+     "        <Memory Map Selector> default value: 0 ( 0: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
+     "                                                 1: MAC Registers\n"
+     "                                                 2: PHY PCS Registers\n"
+     "                                                 3: PHY PMA/PMD Registers\n"
+     "                                                 4: PHY Vendor Specific Registers\n"
+     "                                                10: Miscellaneous Register Descriptions)\n"},
 #if 0
     {"set", EXECUTION_ATTR, process_main_setCmd,
      "   set register [gen, rx, tx, h2c, c2h, irq, con, h2cs, c2hs, com, msix] <addr(Hex)> <data(Hex)>\n",
@@ -51,6 +48,218 @@ int watch_stop = 1;
 extern int rx_thread_run;
 extern int tx_thread_run;
 extern int verbose;
+
+#if 0
+struct reginfo reg_open_alliance[] = {{"Identification Register", OA_ID},
+                                      {"PHY Identification Register", OA_PHYID},
+                                      {"Standard Capabilities", OA_STDCAP},
+                                      {"Reset Control and Status Register", OA_RESET},
+                                      {"Configuration 0 Register", OA_CONFIG0},
+                                      {"Status 0 Register", OA_STATUS0},
+                                      {"Status 1 Register", OA_STATUS1},
+                                      {"Buffer Status Register", OA_BUFSTS},
+                                      {"Interrupt Mask 0 Register", OA_IMASK0},
+                                      {"Interrupt Mask 1 Register", OA_IMASK1},
+                                      {"Transmit Timestamp Capture A (High)", TTSCAH},
+                                      {"Transmit Timestamp Capture A (Low)", TTSCAL},
+                                      {"Transmit Timestamp Capture B (High)", TTSCBH},
+                                      {"Transmit Timestamp Capture B (Low)", TTSCBL},
+                                      {"Transmit Timestamp Capture C (High)", TTSCCH},
+                                      {"Transmit Timestamp Capture C (Low)", TTSCCL},
+                                      {"Basic Control", BASIC_CONTROL},
+                                      {"Basic Status", BASIC_STATUS},
+                                      {"PHY Identifier 1 Register", PHY_ID1},
+                                      {"PHY Identifier 2 Register", PHY_ID2},
+                                      {"MMD Access Control Register", MMDCTRL},
+                                      {"MMD Access Address/Data Register", MMDAD},
+                                      {"", -1}};
+
+struct reginfo reg_mac[] = {{"Network Control Register", MAC_NCR},
+                            {"Network Configuration Register", MAC_NCFGR},
+                            {"Hash Register Bottom", MAC_HRB},
+                            {"Hash Register Top", MAC_HRT},
+                            {"Specific Address 1 Bottom", MAC_SAB1},
+                            {"Specific Address 1 Top", MAC_SAT1},
+                            {"Specific Address 2 Bottom", MAC_SAB2},
+                            {"Specific Address 2 Top", MAC_SAT2},
+                            {"Specific Address 3 Bottom", MAC_SAB3},
+                            {"Specific Address 3 Top", MAC_SAT3},
+                            {"Specific Address 4 Bottom", MAC_SAB4},
+                            {"Specific Address 4 Top", MAC_SAT4},
+                            {"MAC Type ID Match 1", MAC_TIDM1},
+                            {"MAC Type ID Match 2", MAC_TIDM2},
+                            {"MAC Type ID Match 3", MAC_TIDM3},
+                            {"MAC Type ID Match 4", MAC_TIDM4},
+                            {"Specific Address Match 1 Bottom", MAC_SAMB1},
+                            {"Specific Address Match 1 Top", MAC_SAMT1},
+                            {"Timer Increment Sub-Nanoseconds", MAC_TISUBN},
+                            {"Timestamp Seconds High", MAC_TSH},
+                            {"Timestamp Seconds Low", MAC_TSL},
+                            {"Timestamp Nanoseconds", MAC_TN},
+                            {"TSU Timer Adjust", MAC_TA},
+                            {"TSU Timer Increment", MAC_TI},
+                            {"Buffer Manager Control", BMGR_CTL},
+                            {"Statistics 0", STATS0},
+                            {"Statistics 1", STATS1},
+                            {"Statistics 2", STATS2},
+                            {"Statistics 3", STATS3},
+                            {"Statistics 4", STATS4},
+                            {"Statistics 5", STATS5},
+                            {"Statistics 6", STATS6},
+                            {"Statistics 7", STATS7},
+                            {"Statistics 8", STATS8},
+                            {"Statistics 9", STATS9},
+                            {"Statistics 10", STATS10},
+                            {"Statistics 11", STATS11},
+                            {"Statistics 12", STATS12},
+                            {"", -1}};
+
+struct reginfo reg_phy_pcs[] = {{"10BASE-T1S PCS Control", T1SPCSCTL},
+                                {"10BASE-T1S PCS Status", T1SPCSSTS},
+                                {"10BASE-T1S PCS Diagnostic 1", T1SPCSDIAG1},
+                                {"10BASE-T1S PCS Diagnostic 2", T1SPCSDIAG2},
+                                {"", -1}};
+
+struct reginfo reg_phy_pma_pmd[] = {{"BASE-T1 PMA/PMD Extended Ability", T1PMAPMDEXTA},
+                                    {"BASE-T1 PMA/PMD Control", T1PMAPMDCTL},
+                                    {"10BASE-T1S PMA Control", T1SPMACTL},
+                                    {"10BASE-T1S PMA Status", T1SPMASTS},
+                                    {"10BASE-T1S Test Mode Control", T1STSTCTL},
+                                    {"", -1}};
+
+struct reginfo reg_phy_vendor_specific[] = {{"Control 1 Register", CTRL1},
+                                            {"Status 1 Register", STS1},
+                                            {"Status 2 Register", STS2},
+                                            {"Status 3 Register", STS3},
+                                            {"Interrupt Mask 1 Register", IMSK1},
+                                            {"Interrupt Mask 2 Register", IMSK2},
+                                            {"Counter Control Register", CTRCTRL},
+                                            {"Transmit Opportunity Count (High)", TOCNTH},
+                                            {"Transmit Opportunity Count (Low)", TOCNTL},
+                                            {"BEACON Count (High)", BCNCNTH},
+                                            {"BEACON Count (Low)", BCNCNTL},
+                                            {"PLCA Multiple ID 0 Register", MULTID0},
+                                            {"PLCA Multiple ID 1 Register", MULTID1},
+                                            {"PLCA Multiple ID 2 Register", MULTID2},
+                                            {"PLCA Multiple ID 3 Register", MULTID3},
+                                            {"PLCA Reconciliation Sublayer Status", PRSSTS},
+                                            {"Port Management 2", PRTMGMT2},
+                                            {"Inactivity Watchdog Timeout (High)", IWDTOH},
+                                            {"Inactivity Watchdog Timeout (Low)", IWDTOL},
+                                            {"Transmit Match Control Register", TXMCTL},
+                                            {"Transmit Match Pattern (High) Register", TXMPATH},
+                                            {"Transmit Match Pattern (Low) Register", TXMPATL},
+                                            {"Transmit Match Mask (High) Register", TXMMSKH},
+                                            {"Transmit Match Mask (Low) Register", TXMMSKL},
+                                            {"Transmit Match Location Register", TXMLOC},
+                                            {"Transmit Matched Packet Delay Register", TXMDLY},
+                                            {"Receive Match Control Register", RXMCTL},
+                                            {"Receive Match Pattern (High) Register", RXMPATH},
+                                            {"Receive Match Pattern (Low) Register", RXMPATL},
+                                            {"Receive Match Mask (High) Register", RXMMSKH},
+                                            {"Receive Match Mask (Low) Register", RXMMSKL},
+                                            {"Receive Match Location Register", RXMLOC},
+                                            {"Receive Matched Packet Delay Register", RXMDLY},
+                                            {"Credit Based Shaper Stop Threshold (High) Register", CBSSPTHH},
+                                            {"Credit Based Shaper Stop Threshold (Low) Register", CBSSPTHL},
+                                            {"Credit Based Shaper Start Threshold (High) Register", CBSSTTHH},
+                                            {"Credit Based Shaper Start Threshold (Low) Register", CBSSTTHL},
+                                            {"Credit Based Shaper Slope Control Register", CBSSLPCTL},
+                                            {"Credit Based Shaper Top Limit (High) Register", CBSTPLMTH},
+                                            {"Credit Based Shaper Top Limit (Low) Register", CBSTPLMTL},
+                                            {"Credit Based Shaper Bottom Limit (High) Register", CBSBTLMTH},
+                                            {"Credit Based Shaper Bottom Limit (Low) Register", CBSBTLMTL},
+                                            {"Credit Based Shaper Credit Counter (High) Register", CBSCRCTRH},
+                                            {"Credit Based Shaper Credit Counter (Low) Register", CBSCRCTRL},
+                                            {"Credit Based Shaper Control Register", CBSCTRL},
+                                            {"PLCA Skip Control Register", PLCASKPCTL},
+                                            {"PLCA Transmit Opportunity Skip Register", PLCATOSKP},
+                                            {"Application Controlled Media Access Control Register", ACMACTL},
+                                            {"Sleep Control 0 Register", SLPCTL0},
+                                            {"Sleep Control 1 Register", SLPCTL1},
+                                            {"Collision Detector Control 0 Register", CDCTL0},
+                                            {"SQI Control Register", SQICTL},
+                                            {"SQI Status 0 Register", SQISTS0},
+                                            {"SQI Configuration 0 Register", SQICFG0},
+                                            {"SQI Configuration 2 Register", SQICFG2},
+                                            {"Analog Control 5", ANALOG5},
+                                            {"OPEN Alliance Map ID and Version Register", MIDVER},
+                                            {"PLCA Control 0 Register", PLCA_CTRL0},
+                                            {"PLCA Control 1 Register", PLCA_CTRL1},
+                                            {"PLCA Status Register", PLCA_STS},
+                                            {"PLCA Transmit Opportunity Timer Register", PLCA_TOTMR},
+                                            {"PLCA Burst Mode Register", PLCA_BURST},
+                                            {"", -1}};
+
+struct reginfo reg_miscellaneous[] = {{"Queue Transmit Configuration", QTXCFG},
+                                      {"Queue Receive Configuration", QRXCFG},
+                                      {"Pad Control", PADCTRL},
+                                      {"Clock Output Control", CLKOCTL},
+                                      {"Miscellaneous", MISC},
+                                      {"Device Identification", DEVID},
+                                      {"Bus Parity Control and Status", BUSPCS},
+                                      {"Configuration Protection Control", CFGPRTCTL},
+                                      {"SRAM Error Correction Code Control", ECCCTRL},
+                                      {"SRAM Error Correction Code Status", ECCSTS},
+                                      {"SRAM Error Correction Code Fault Injection Control", ECCFLTCTRL},
+                                      {"Event Capture 0 Control", EC0CTRL},
+                                      {"Event Capture 1 Control", EC1CTRL},
+                                      {"Event Capture 2 Control", EC2CTRL},
+                                      {"Event Capture 3 Control", EC3CTRL},
+                                      {"Event Capture Read Status Register", ECRDSTS},
+                                      {"Event Capture Total Counts Register", ECTOT},
+                                      {"Event Capture Clock Seconds High Register", ECCLKSH},
+                                      {"Event Capture Clock Seconds Low Register", ECCLKSL},
+                                      {"Event Capture Clock Nanoseconds Register", ECCLKNS},
+                                      {"Event Capture Read Timestamp Register 0", ECRDTS0},
+                                      {"Event Capture Read Timestamp Register 1", ECRDTS1},
+                                      {"Event Capture Read Timestamp Register 2", ECRDTS2},
+                                      {"Event Capture Read Timestamp Register 3", ECRDTS3},
+                                      {"Event Capture Read Timestamp Register 4", ECRDTS4},
+                                      {"Event Capture Read Timestamp Register 5", ECRDTS5},
+                                      {"Event Capture Read Timestamp Register 6", ECRDTS6},
+                                      {"Event Capture Read Timestamp Register 7", ECRDTS7},
+                                      {"Event Capture Read Timestamp Register 8", ECRDTS8},
+                                      {"Event Capture Read Timestamp Register 9", ECRDTS9},
+                                      {"Event Capture Read Timestamp Register 10", ECRDTS10},
+                                      {"Event Capture Read Timestamp Register 11", ECRDTS11},
+                                      {"Event Capture Read Timestamp Register 12", ECRDTS12},
+                                      {"Event Capture Read Timestamp Register 13", ECRDTS13},
+                                      {"Event Capture Read Timestamp Register 14", ECRDTS14},
+                                      {"Event Capture Read Timestamp Register 15", ECRDTS15},
+                                      {"Phase Adjuster Cycles Register", PACYC},
+                                      {"Phase Adjuster Control Register", PACTRL},
+                                      {"Event 0 Start Time Nanoseconds Register", EG0STNS},
+                                      {"Event 0 Start Time Seconds Low Register", EG0STSECL},
+                                      {"Event 0 Start Time Seconds High Register", EG0STSECH},
+                                      {"Event 0 Pulse Width Register", EG0PW},
+                                      {"Event 0 Idle Time Register", EG0IT},
+                                      {"Event Generator 0 Control Register", EG0CTL},
+                                      {"Event 1 Start Time Nanoseconds Register", EG1STNS},
+                                      {"Event 1 Start Time Seconds Low Register", EG1STSECL},
+                                      {"Event 1 Start Time Seconds High Register", EG1STSECH},
+                                      {"Event 1 Pulse Width Register", EG1PW},
+                                      {"Event 1 Idle Time Register", EG1IT},
+                                      {"Event Generator 1 Control Register", EG1CTL},
+                                      {"Event 2 Start Time Nanoseconds Register", EG2STNS},
+                                      {"Event 2 Start Time Seconds Low Register", EG2STSECL},
+                                      {"Event 2 Start Time Seconds High Register", EG2STSECH},
+                                      {"Event 2 Pulse Width Register", EG2PW},
+                                      {"Event 2 Idle Time Register", EG2IT},
+                                      {"Event Generator 2 Control Register", EG2CTL},
+                                      {"Event 3 Start Time Nanoseconds Register", EG3STNS},
+                                      {"Event 3 Start Time Seconds Low Register", EG3STSECL},
+                                      {"Event 3 Start Time Seconds High Register", EG3STSECH},
+                                      {"Event 3 Pulse Width Register", EG3PW},
+                                      {"Event 3 Idle Time Register", EG3IT},
+                                      {"Event Generator 3 Control Register", EG3CTL},
+                                      {"One Pulse-per-Second Control Register", PPSCTL},
+                                      {"Synchronization Event Interrupt Enable Register", SEVINTEN},
+                                      {"Synchronization Event Interrupt Disable Register", SEVINTDIS},
+                                      {"Synchronization Event Interrupt Mask Status Register", SEVIM},
+                                      {"Synchronization Event Status Register", SEVSTS},
+                                      {"", -1}};
+#endif
 
 #if 0
 int process_int_arg(const char* optarg, int* value, const char* err_msg) {
@@ -172,7 +381,9 @@ int do_run(int mode, int node_id, int node_cnt, uint64_t mac) {
     return 0;
 }
 
-int do_read(int mms, int address, int count) {
+int api_read_register_in_mms(int mms);
+int do_read(int mms) {
+    return api_read_register_in_mms(mms);
 }
 
 uint64_t mac_to_int64(const char* mac_address) {
@@ -201,33 +412,33 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
         switch (argflag) {
         case 'r':
             if (str2int(optarg, &mode) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.", (char)argflag);
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
             if ((mode < 0) || (mode >= RUN_MODE_CNT)) {
-                printf("mode %d is out of range.", mode);
+                printf("mode %d is out of range.\n", mode);
                 return -1;
             }
             break;
 
         case 'i':
             if (str2int(optarg, &node_id) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.", (char)argflag);
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
             if ((node_id < 0) || (node_id > 0xFE)) {
-                printf("Node ID %d is out of range.", node_id);
+                printf("Node ID %d is out of range.\n", node_id);
                 return -1;
             }
             break;
 
         case 'c':
             if (str2int(optarg, &node_cnt) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.", (char)argflag);
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
             if ((node_cnt < 2) || (node_cnt > 0xFE)) {
-                printf("Node Count %d is out of range.", node_cnt);
+                printf("Node Count %d is out of range.\n", node_cnt);
                 return -1;
             }
             break;
@@ -235,7 +446,7 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
         case 'm':
             mac = mac_to_int64((const char*)optarg);
             if (mac == 0) {
-                printf("Invalid parameter given or out of range for '-%c'.", (char)argflag);
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
             break;
@@ -261,19 +472,16 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
     return do_run(mode, node_id, node_cnt, mac);
 }
 
-#define MAIN_READ_OPTION_STRING "m:a:c:hv"
+#define MAIN_READ_OPTION_STRING "m:hv"
 int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl) {
     int mms = 0;
-    int address = 0;
-    int count = 8;
     int argflag;
-    uint64_t mac = 0xd83a95302300;
 
     while ((argflag = getopt(argc, (char**)argv, MAIN_READ_OPTION_STRING)) != -1) {
         switch (argflag) {
         case 'm':
             if (str2int(optarg, &mms) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.", (char)argflag);
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
             switch (mms) {
@@ -285,29 +493,7 @@ int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl) {
             case 0x0A: /* Miscellaneous Register Descriptions */
                 break;
             default:
-                printf("mms %d is out of range.", mms);
-                return -1;
-            }
-            break;
-
-        case 'a':
-            if (str2int(optarg, &address) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.", (char)argflag);
-                return -1;
-            }
-            if (address < 0) {
-                printf("Address 0x%x is wrong.", address);
-                return -1;
-            }
-            break;
-
-        case 'c':
-            if (str2int(optarg, &count) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.", (char)argflag);
-                return -1;
-            }
-            if (count < 1) {
-                printf("Count %d is out of range.", count);
+                printf("mms %d is out of range.\n", mms);
                 return -1;
             }
             break;
@@ -326,7 +512,7 @@ int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl) {
         }
     }
 
-    return do_read(mms, address, count);
+    return do_read(mms);
 }
 
 int command_parser(int argc, char** argv) {

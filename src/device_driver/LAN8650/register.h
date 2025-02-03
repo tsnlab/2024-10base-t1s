@@ -1,23 +1,19 @@
-#ifndef REGISTER_H
-#define REGISTER_H
+#ifndef DEVICE_DRIVER_LAN8650_REGISTER_H
+#define DEVICE_DRIVER_LAN8650_REGISTER_H
 
-// IMPORTANT!
-// This file is not official documentation.
-// THERE CAN BE ERRORS!
+#include <stdint.h>
 
-// MMS(Memory Map Selector)
+/* MMS(Memory Map Selector) */
 enum {
-    MMS0 = 0x00, // 11.1. Open Alliance 10BASE-T1x MAC-PHY Standard Registers
-    MMS1 = 0x01, // 11.2. MAC Registers
-    MMS2 = 0x02, // 11.3. PHY PCS Registers
-    MMS3 = 0x03, // 11.4. PHY PMA/PMD Registers
-    MMS4 = 0x04, // 11.5. PHY Vendor Specific Registers
-    // 0x05 - 0x09 is reserved
-    MMS10 = 0x0A, // 11.6. Miscellaneous Register Descriptions
-    // 0x0B - 0x0F is reserved
+    MMS0 = 0x00,  /* Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
+    MMS1 = 0x01,  /* MAC Registers */
+    MMS2 = 0x02,  /* PHY PCS Registers */
+    MMS3 = 0x03,  /* PHY PMA/PMD Registers */
+    MMS4 = 0x04,  /* PHY Vendor Specific Registers */
+    MMS10 = 0x0A, /* Miscellaneous Register Descriptions */
 };
 
-// MMS0, Open Alliance 10BASE-T1x MAC-PHY Standard Registers
+/* MMS0, Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
 enum {
     OA_ID = 0x00,
     OA_PHYID = 0x01,
@@ -35,21 +31,18 @@ enum {
     TTSCBL = 0x13,
     TTSCCH = 0x14,
     TTSCCL = 0x15,
-    // 0x19 - 0xFEFF is reserved
     BASIC_CONTROL = 0xFF00,
     BASIC_STATUS = 0xFF01,
     PHY_ID1 = 0xFF02,
     PHY_ID2 = 0xFF03,
-    // 0xFF05 - 0xFF0C is reserved
     MMDCTRL = 0xFF0D,
     MMDAD = 0xFF0E
 };
 
-// MMS1, MAC Registers
+/* MMS1, MAC Registers */
 enum {
     MAC_NCR = 0x00,
     MAC_NCFGR = 0x01,
-    // 0x05 - 0x1F is reserved
     MAC_HRB = 0x20,
     MAC_HRT = 0x21,
     MAC_SAB1 = 0x22,
@@ -64,19 +57,15 @@ enum {
     MAC_TIDM2 = 0x2B,
     MAC_TIDM3 = 0x2C,
     MAC_TIDM4 = 0x2D,
-    // 0x31 is reserved
     MAC_SAMB1 = 0x32,
     MAC_SAMT1 = 0x33,
-    // 0x37 - 0x6E is reserved
     MAC_TISUBN = 0x6F,
     MAC_TSH = 0x70,
     MAC_TSL = 0x74,
     MAC_TN = 0x75,
     MAC_TA = 0x76,
     MAC_TI = 0x77,
-    // 0x7B - 0x01FF is reserved
     BMGR_CTL = 0x0200,
-    // 0x0204 - 0x0207 is reserved
     STATS0 = 0x0208,
     STATS1 = 0x0209,
     STATS2 = 0x020A,
@@ -92,52 +81,30 @@ enum {
     STATS12 = 0x0214
 };
 
-// MMS2, PHY PCS Registers
-enum {
-    // 0x00 - 0x08F2 is reserved
-    T1SPCSCTL = 0x08F3,
-    T1SPCSSTS = 0x08F4,
-    T1SPCSDIAG1 = 0x08F5,
-    T1SPCSDIAG2 = 0x08F6
-};
+/* MMS2, PHY PCS Registers */
+enum { T1SPCSCTL = 0x08F3, T1SPCSSTS = 0x08F4, T1SPCSDIAG1 = 0x08F5, T1SPCSDIAG2 = 0x08F6 };
 
-// MMS3, PHY PMA/PMD Registers
-enum {
-    // 0x00 - 0x11 is reserved
-    T1PMAPMDEXTA = 0x12,
-    // 0x14 - 0x0833 is reserved
-    T1PMAPMDCTL = 0x0834,
-    // 0x0836 - 0x08F8 is reserved
-    T1SPMACTL = 0x08F9,
-    T1SPMASTS = 0x08FA,
-    T1STSTCTL = 0x08FB
-};
+/* MMS3, PHY PMA/PMD Registers */
+enum { T1PMAPMDEXTA = 0x12, T1PMAPMDCTL = 0x0834, T1SPMACTL = 0x08F9, T1SPMASTS = 0x08FA, T1STSTCTL = 0x08FB };
 
-// MMS4, PHY Vendor Specific Registers
+/* MMS4, PHY Vendor Specific Registers */
 enum {
-    // 0x00 - 0x0F is reserved
     CTRL1 = 0x10,
-    // 0x12 - 0x17 is reserved
     STS1 = 0x18,
     STS2 = 0x19,
     STS3 = 0x1A,
     IMSK1 = 0x1C,
     IMSK2 = 0x1D,
-    // 0x1F is reserved
     CTRCTRL = 0x20,
-    // 0x22 - 0x23 is reserved
     TOCNTH = 0x24,
     TOCNTL = 0x25,
     BCNCNTH = 0x26,
     BCNCNTL = 0x27,
-    // 0x29 - 0x2F is reserved
     MULTID0 = 0x30,
     MULTID1 = 0x31,
     MULTID2 = 0x32,
     MULTID3 = 0x33,
-    // 0x35 is reserved
     PRSSTS = 0x36,
-    // 0x38 - 0x3C is reserved
     PRTMGMT2 = 0x3D,
     IWDTOH = 0x3E,
     IWDTOL = 0x3F,
@@ -147,18 +114,14 @@ enum {
     TXMMSKH = 0x43,
     TXMMSKL = 0x44,
     TXMLOC = 0x45,
-    // 0x47 - 0x48 is reserved
     TXMDLY = 0x49,
-    // 0x4B - 0x4F is reserved
     RXMCTL = 0x50,
     RXMPATH = 0x51,
     RXMPATL = 0x52,
     RXMMSKH = 0x53,
     RXMMSKL = 0x54,
     RXMLOC = 0x55,
-    // 0x57 - 0x58 is reserved
     RXMDLY = 0x59,
-    // 0x5B - 0x5F is reserved
     CBSSPTHH = 0x60,
     CBSSPTHL = 0x61,
     CBSSTTHH = 0x62,
@@ -171,25 +134,17 @@ enum {
     CBSCRCTRH = 0x69,
     CBSCRCTRL = 0x6A,
     CBSCTRL = 0x6B,
-    // 0x6D - 0x6F is reserved
     PLCASKPCTL = 0x70,
     PLCATOSKP = 0x71,
-    // 0x73 is reserved
     ACMACTL = 0x74,
-    // 0x76 - 0x7F is reserved
     SLPCTL0 = 0x80,
     SLPCTL1 = 0x81,
-    // 0x83 - 0x86 is reserved
     CDCTL0 = 0x87,
-    // 0x89 - 0x9F is reserved
     SQICTL = 0xA0,
     SQISTS0 = 0xA1,
-    // 0xA3 - 0xA9 is reserved
     SQICFG0 = 0xAA,
     SQICFG2 = 0xAC,
-    // 0xAE - 0xD4 is reserved
     ANALOG5 = 0xD5,
-    // 0xD7 - 0xC9FF is reserved
     MIDVER = 0xCA00,
     PLCA_CTRL0 = 0xCA01,
     PLCA_CTRL1 = 0xCA02,
@@ -198,23 +153,19 @@ enum {
     PLCA_BURST = 0xCA05
 };
 
-// MMS10, Miscellaneous Register Descriptions
+/* MMS10, Miscellaneous Register Descriptions */
 enum {
-    // 0x00 - 0x80 is reserved
     QTXCFG = 0x81,
     QRXCFG = 0x82,
-    // 0x86 - 0x88 is reserved
+    PADCTRL = 0x88,
     CLKOCTL = 0x89,
     MISC = 0x8C,
-    // 0x90 - 0x93 is reserved
     DEVID = 0x94,
     BUSPCS = 0x96,
     CFGPRTCTL = 0x99,
-    // 0x9D - 0xFF is reserved
     ECCCTRL = 0x0100,
     ECCSTS = 0x0101,
     ECCFLTCTRL = 0x0102,
-    // 0x0106 - 0x01FF is reserved
     EC0CTRL = 0x0200,
     EC1CTRL = 0x0201,
     EC2CTRL = 0x0202,
@@ -240,7 +191,6 @@ enum {
     ECRDTS13 = 0x0216,
     ECRDTS14 = 0x0217,
     ECRDTS15 = 0x0218,
-    // 0x021C - 0x021E is reserved
     PACYC = 0x021F,
     PACTRL = 0x0220,
     EG0STNS = 0x0221,
@@ -274,4 +224,9 @@ enum {
     SEVSTS = 0x023D
 };
 
-#endif /* REGISTER_H */
+struct reginfo {
+    char* desc;
+    int16_t address;
+};
+
+#endif /* DEVICE_DRIVER_LAN8650_REGISTER_H */
