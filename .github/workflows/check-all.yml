@@ -7,13 +7,20 @@ on:
 jobs:
   check-all:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Prepare CMake, compile_commands.json
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -S .
+          cp build/compile_commands.json .
+
       - name: Check all
         uses: tsnlab/check@main
         with:
-          python_version: '3.12'
           github_token: ${{ secrets.GITHUB_TOKEN }}
