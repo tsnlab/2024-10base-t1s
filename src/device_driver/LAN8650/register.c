@@ -632,7 +632,7 @@ static int read_register_in_mms(uint8_t mms) {
     return 0;
 }
 
-static int set_register_value(uint8_t mms, struct reginfo* reginfo, int16_t addr, uint32_t data) {
+static int set_register_value(uint8_t mms, struct reginfo* reginfo, int32_t addr, uint32_t data) {
 
     uint32_t pre_val;
     for (int i = 0; reginfo[i].address >= 0; i++) {
@@ -648,7 +648,7 @@ static int set_register_value(uint8_t mms, struct reginfo* reginfo, int16_t addr
 }
 
 /* read all register values in memory map selector */
-static int write_register_in_mms(uint8_t mms, int16_t addr, uint32_t data) {
+static int write_register_in_mms(uint8_t mms, int32_t addr, uint32_t data) {
     switch (mms) {
     case MMS0: /* Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
         return set_register_value(mms, reg_open_alliance, addr, data);
@@ -710,7 +710,7 @@ int api_read_register_in_mms(int mms) {
 }
 
 int api_write_register_in_mms(int mms, int addr, uint32_t data) {
-    return write_register_in_mms((uint8_t)mms, (int16_t)addr, (uint32_t)data);
+    return write_register_in_mms((uint8_t)mms, (int32_t)addr, (uint32_t)data);
 }
 
 int api_config_mac_address(uint64_t mac) {

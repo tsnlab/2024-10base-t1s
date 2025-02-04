@@ -226,7 +226,7 @@ enum {
 
 struct reginfo {
     char* desc;
-    int16_t address;
+    int32_t address;
 };
 
 #endif /* DEVICE_DRIVER_LAN8650_REGISTER_H */
