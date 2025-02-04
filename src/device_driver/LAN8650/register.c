@@ -341,8 +341,8 @@ static bool configure_plca_to_mac_phy(int node_id, int node_cnt, uint64_t mac) {
     write_register(MMS4, CDCTL0, regval | (1 << 15)); /* 1: Collision detection is enabled (default) */
 
     /* Physical Layer Collision Avoidance */
-    regval = ((node_cnt & 0xFF) << 8) + (node_id & 0xFF);
-    write_register(MMS4, PLCA_CTRL1, 0x00000200); /* PLCA Control 1 Register */
+    regval = (uint32_t)((node_cnt & 0xFF) << 8) + (node_id & 0xFF);
+    write_register(MMS4, PLCA_CTRL1, regval); /* PLCA Control 1 Register */
 
     /* MAC Specific Address 1 Mask Bottom */
     regval = (uint32_t)(mac & 0xFFFFFFFF);
@@ -668,10 +668,55 @@ static int write_register_in_mms(uint8_t mms, int16_t addr, uint32_t data) {
     }
 }
 
+static int set_mac_address(uint64_t mac, int id, int filter_mask, int filter_type) {
+    uint32_t bottom;
+    uint32_t top;
+
+    bottom = (uint32_t)(mac & 0xffffffff);
+    top = (uint32_t)(((mac >> 32) & 0xffff) + ((filter_type & 0x1) << 16) + ((filter_mask & 0x3F) << 24));
+
+    switch (id) {
+    case 1:
+        write_register(MMS1, MAC_SAB1, bottom);
+        write_register(MMS1, MAC_SAT1, top);
+        break;
+    case 2:
+        write_register(MMS1, MAC_SAB2, bottom);
+        write_register(MMS1, MAC_SAT2, top);
+        break;
+    case 3:
+        write_register(MMS1, MAC_SAB3, bottom);
+        write_register(MMS1, MAC_SAT3, top);
+        break;
+    case 4:
+        write_register(MMS1, MAC_SAB3, bottom);
+        write_register(MMS1, MAC_SAT3, top);
+        break;
+    }
+    return 0;
+}
+
+static int set_node_config(int node_id, int node_cnt) {
+    uint32_t regval;
+
+    regval = (uint32_t)((node_cnt & 0xFF) << 8) + (node_id & 0xFF);
+    write_register(MMS4, PLCA_CTRL1, regval); /* PLCA Control 1 Register */
+
+    return 0;
+}
+
 int api_read_register_in_mms(int mms) {
     return read_register_in_mms((uint8_t)mms);
 }
 
 int api_write_register_in_mms(int mms, int addr, uint32_t data) {
     return write_register_in_mms((uint8_t)mms, (int16_t)addr, (uint32_t)data);
+}
+
+int api_config_mac_address(uint64_t mac) {
+    return set_mac_address(mac, 1, 0, 0);
+}
+
+int api_config_node(int node_id, int node_cnt) {
+    return set_node_config(node_id, node_cnt);
 }

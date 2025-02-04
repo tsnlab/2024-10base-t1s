@@ -71,6 +71,22 @@ int process_man_cmd(int argc, const char* argv[], menu_command_t* menu_tbl, char
     return ERR_INVALID_PARAMETER;
 }
 
+int print_argument_warning_message(int argc, const char* argv[], menu_command_t* menu_tbl, char echo) {
+    int i;
+
+    for (i = 0; menu_tbl[i].name; i++)
+        if (!strcmp(argv[0], menu_tbl[i].name)) {
+            printf(ANSI_COLOR_RED "Invalid Parameter(s)\n");
+            printf(ANSI_COLOR_BLUE "SYNOPSIS\n");
+            printf(ANSI_COLOR_RESET "%s\n", menu_tbl[i].usage);
+            printf(ANSI_COLOR_BLUE "DESCRIPTION\n");
+            printf(ANSI_COLOR_RESET "%s\n", menu_tbl[i].desc);
+            return i;
+        }
+
+    return ERR_INVALID_PARAMETER;
+}
+
 int lookup_cmd_tbl(int argc, const char* argv[], menu_command_t* menu_tbl, char echo) {
     const char** pav = NULL;
     int ac, i;

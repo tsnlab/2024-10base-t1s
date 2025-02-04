@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <version.h>
 
+#include "error_define.h"
 #include "thread.h"
 #include "xbase-t1s.h"
 
@@ -42,6 +43,13 @@ menu_command_t main_command_tbl[] = {
      "                                                10: Miscellaneous Register Descriptions)\n"
      "                    <Address> default value: 0\n"
      "                       <Data> default value: 0\n"},
+    {"config", EXECUTION_ATTR, process_main_config, "   config <element> <options parameters>\n",
+     "   Configure elements with options parameters\n"
+     "        config mac -m  <MAC address>\n"
+     "             <MAC address> default value: d8:3a:95:30:23:42\n\n"
+     "        config node -i <Node ID> -c <Node Count>\n"
+     "                 <Node ID> default value: 1 (0: Coordinator, 1 ~ 0xFE: Follower)\n"
+     "              <Node Count> default value: 8 (2 ~ 0xFE)\n"},
 #if 0
     {"set", EXECUTION_ATTR, process_main_setCmd,
      "   set register [gen, rx, tx, h2c, c2h, irq, con, h2cs, c2hs, com, msix] <addr(Hex)> <data(Hex)>\n",
@@ -50,6 +58,8 @@ menu_command_t main_command_tbl[] = {
      "   This option was created for the reproduction of the Tx timestamp error issue. (Debugging Purpose)\n"},
 #endif
     {0, EXECUTION_ATTR, NULL, " ", " "}};
+
+argument_list_t config_argument_tbl[] = {{"mac", fn_config_mac_argument}, {"node", fn_config_node_argument}, {0, NULL}};
 
 pthread_mutex_t spi_mutex;
 
@@ -391,7 +401,6 @@ int do_run(int mode, int node_id, int node_cnt, uint64_t mac) {
     return 0;
 }
 
-int api_read_register_in_mms(int mms);
 int do_read(int mms) {
     int spi_ret;
 
@@ -403,7 +412,6 @@ int do_read(int mms) {
     return api_read_register_in_mms(mms);
 }
 
-int api_write_register_in_mms(int mms, int addr, uint32_t data);
 int do_write(int mms, int addr, int data) {
     int spi_ret;
 
@@ -413,6 +421,28 @@ int do_write(int mms, int addr, int data) {
         return -1;
     }
     return api_write_register_in_mms(mms, addr, data);
+}
+
+int do_config_mac(uint64_t mac) {
+    int spi_ret;
+
+    spi_ret = api_spi_init();
+    if (spi_ret != 0) {
+        printf("spi_init failed; the error code is %d\n", spi_ret);
+        return -1;
+    }
+    return api_config_mac_address(mac);
+}
+
+int do_config_node(int node_id, int node_cnt) {
+    int spi_ret;
+
+    spi_ret = api_spi_init();
+    if (spi_ret != 0) {
+        printf("spi_init failed; the error code is %d\n", spi_ret);
+        return -1;
+    }
+    return api_config_node(node_id, node_cnt);
 }
 
 uint64_t mac_to_int64(const char* mac_address) {
@@ -609,6 +639,94 @@ int process_main_write(int argc, const char* argv[], menu_command_t* menu_tbl) {
     }
 
     return do_write(mms, addr, (uint32_t)(data & 0xFFFFFFFF));
+}
+
+#define CONFIG_MAC_OPTION_STRING "m:hv"
+int fn_config_mac_argument(int argc, const char* argv[]) {
+    uint64_t mac = 0xd83a95302342;
+    int argflag;
+
+    while ((argflag = getopt(argc, (char**)argv, CONFIG_MAC_OPTION_STRING)) != -1) {
+        switch (argflag) {
+        case 'm':
+            mac = mac_to_int64((const char*)optarg);
+            if (mac == 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            break;
+
+        case 'v':
+            log_level_set(++verbose);
+            if (verbose == 2) {
+                /* add version info to debug output */
+                lprintf(LOG_DEBUG, "%s\n", VERSION_STRING);
+            }
+            break;
+        }
+    }
+
+    return do_config_mac(mac);
+}
+
+#define CONFIG_NODE_OPTION_STRING "i:c:hv"
+int fn_config_node_argument(int argc, const char* argv[]) {
+    int node_id = 1;
+    int node_cnt = 8;
+    int argflag;
+
+    while ((argflag = getopt(argc, (char**)argv, CONFIG_NODE_OPTION_STRING)) != -1) {
+        switch (argflag) {
+        case 'i':
+            if (str2int(optarg, &node_id) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((node_id < 0) || (node_id > 0xFE)) {
+                printf("Node ID %d is out of range.\n", node_id);
+                return -1;
+            }
+            break;
+
+        case 'c':
+            if (str2int(optarg, &node_cnt) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((node_cnt < 2) || (node_cnt > 0xFE)) {
+                printf("Node Count %d is out of range.\n", node_cnt);
+                return -1;
+            }
+            break;
+
+        case 'v':
+            log_level_set(++verbose);
+            if (verbose == 2) {
+                /* add version info to debug output */
+                lprintf(LOG_DEBUG, "%s\n", VERSION_STRING);
+            }
+            break;
+        }
+    }
+
+    return do_config_node(node_id, node_cnt);
+}
+
+int process_main_config(int argc, const char* argv[], menu_command_t* menu_tbl) {
+
+    if (argc <= 3) {
+        print_argument_warning_message(argc, argv, menu_tbl, NO_ECHO);
+        return ERR_PARAMETER_MISSED;
+    }
+    argv++, argc--;
+    for (int index = 0; config_argument_tbl[index].name; index++)
+        if (!strcmp(argv[0], config_argument_tbl[index].name)) {
+            argv++, argc--;
+            config_argument_tbl[index].fp(argc, argv);
+            return 0;
+        }
+
+    return ERR_INVALID_PARAMETER;
 }
 
 int command_parser(int argc, char** argv) {
