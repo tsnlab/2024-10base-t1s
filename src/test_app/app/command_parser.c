@@ -32,6 +32,16 @@ menu_command_t main_command_tbl[] = {
      "                                                 3: PHY PMA/PMD Registers\n"
      "                                                 4: PHY Vendor Specific Registers\n"
      "                                                10: Miscellaneous Register Descriptions)\n"},
+    {"write", EXECUTION_ATTR, process_main_write, "   write -m <Memory Map Selector> -a <Address> -d <Data>\n",
+     "   Write data value to register at address in Memory Map Selector\n"
+     "        <Memory Map Selector> default value: 0 ( 0: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
+     "                                                 1: MAC Registers\n"
+     "                                                 2: PHY PCS Registers\n"
+     "                                                 3: PHY PMA/PMD Registers\n"
+     "                                                 4: PHY Vendor Specific Registers\n"
+     "                                                10: Miscellaneous Register Descriptions)\n"
+     "                    <Address> default value: 0\n"
+     "                       <Data> default value: 0\n"},
 #if 0
     {"set", EXECUTION_ATTR, process_main_setCmd,
      "   set register [gen, rx, tx, h2c, c2h, irq, con, h2cs, c2hs, com, msix] <addr(Hex)> <data(Hex)>\n",
@@ -393,6 +403,18 @@ int do_read(int mms) {
     return api_read_register_in_mms(mms);
 }
 
+int api_write_register_in_mms(int mms, int addr, uint32_t data);
+int do_write(int mms, int addr, int data) {
+    int spi_ret;
+
+    spi_ret = api_spi_init();
+    if (spi_ret != 0) {
+        printf("spi_init failed; the error code is %d\n", spi_ret);
+        return -1;
+    }
+    return api_write_register_in_mms(mms, addr, data);
+}
+
 uint64_t mac_to_int64(const char* mac_address) {
     uint64_t result = 0;
     unsigned int values[6];
@@ -520,6 +542,73 @@ int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl) {
     }
 
     return do_read(mms);
+}
+
+#define MAIN_WRITE_OPTION_STRING "m:a:d:hv"
+int process_main_write(int argc, const char* argv[], menu_command_t* menu_tbl) {
+    int mms = 0;
+    int addr = 0;
+    int64_t data = 0;
+    int argflag;
+
+    while ((argflag = getopt(argc, (char**)argv, MAIN_WRITE_OPTION_STRING)) != -1) {
+        switch (argflag) {
+        case 'm':
+            if (str2int(optarg, &mms) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            switch (mms) {
+            case 0x00: /* Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
+            case 0x01: /* MAC Registers */
+            case 0x02: /* PHY PCS Registers */
+            case 0x03: /* PHY PMA/PMD Registers */
+            case 0x04: /* PHY Vendor Specific Registers */
+            case 0x0A: /* Miscellaneous Register Descriptions */
+                break;
+            default:
+                printf("mms %d is out of range.\n", mms);
+                return -1;
+            }
+            break;
+
+        case 'a':
+            if (str2int(optarg, &addr) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((addr < 0) || (addr > 0xFFFF)) {
+                printf("Address 0x%x is out of range.\n", addr);
+                return -1;
+            }
+            break;
+
+        case 'd':
+            if (str2long(optarg, &data) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((data < 0) || (data > 0xFFFFFFFF)) {
+                printf("Data 0x%lx is out of range.\n", data);
+                return -1;
+            }
+            break;
+
+        case 'v':
+            log_level_set(++verbose);
+            if (verbose == 2) {
+                /* add version info to debug output */
+                lprintf(LOG_DEBUG, "%s\n", VERSION_STRING);
+            }
+            break;
+
+        case 'h':
+            process_man_cmd(argc, argv, menu_tbl, ECHO);
+            return 0;
+        }
+    }
+
+    return do_write(mms, addr, (uint32_t)(data & 0xFFFFFFFF));
 }
 
 int command_parser(int argc, char** argv) {

@@ -632,6 +632,46 @@ static int read_register_in_mms(uint8_t mms) {
     return 0;
 }
 
+static int set_register_value(uint8_t mms, struct reginfo* reginfo, int16_t addr, uint32_t data) {
+
+    uint32_t pre_val;
+    for (int i = 0; reginfo[i].address >= 0; i++) {
+        if (reginfo[i].address == addr) {
+            pre_val = read_register(mms, (uint16_t)reginfo[i].address);
+            write_register(mms, (uint16_t)addr, data);
+            printf("address: 0x%04x - pre-value: 0x%08x - cur-value: 0x%08x - %s\n", reginfo[i].address, pre_val,
+                   read_register(mms, (uint16_t)reginfo[i].address), reginfo[i].desc);
+            return 0;
+        }
+    }
+    return -1;
+}
+
+/* read all register values in memory map selector */
+static int write_register_in_mms(uint8_t mms, int16_t addr, uint32_t data) {
+    switch (mms) {
+    case MMS0: /* Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
+        return set_register_value(mms, reg_open_alliance, addr, data);
+    case MMS1: /* MAC Registers */
+        return set_register_value(mms, reg_mac, addr, data);
+    case MMS2: /* PHY PCS Registers */
+        return set_register_value(mms, reg_phy_pcs, addr, data);
+    case MMS3: /* PHY PMA/PMD Registers */
+        return set_register_value(mms, reg_phy_pma_pmd, addr, data);
+    case MMS4: /* PHY Vendor Specific Registers */
+        return set_register_value(mms, reg_phy_vendor_specific, addr, data);
+    case MMS10: /* Miscellaneous Register Descriptions */
+        return set_register_value(mms, reg_miscellaneous, addr, data);
+    default:
+        printf("%s - Unknown memory map selector(0x%02x)\n", __func__, mms);
+        return -1;
+    }
+}
+
 int api_read_register_in_mms(int mms) {
     return read_register_in_mms((uint8_t)mms);
+}
+
+int api_write_register_in_mms(int mms, int addr, uint32_t data) {
+    return write_register_in_mms((uint8_t)mms, (int16_t)addr, (uint32_t)data);
 }
