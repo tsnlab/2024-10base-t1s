@@ -721,7 +721,6 @@ int process_main_config(int argc, const char* argv[], menu_command_t* menu_tbl) 
     argv++, argc--;
     for (int index = 0; config_argument_tbl[index].name; index++)
         if (!strcmp(argv[0], config_argument_tbl[index].name)) {
-            argv++, argc--;
             config_argument_tbl[index].fp(argc, argv);
             return 0;
         }
