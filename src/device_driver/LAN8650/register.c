@@ -668,6 +668,8 @@ static int write_register_in_mms(uint8_t mms, int32_t addr, uint32_t data) {
     }
 }
 
+#define BOARD_MAC_SPECIFIC_ID 1 /* 1 to 4 */
+
 static int set_mac_address(uint64_t mac, int id, int filter_mask, int filter_type) {
     uint32_t bottom;
     uint32_t top;
@@ -689,11 +691,41 @@ static int set_mac_address(uint64_t mac, int id, int filter_mask, int filter_typ
         write_register(MMS1, MAC_SAT3, top);
         break;
     case 4:
-        write_register(MMS1, MAC_SAB3, bottom);
-        write_register(MMS1, MAC_SAT3, top);
+        write_register(MMS1, MAC_SAB4, bottom);
+        write_register(MMS1, MAC_SAT4, top);
         break;
     }
     return 0;
+}
+
+static uint64_t get_mac_address(int id) {
+    uint32_t bottom = 0;
+    uint32_t top = 0;
+    uint64_t mac;
+
+    switch (id) {
+    case 1:
+        bottom = read_register(MMS1, MAC_SAB1);
+        top = read_register(MMS1, MAC_SAT1);
+        break;
+    case 2:
+        bottom = read_register(MMS1, MAC_SAB2);
+        top = read_register(MMS1, MAC_SAT2);
+        break;
+    case 3:
+        bottom = read_register(MMS1, MAC_SAB3);
+        top = read_register(MMS1, MAC_SAT3);
+        break;
+    case 4:
+        bottom = read_register(MMS1, MAC_SAB4);
+        top = read_register(MMS1, MAC_SAT4);
+        break;
+    }
+
+    mac = top & 0xffff;
+    mac = (mac << 32) | bottom;
+
+    return mac;
 }
 
 static int set_node_config(int node_id, int node_cnt) {
@@ -713,8 +745,12 @@ int api_write_register_in_mms(int mms, int addr, uint32_t data) {
     return write_register_in_mms((uint8_t)mms, (int32_t)addr, (uint32_t)data);
 }
 
+uint64_t api_get_mac_address() {
+    return get_mac_address((int)BOARD_MAC_SPECIFIC_ID);
+}
+
 int api_config_mac_address(uint64_t mac) {
-    return set_mac_address(mac, 1, 0, 0);
+    return set_mac_address(mac, BOARD_MAC_SPECIFIC_ID, 0, 0);
 }
 
 int api_config_node(int node_id, int node_cnt) {

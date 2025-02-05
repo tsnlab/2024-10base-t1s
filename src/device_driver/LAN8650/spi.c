@@ -51,6 +51,10 @@ int spi_cleanup(void) {
     return ret;
 }
 
+int api_spi_cleanup(void) {
+    return spi_cleanup();
+}
+
 uint8_t get_parity(uint32_t valueToCalculateParity) {
     valueToCalculateParity ^= valueToCalculateParity >> 1;
     valueToCalculateParity ^= valueToCalculateParity >> 2;

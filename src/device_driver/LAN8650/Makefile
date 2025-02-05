@@ -1,6 +1,6 @@
 LIB	= libdevice_drv.a
 
-OBJS	= arp_test.o register.o spi.o drv_main.o
+OBJS	= arp_test.o register.o spi.o drv_main.o mac_frame_data_handle.o
 
 INCLUDES = 
 

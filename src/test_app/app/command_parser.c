@@ -19,12 +19,10 @@
 #include "xbase-t1s.h"
 
 menu_command_t main_command_tbl[] = {
-    {"run", EXECUTION_ATTR, process_main_run, "   run -r <role> -i <Node ID> -c <Node Count> -m <MAC address>",
+    {"run", EXECUTION_ATTR, process_main_run, "   run -r <role> -i <ip address>",
      "   Run xbase-t1s application as role\n"
      "            <role> default value: 0 (0: client, 1: server)\n"
-     "         <Node ID> default value: 1 (0: Coordinator, 1 ~ 0xFE: Follower)\n"
-     "      <Node Count> default value: 8 (2 ~ 0xFE)\n"
-     "     <MAC address> default value: d8:3a:95:30:23:<Node ID+1>\n"},
+     "      <ip address> default value: 192.168.10.11\n"},
     {"read", EXECUTION_ATTR, process_main_read, "   read -m <Memory Map Selector>\n",
      "   Read all register values in Memory Map Selector\n"
      "        <Memory Map Selector> default value: 0 ( 0: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
@@ -349,15 +347,18 @@ void register_signal_handler() {
     signal(SIGABRT, signal_handler);
 }
 
-int do_run(int mode, int node_id, int node_cnt, uint64_t mac) {
+uint32_t ipv4 = 0xc0a80a0b;
+
+int do_run(int mode, uint32_t ipv4) {
 
     pthread_t tid1, tid2;
     rx_thread_arg_t rx_arg;
     tx_thread_arg_t tx_arg;
+    uint64_t mac;
     int ret;
 
-    printf(">>> %s(mode: %s, node_id: %d, node_cnt: %d, MAC: %012lx\n", __func__, mode ? "SERVER" : "CLIENT", node_id,
-           node_cnt, mac);
+    printf(">>> %s(mode: %s, ipv4: %d.%d.%d.%d)\n", __func__, mode ? "SERVER" : "CLIENT", (ipv4 >> 24) & 0xFF,
+           (ipv4 >> 16) & 0xFF, (ipv4 >> 8) & 0xFF, ipv4 & 0xFF);
 
     ret = api_spi_init();
     if (ret) {
@@ -365,11 +366,15 @@ int do_run(int mode, int node_id, int node_cnt, uint64_t mac) {
         return ret;
     }
 
-    api_configure_plca_to_mac_phy(node_id, node_cnt, mac);
+    mac = api_get_mac_address();
+    if (mac == 0) {
+        printf("[%s]MAC address(%ld) has not been set yet. Check your settings first !\n", __func__, mac);
+        goto out_spi;
+    }
 
     if (initialize_buffer_allocation()) {
         printf("[%s]Fail to initialize buffer allocation\n", __func__);
-        return -1;
+        goto out_spi;
     }
 
     pthread_mutex_init(&spi_mutex, NULL);
@@ -378,25 +383,27 @@ int do_run(int mode, int node_id, int node_cnt, uint64_t mac) {
 
     memset(&rx_arg, 0, sizeof(rx_thread_arg_t));
     rx_arg.mode = mode;
-    rx_arg.node_id = node_id;
+    rx_arg.ipv4 = ipv4;
+    rx_arg.mac = mac;
     pthread_create(&tid1, NULL, receiver_thread, (void*)&rx_arg);
     sleep(1);
 
-#if 0
     memset(&tx_arg, 0, sizeof(tx_thread_arg_t));
     tx_arg.mode = mode;
+    tx_arg.ipv4 = ipv4;
+    tx_arg.mac = mac;
     pthread_create(&tid2, NULL, sender_thread, (void*)&tx_arg);
     sleep(1);
-#endif
 
     pthread_join(tid1, NULL);
-#if 0
     pthread_join(tid2, NULL);
-#endif
 
     pthread_mutex_destroy(&spi_mutex);
 
+out_buffer:
     buffer_release();
+out_spi:
+    api_spi_cleanup();
 
     return 0;
 }
@@ -445,27 +452,11 @@ int do_config_node(int node_id, int node_cnt) {
     return api_config_node(node_id, node_cnt);
 }
 
-uint64_t mac_to_int64(const char* mac_address) {
-    uint64_t result = 0;
-    unsigned int values[6];
-
-    if (sscanf(mac_address, "%x:%x:%x:%x:%x:%x", &values[0], &values[1], &values[2], &values[3], &values[4],
-               &values[5]) == 6) {
-        for (int i = 0; i < 6; i++) {
-            result = (result << 8) | (values[i] & 0xFF);
-        }
-    }
-
-    return result;
-}
-
-#define MAIN_RUN_OPTION_STRING "r:m:i:c:hv"
+#define MAIN_RUN_OPTION_STRING "r:i:hv"
 int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
     int mode = DEFAULT_RUN_MODE;
-    int node_id = 1;
-    int node_cnt = 8;
     int argflag;
-    uint64_t mac = 0xd83a95302300;
+    uint32_t ipv4 = 0xc0a80a0b;
 
     while ((argflag = getopt(argc, (char**)argv, MAIN_RUN_OPTION_STRING)) != -1) {
         switch (argflag) {
@@ -481,30 +472,8 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
             break;
 
         case 'i':
-            if (str2int(optarg, &node_id) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
-                return -1;
-            }
-            if ((node_id < 0) || (node_id > 0xFE)) {
-                printf("Node ID %d is out of range.\n", node_id);
-                return -1;
-            }
-            break;
-
-        case 'c':
-            if (str2int(optarg, &node_cnt) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
-                return -1;
-            }
-            if ((node_cnt < 2) || (node_cnt > 0xFE)) {
-                printf("Node Count %d is out of range.\n", node_cnt);
-                return -1;
-            }
-            break;
-
-        case 'm':
-            mac = mac_to_int64((const char*)optarg);
-            if (mac == 0) {
+            ipv4 = ipv4_to_int32((const char*)optarg);
+            if (ipv4 == 0) {
                 printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
@@ -524,11 +493,7 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
         }
     }
 
-    if (mac == 0xd83a95302300) {
-        mac += (node_id + 1) & 0xFF;
-    }
-
-    return do_run(mode, node_id, node_cnt, mac);
+    return do_run(mode, ipv4);
 }
 
 #define MAIN_READ_OPTION_STRING "m:hv"

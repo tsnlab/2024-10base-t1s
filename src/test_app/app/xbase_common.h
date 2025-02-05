@@ -38,6 +38,46 @@ typedef struct circular_queue {
     pthread_mutex_t mutex;
 } CircularQueue_t;
 
+typedef struct stats {
+    unsigned long long rxPackets;
+    unsigned long long rxBytes;
+    unsigned long long rxErrors;
+    unsigned long long rxNoBuffer; /* BD is not available */
+    unsigned long long rxPps;
+    unsigned long long rxBps;
+    unsigned long long txPackets;
+    unsigned long long txBytes;
+    unsigned long long txFiltered;
+    unsigned long long txErrors;
+    unsigned long long txPps;
+    unsigned long long txBps;
+} stats_t;
+
+#define MAX_PACKET_LEN 1536
+
+struct rx_metadata {
+    uint16_t frame_length;
+    uint16_t reserved;
+} __attribute__((packed, scalar_storage_order("big-endian")));
+
+struct tx_metadata {
+    uint16_t frame_length;
+    uint16_t reserved;
+} __attribute__((packed, scalar_storage_order("big-endian")));
+
+struct spi_rx_buffer {
+    struct rx_metadata metadata;
+    uint8_t data[MAX_PACKET_LEN];
+};
+
+struct spi_tx_buffer {
+    struct tx_metadata metadata;
+    uint8_t data[MAX_PACKET_LEN];
+};
+
+#define HW_ADDR_LEN 6
+#define IP_ADDR_LEN 4
+
 /******************************************************************************
  *                                                                            *
  *                            Function Prototypes                             *
