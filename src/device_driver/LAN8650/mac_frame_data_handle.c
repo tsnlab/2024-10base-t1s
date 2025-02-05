@@ -57,6 +57,8 @@ int api_spi_transmit_frame(uint8_t* packet, uint16_t length) {
     uint16_t remainder = length;
     int result;
 
+    printf(">>> %s - length: %d\n", __func__, length);
+
     while (remainder > 0) {
         if (remainder <= MAX_PAYLOAD_BYTE) {
             end_valid = 1;
@@ -76,6 +78,8 @@ int api_spi_transmit_frame(uint8_t* packet, uint16_t length) {
         remainder -= send_bytes;
         start_valid = 0;
     }
+
+    printf("<<< %s - length: %d\n", __func__, length);
 
     return 0;
 }

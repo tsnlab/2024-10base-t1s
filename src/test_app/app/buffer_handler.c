@@ -110,7 +110,7 @@ BUF_POINTER buffer_pool_alloc() {
     pthread_mutex_lock(&stack->mutex);
 
     if (isStackEmpty()) {
-        printf("Stack is empty. Cannot buffer_pool_alloc.\n");
+        // printf("Stack is empty. Cannot buffer_pool_alloc.\n");
         pthread_mutex_unlock(&stack->mutex);
         return EMPTY_ELEMENT;
     }

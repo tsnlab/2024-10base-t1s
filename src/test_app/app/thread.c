@@ -90,7 +90,7 @@ static void receiver_as_client() {
     while (rx_thread_run) {
         buffer = buffer_pool_alloc();
         if (buffer == NULL) {
-            printf("FAILURE: Could not buffer_pool_alloc.\n");
+            // printf("FAILURE: Could not buffer_pool_alloc.\n");
             rx_stats.rxNoBuffer++;
             continue;
         }
@@ -351,6 +351,17 @@ void create_arp_request_frame(unsigned char* frame, const char* src_ip, const ch
     memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
 }
 
+void dump_buffer(unsigned char* buffer, int len) {
+
+    for (int idx = 0; idx < len; idx++) {
+        if ((idx % 16) == 0) {
+            printf("\n  ");
+        }
+        printf("0x%02x ", buffer[idx] & 0xFF);
+    }
+    printf("\n");
+}
+
 static void sender_as_client() {
     struct spi_tx_buffer tx;
     const char* dst_ip = "192.168.10.11"; // 예시 목적지 IP 주소
@@ -361,8 +372,14 @@ static void sender_as_client() {
 
     create_arp_request_frame((unsigned char*)tx.data, (const char*)src_ip, dst_ip);
 
+    dump_buffer((unsigned char*)tx.data, 64);
+    printf("\n");
+    printf("\n");
+    printf("\n");
+
+    tx.metadata.frame_length = 64;
+
     while (tx_thread_run) {
-        tx.metadata.frame_length = 64;
         api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
 
         sleep(1);
