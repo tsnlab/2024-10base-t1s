@@ -714,10 +714,6 @@ int fn_config_node_argument(int argc, const char* argv[]) {
 
 int process_main_config(int argc, const char* argv[], menu_command_t* menu_tbl) {
 
-    if (argc <= 3) {
-        print_argument_warning_message(argc, argv, menu_tbl, NO_ECHO);
-        return ERR_PARAMETER_MISSED;
-    }
     argv++, argc--;
     for (int index = 0; config_argument_tbl[index].name; index++)
         if (!strcmp(argv[0], config_argument_tbl[index].name)) {
