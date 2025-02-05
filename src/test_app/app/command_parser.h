@@ -8,8 +8,9 @@ int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl);
 int process_main_write(int argc, const char* argv[], menu_command_t* menu_tbl);
 int process_main_config(int argc, const char* argv[], menu_command_t* menu_tbl);
 
-int fn_config_mac_argument(int argc, const char* argv[]);
 int fn_config_node_argument(int argc, const char* argv[]);
+int fn_config_mac_argument(int argc, const char* argv[]);
+int fn_config_plca_argument(int argc, const char* argv[]);
 
 #if 0
 int process_fpga_readCmd(int argc, const char* argv[], menu_command_t* menu_tbl);

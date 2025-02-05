@@ -334,42 +334,6 @@ bool set_register(int mode) {
     return true;
 }
 
-static bool configure_plca_to_mac_phy(int node_id, int node_cnt, uint64_t mac) {
-    uint32_t regval;
-
-    regval = read_register(MMS4, CDCTL0);             /* Collision Detector Control 0 */
-    write_register(MMS4, CDCTL0, regval | (1 << 15)); /* 1: Collision detection is enabled (default) */
-
-    /* Physical Layer Collision Avoidance */
-    regval = (uint32_t)((node_cnt & 0xFF) << 8) + (node_id & 0xFF);
-    write_register(MMS4, PLCA_CTRL1, regval); /* PLCA Control 1 Register */
-
-    /* MAC Specific Address 1 Mask Bottom */
-    regval = (uint32_t)(mac & 0xFFFFFFFF);
-    write_register(MMS1, MAC_SAB1, regval); /* MAC Specific Address 1 Mask Bottom */
-
-    regval = (uint32_t)((mac >> 32) & 0xFFFF);
-    write_register(MMS1, MAC_SAT1, regval); /* MAC Specific Address Mask 1 Top */
-
-    set_macphy_register(); // AN_LAN865x-Configuration
-#ifdef SQI
-    set_sqi_register();
-#endif
-
-    write_register(MMS4, PLCA_CTRL0, 0x00008000); // Enable PLCA
-    write_register(MMS1, MAC_NCFGR, 0x000000C0);  // Enable unicast, multicast
-    write_register(MMS1, MAC_NCR, 0x0000000C);    // Enable MACPHY TX, RX
-    write_register(MMS0, OA_STATUS0, 0x00000040); // Clear RESETC
-    write_register(MMS0, OA_CONFIG0, 0x00008006); // SYNC bit SET (last configuration)
-
-    return true;
-}
-
-/* PLCA configuration */
-bool api_configure_plca_to_mac_phy(int node_id, int node_cnt, uint64_t mac) {
-    return configure_plca_to_mac_phy(node_id, node_cnt, mac);
-}
-
 static bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_reg* p_readRegData) {
     const uint8_t ignored_echoedbytes = HEADER_SIZE;
     bool readstatus = false;
@@ -668,6 +632,28 @@ static int write_register_in_mms(uint8_t mms, int32_t addr, uint32_t data) {
     }
 }
 
+static int configure_plca_to_mac_phy() {
+    uint32_t regval;
+
+    /* Initial logic (disable collision detection) */
+    regval = read_register(MMS4, CDCTL0);
+    write_register(MMS4, CDCTL0, regval | (1 << 15));
+
+    /* AN_LAN865x-Configuration */
+    set_macphy_register();
+#ifdef SQI
+    set_sqi_register();
+#endif
+
+    write_register(MMS4, PLCA_CTRL0, 0x00008000); /* Enable PLCA */
+    write_register(MMS1, MAC_NCFGR, 0x000000C0);  /* Enable unicast, multicast */
+    write_register(MMS1, MAC_NCR, 0x0000000C);    /* Enable MACPHY TX, RX */
+    write_register(MMS0, OA_STATUS0, 0x00000040); /* Clear RESETC */
+    write_register(MMS0, OA_CONFIG0, 0x00008006); /* SYNC bit SET (last configuration) */
+
+    return 0;
+}
+
 #define BOARD_MAC_SPECIFIC_ID 1 /* 1 to 4 */
 
 static int set_mac_address(uint64_t mac, int id, int filter_mask, int filter_type) {
@@ -747,6 +733,10 @@ int api_write_register_in_mms(int mms, int addr, uint32_t data) {
 
 uint64_t api_get_mac_address() {
     return get_mac_address((int)BOARD_MAC_SPECIFIC_ID);
+}
+
+int api_configure_plca_to_mac_phy() {
+    return configure_plca_to_mac_phy();
 }
 
 int api_config_mac_address(uint64_t mac) {

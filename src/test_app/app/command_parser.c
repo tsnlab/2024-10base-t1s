@@ -43,11 +43,13 @@ menu_command_t main_command_tbl[] = {
      "                       <Data> default value: 0\n"},
     {"config", EXECUTION_ATTR, process_main_config, "   config <element> <options parameters>\n",
      "   Configure elements with options parameters\n"
-     "        config mac -m  <MAC address>\n"
-     "             <MAC address> default value: d8:3a:95:30:23:42\n\n"
+     "   You must configure node, mac, and plca in that order.\n"
      "        config node -i <Node ID> -c <Node Count>\n"
      "                 <Node ID> default value: 1 (0: Coordinator, 1 ~ 0xFE: Follower)\n"
-     "              <Node Count> default value: 8 (2 ~ 0xFE)\n"},
+     "              <Node Count> default value: 8 (2 ~ 0xFE)\n\n"
+     "        config mac -m  <MAC address>\n"
+     "             <MAC address> default value: d8:3a:95:30:23:42\n\n"
+     "        config plca\n\n"},
 #if 0
     {"set", EXECUTION_ATTR, process_main_setCmd,
      "   set register [gen, rx, tx, h2c, c2h, irq, con, h2cs, c2hs, com, msix] <addr(Hex)> <data(Hex)>\n",
@@ -57,7 +59,10 @@ menu_command_t main_command_tbl[] = {
 #endif
     {0, EXECUTION_ATTR, NULL, " ", " "}};
 
-argument_list_t config_argument_tbl[] = {{"mac", fn_config_mac_argument}, {"node", fn_config_node_argument}, {0, NULL}};
+argument_list_t config_argument_tbl[] = {{"node", fn_config_node_argument},
+                                         {"mac", fn_config_mac_argument},
+                                         {"plca", fn_config_plca_argument},
+                                         {0, NULL}};
 
 pthread_mutex_t spi_mutex;
 
@@ -430,6 +435,17 @@ int do_write(int mms, int addr, int data) {
     return api_write_register_in_mms(mms, addr, data);
 }
 
+int do_config_plca() {
+    int spi_ret;
+
+    spi_ret = api_spi_init();
+    if (spi_ret != 0) {
+        printf("spi_init failed; the error code is %d\n", spi_ret);
+        return -1;
+    }
+    return api_configure_plca_to_mac_phy();
+}
+
 int do_config_mac(uint64_t mac) {
     int spi_ret;
 
@@ -604,6 +620,25 @@ int process_main_write(int argc, const char* argv[], menu_command_t* menu_tbl) {
     }
 
     return do_write(mms, addr, (uint32_t)(data & 0xFFFFFFFF));
+}
+
+#define CONFIG_PLCA_OPTION_STRING "hv"
+int fn_config_plca_argument(int argc, const char* argv[]) {
+    int argflag;
+
+    while ((argflag = getopt(argc, (char**)argv, CONFIG_PLCA_OPTION_STRING)) != -1) {
+        switch (argflag) {
+        case 'v':
+            log_level_set(++verbose);
+            if (verbose == 2) {
+                /* add version info to debug output */
+                lprintf(LOG_DEBUG, "%s\n", VERSION_STRING);
+            }
+            break;
+        }
+    }
+
+    return do_config_plca();
 }
 
 #define CONFIG_MAC_OPTION_STRING "m:hv"
