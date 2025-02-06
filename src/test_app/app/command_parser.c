@@ -356,6 +356,31 @@ uint32_t ipv4 = 0xc0a80a0b;
 
 int drv_client_main();
 int drv_server_main();
+
+int do_as_server_main() {
+
+    drv_init_server();
+
+    while (rx_thread_run) {
+        drv_server_main();
+        sleep(1);
+    }
+
+    return drv_spi_cleanup();
+}
+
+int do_as_client_main() {
+
+    drv_init_client();
+
+    while (rx_thread_run) {
+        drv_client_main();
+        sleep(1);
+    }
+
+    return drv_spi_cleanup();
+}
+
 int do_run(int mode, uint32_t ipv4) {
 
     pthread_t tid1, tid2;
@@ -370,9 +395,9 @@ int do_run(int mode, uint32_t ipv4) {
 #if 1
     switch (mode) {
     case RUN_MODE_CLIENT:
-        return drv_client_main();
+        return do_as_client_main();
     case RUN_MODE_SERVER:
-        return drv_server_main();
+        return do_as_server_main();
         break;
     default:
         printf("%s - Unknown mode(%d)\n", __func__, mode);
