@@ -16,6 +16,7 @@ static int add_to_arp_table(unsigned char* ip, unsigned char* mac) {
         if (memcmp(g_arp_table[i].ip, ip, 4) == 0) {
             /* IP already exists, update MAC */
             memcpy(g_arp_table[i].mac, mac, 6);
+            return 0;
         }
     }
     if (g_arp_table_count < MAX_ENTRIES) {
@@ -161,8 +162,8 @@ static int receive_packet(uint8_t* packet, uint16_t* length) {
 }
 
 uint16_t make_arp_packet(uint8_t* packet) {
-    const uint8_t my_mac_addr[ETH_ALEN] = {0xde, 0xad, 0xbe,
-                                           0xef, 0xca, 0xfe}; // TODO: change this to actual MAC address
+    const uint8_t my_mac_addr[ETH_ALEN] = {0x11, 0x11, 0x11,
+                                           0x11, 0x11, 0x11}; // TODO: change this to actual MAC address
     const char* my_ip_addr = "172.16.11.201";                 // TODO: change this to actual IP address
     const char* target_ip_addr = "172.16.11.203";             // TODO: change this to actual IP address
 
@@ -287,7 +288,7 @@ int arp_test(int plca_mode) {
     unsigned char reply_packet[MAX_PAYLOAD_BYTE] = {
         0,
     };
-    unsigned char my_mac[ETH_ALEN] = {0xde, 0xad, 0xbe, 0xef, 0xbe, 0xef};
+    unsigned char my_mac[ETH_ALEN] = {0x33, 0x33, 0x33, 0x33, 0x33, 0x33};
     unsigned char my_ip[4] = {172, 16, 11, 203};
 
     if (plca_mode == PLCA_MODE_COORDINATOR) {

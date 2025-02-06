@@ -310,22 +310,20 @@ bool set_register(int mode) {
     regval |= (1 << 6);
     write_register(MMS0, OA_STATUS0, regval);
 
-#if 0
     regval = read_register(MMS4, CDCTL0);
     write_register(MMS4, CDCTL0, regval | (1 << 15)); // Initial logic (disable collision detection)
-#endif
 
     // PLCA Configuration based on mode
     // TODO: This process is temporary and assumes that there are only two nodes.
     // TODO: Should be changed to get node info. from the command line.
     if (mode == PLCA_MODE_COORDINATOR) {
         write_register(MMS4, PLCA_CTRL1, 0x00000800); // Coordinator(node 0), 2 nodes
-        write_register(MMS1, MAC_SAB1, 0xBEEFBEEF);   // Configure MAC Address (Temporary)
-        write_register(MMS1, MAC_SAT1, 0x0000BEEF);   // Configure MAC Address (Temporary)
+        write_register(MMS1, MAC_SAB1, 0x11111111);   // Configure MAC Address (Temporary)
+        write_register(MMS1, MAC_SAT1, 0x00001111);   // Configure MAC Address (Temporary)
     } else if (mode == PLCA_MODE_FOLLOWER) {
         write_register(MMS4, PLCA_CTRL1, 0x00000801); // Follower, node 1
-        write_register(MMS1, MAC_SAB1, 0xCAFECAFE);   // Configure MAC Address (Temporary)
-        write_register(MMS1, MAC_SAT1, 0x0000CAFE);   // Configure MAC Address (Temporary)
+       write_register(MMS1, MAC_SAB1, 0x22222222);   // Configure MAC Address (Temporary)
+       write_register(MMS1, MAC_SAT1, 0x00002222);   // Configure MAC Address (Temporary)
     } else {
         printf("Invalid mode: %d\n", mode);
         return false;
