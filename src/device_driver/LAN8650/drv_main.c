@@ -128,6 +128,8 @@ int drv_client_main() {
     int opt = 0;
     uint32_t regval;
 
+    plca_mode = PLCA_MODE_FOLLOWER;
+
     arp_ret = arp_test(plca_mode);
     printf("Result of arp_test is %d\n", arp_ret);
 
@@ -157,9 +159,7 @@ int drv_server_main() {
     int opt = 0;
     uint32_t regval;
 
-    printf("Coordinator mode\n");
     plca_mode = PLCA_MODE_COORDINATOR;
-    reg_initstatus = set_register(plca_mode);
 
     arp_ret = arp_test(plca_mode);
     printf("Result of arp_test is %d\n", arp_ret);
