@@ -282,9 +282,11 @@ int arp_test(int plca_mode) {
     unsigned char buffer[MAX_PAYLOAD_BYTE] = {
         0,
     };
-    unsigned char reply_packet[ETH_HLEN + ARP_HLEN];
-    unsigned char my_mac[ETH_ALEN] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
-    unsigned char my_ip[4] = {192, 168, 0, 1};
+    unsigned char reply_packet[MAX_PAYLOAD_BYTE] = {
+        0,
+    };
+    unsigned char my_mac[ETH_ALEN] = {0xde, 0xad, 0xbe, 0xef, 0xbe, 0xef};
+    unsigned char my_ip[4] = {172, 16, 11, 203};
 
     if (plca_mode == PLCA_MODE_COORDINATOR) {
         // Make ARP request buffer
@@ -295,12 +297,14 @@ int arp_test(int plca_mode) {
         if (ret != ARP_E_SUCCESS) {
             printf("Fail to send ARP request, the error code is %d\n", ret);
         } else {
+            printf("Success to send ARP request\n");
             ret = receive_packet(reply_packet, &received_length);
             if (ret != ARP_E_SUCCESS) {
                 printf("Fail to receive ARP reply, the error code is %d\n", ret);
+            } else {
+                printf("Success to receive ARP reply\n");
+                ret = check_arp_packet(reply_packet);
             }
-
-            ret = check_arp_packet(reply_packet);
         }
     } else if (plca_mode == PLCA_MODE_FOLLOWER) {
         // Receive ARP Reply
@@ -308,6 +312,7 @@ int arp_test(int plca_mode) {
         if (ret != ARP_E_SUCCESS) {
             printf("Fail to recieve ARP request, the error code is %d\n", ret);
         } else {
+            printf("Success to recieve ARP request");
             ret = check_arp_packet(buffer);
 
             if (ret == ARP_E_SUCCESS) {
@@ -316,6 +321,8 @@ int arp_test(int plca_mode) {
                 ret = send_packet(reply_packet, length);
                 if (ret != ARP_E_SUCCESS) {
                     printf("Fail to send ARP reply, the error code is %d\n", ret);
+                } else {
+                    printf("Success to send ARP reply\n");
                 }
             }
         }
