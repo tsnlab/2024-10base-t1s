@@ -19,9 +19,42 @@ static int spi_init(void) {
     spihandle = spiOpen(SPI_CHANNEL, SPI_COMM_SPEED, SPI_FLAGS);
     if (spihandle >= 0) {
         return SPI_E_SUCCESS;
-    } else {
-        return -SPI_E_INIT_ERROR;
     }
+
+    return -SPI_E_INIT_ERROR;
+}
+
+int is_pi_gpio_initialised() {
+
+    if (gpioInitialise() < 0) {
+        return -SPI_E_ISR_INIT_ERROR;
+    }
+
+    return SPI_E_SUCCESS;
+}
+
+int api_pi_gpio_config() {
+
+    /* Settup sample rate to be 1 MHz. */
+    gpioCfgClock(1, 1, 1);
+
+    return is_pi_gpio_initialised();
+}
+
+int api_is_pi_gpio_initialised() {
+
+    return is_pi_gpio_initialised();
+}
+
+int api_pi_spi_open() {
+    int spi_handle;
+
+    spi_handle = spiOpen(SPI_CHANNEL, SPI_COMM_SPEED, SPI_FLAGS);
+    if (spi_handle >= 0) {
+        return spi_handle;
+    }
+
+    return -SPI_E_INIT_ERROR;
 }
 
 int api_spi_init(void) {
@@ -34,9 +67,9 @@ int spi_transfer(uint8_t* rxbuffer, uint8_t* txbuffer, uint16_t length) {
     numtransfered = spiXfer(spihandle, (char*)txbuffer, (char*)rxbuffer, length);
     if (numtransfered > 0) {
         return SPI_E_SUCCESS;
-    } else {
-        return -SPI_E_UNKNOWN_ERROR;
     }
+
+    return -SPI_E_UNKNOWN_ERROR;
 }
 
 int spi_cleanup(void) {
@@ -49,6 +82,21 @@ int spi_cleanup(void) {
 
     gpioTerminate();
     return ret;
+}
+
+int api_pi_spi_close(int spi_handle) {
+
+    if (spi_handle >= 0) {
+        spiClose(spi_handle);
+        return SPI_E_SUCCESS;
+    }
+
+    return -SPI_E_INIT_ERROR;
+}
+
+void api_pi_gpio_terminate() {
+
+    gpioTerminate();
 }
 
 int api_spi_cleanup(void) {
