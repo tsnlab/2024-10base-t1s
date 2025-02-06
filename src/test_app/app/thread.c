@@ -80,10 +80,11 @@ void initialize_statistics(stats_t* p_stats) {
     memset(p_stats, 0, sizeof(stats_t));
 }
 
-static void receiver_as_client() {
+static void receiver_as_server() {
 
     BUF_POINTER buffer;
-    int bytes_rcv;
+    struct spi_rx_buffer* frame;
+    uint16_t bytes_rcv;
 
     printf(">>> %s\n", __func__);
 
@@ -95,10 +96,9 @@ static void receiver_as_client() {
             continue;
         }
 
+        frame = buffer;
         bytes_rcv = 0;
-#if 0
-        spi_receive_frame
-        if (xdma_api_read_to_buffer_with_fd(devname, fd, buffer, size, &bytes_rcv)) {
+        if (api_spi_receive_frame((uint8_t*)frame->data, &bytes_rcv)) {
             if (buffer_pool_free(buffer)) {
                 // debug_printf("FAILURE: Could not buffer_pool_free.\n");
             }
@@ -114,39 +114,131 @@ static void receiver_as_client() {
         }
         rx_stats.rxPackets++;
         rx_stats.rxBytes += bytes_rcv;
+        frame->metadata.frame_length = bytes_rcv;
 
         xbuffer_enqueue((QueueElement)buffer);
-#endif
     }
     printf("<<< %s\n", __func__);
 }
 
-void receiver_as_server() {
+#if 1
+#include <stdint.h>
+#include <stdio.h>
+
+#include <arpa/inet.h>
+
+#if 0
+// Ethernet 헤더 구조체
+struct ethernet_header {
+    uint8_t dest_mac[6];
+    uint8_t src_mac[6];
+    uint16_t ether_type;
+};
+#endif
+
+// ARP 패킷 구조체
+struct arp_packet {
+    uint16_t hardware_type;
+    uint16_t protocol_type;
+    uint8_t hardware_size;
+    uint8_t protocol_size;
+    uint16_t opcode;
+    uint8_t sender_mac[6];
+    uint32_t sender_ip;
+    uint8_t target_mac[6];
+    uint32_t target_ip;
+};
+
+void print_mac(uint8_t* mac) {
+    printf("%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+void print_ip(uint32_t ip) {
+    uint8_t* ip_bytes = (uint8_t*)&ip;
+    printf("%d.%d.%d.%d", ip_bytes[0], ip_bytes[1], ip_bytes[2], ip_bytes[3]);
+}
+
+void process_packet(uint8_t* packet, int packet_len) {
+    struct ethernet_header* eth_header = (struct ethernet_header*)packet;
+
+    // 이더넷 타입이 ARP인지 확인 (0x0806)
+    if (ntohs(eth_header->type) != 0x0806) {
+        return;
+    }
+
+    struct arp_packet* arp = (struct arp_packet*)(packet + sizeof(struct ethernet_header));
+
+    // ARP 응답 패킷인지 확인 (opcode == 2)
+    if (ntohs(arp->opcode) != 2) {
+        return;
+    }
+
+    printf("ARP Response Packet Detected:\n");
+    printf("Hardware Type: 0x%04x\n", ntohs(arp->hardware_type));
+    printf("Protocol Type: 0x%04x\n", ntohs(arp->protocol_type));
+    printf("Hardware Size: %d\n", arp->hardware_size);
+    printf("Protocol Size: %d\n", arp->protocol_size);
+    printf("Opcode: %d\n", ntohs(arp->opcode));
+
+    printf("Sender MAC: ");
+    print_mac(arp->sender_mac);
+    printf("\n");
+
+    printf("Sender IP: ");
+    print_ip(ntohl(arp->sender_ip));
+    printf("\n");
+
+    printf("Target MAC: ");
+    print_mac(arp->target_mac);
+    printf("\n");
+
+    printf("Target IP: ");
+    print_ip(ntohl(arp->target_ip));
+    printf("\n");
+}
+
+#endif
+
+static void receiver_as_client() {
+
+    BUF_POINTER buffer;
+    struct spi_rx_buffer* frame;
+    uint16_t bytes_rcv;
 
     printf(">>> %s\n", __func__);
 
     while (rx_thread_run) {
-
-#if 0
-        if (xdma_api_read_to_buffer_with_fd(devname, fd, buffer, size, &bytes_rcv)) {
+        buffer = buffer_pool_alloc();
+        if (buffer == NULL) {
+            // printf("FAILURE: Could not buffer_pool_alloc.\n");
+            rx_stats.rxNoBuffer++;
             continue;
         }
 
-        if (size != bytes_rcv) {
-            // debug_printf("FAILURE: size(%ld) and bytes_rcv(%ld) are different.\n", size, bytes_rcv);
+        frame = buffer;
+        bytes_rcv = 0;
+        if (api_spi_receive_frame((uint8_t*)frame->data, &bytes_rcv)) {
+            if (buffer_pool_free(buffer)) {
+                // debug_printf("FAILURE: Could not buffer_pool_free.\n");
+            }
             rx_stats.rxErrors++;
             continue;
         }
-
-        if (memcmp((const void*)data, (const void*)buffer, size)) {
-            // debug_printf("FAILURE: data(%p) and buffer(%p) are different.\n", data, buffer);
+        if (bytes_rcv > MAX_BUFFER_LENGTH) {
+            if (buffer_pool_free(buffer)) {
+                // debug_printf("FAILURE: Could not buffer_pool_free.\n");
+            }
             rx_stats.rxErrors++;
             continue;
         }
-
         rx_stats.rxPackets++;
         rx_stats.rxBytes += bytes_rcv;
-#endif
+        frame->metadata.frame_length = bytes_rcv;
+
+        process_packet((uint8_t*)frame->data, (int)bytes_rcv);
+        if (buffer_pool_free(buffer)) {
+            // debug_printf("FAILURE: Could not buffer_pool_free.\n");
+        }
     }
     printf("<<< %s\n", __func__);
 }
