@@ -128,7 +128,7 @@ static int spi_receive_frame(uint8_t* rxbuffer) {
     // receive buffer
     result = spi_transfer(rxbuffer, txbuffer, sizeof(txbuffer));
 
-    debug_spi_transfer_result(txbuffer, "txbuffer");
+//    debug_spi_transfer_result(txbuffer, "txbuffer");
 
     return result;
 }
@@ -163,6 +163,10 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
 
     result = spi_receive_frame(rxbuffer);
 
+    if(result != SPI_E_SUCCESS) {
+        return -1;
+    }
+
     // print buffer for debugging
     debug_spi_transfer_result(rxbuffer, "rxbuffer");
 
@@ -190,9 +194,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
                 packet[9], packet[10], packet[11]);
         printf("EtherType: %02x%02x\n",
                 packet[12], packet[13]); // clang-format on
-
-        return 0;
     }
 
-    return -2;
+    return 0;
 }

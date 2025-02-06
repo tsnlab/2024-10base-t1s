@@ -74,3 +74,95 @@ cleanup:
 
     return spi_ret;
 }
+
+int drv_client_main(int argc, char* argv[]) {
+    int arp_ret = ARP_E_UNKNOWN_ERROR;
+    int spi_ret = SPI_E_UNKNOWN_ERROR;
+    int plca_mode = PLCA_MODE_INVALID;
+    bool reg_initstatus = false;
+    int opt = 0;
+    uint32_t regval;
+
+    spi_ret = api_spi_init();
+    if (spi_ret != SPI_E_SUCCESS) {
+        printf_debug("spi_init failed; the error code is %d\n", spi_ret);
+    }
+
+    printf("Follower mode\n");
+    plca_mode = PLCA_MODE_FOLLOWER;
+    reg_initstatus = set_register(plca_mode);
+
+    arp_ret = arp_test(plca_mode);
+    printf("Result of arp_test is %d\n", arp_ret);
+
+    regval = read_register(MMS1, MAC_NCFGR);
+    printf_debug("MAC_NCFGR value after ARP test is %x\n", regval);
+    regval = read_register(MMS1, STATS2);
+    printf_debug("STATS2 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, MIDVER);
+    printf_debug("MIDVER value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_CTRL0);
+    printf_debug("PLCA_CTRL0 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_CTRL1);
+    printf_debug("PLCA_CTRL1 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_STS);
+    printf_debug("PLCA_STS value after ARP test is %x\n", regval);
+    regval = read_register(MMS0, OA_CONFIG0);
+    printf_debug("OA_CONFIG0 value after ARP test is %x\n", regval);
+
+cleanup:
+    spi_ret = spi_cleanup();
+    if (spi_ret != SPI_E_SUCCESS) {
+        printf_debug("spi_cleanup failed; the error code is %d\n", spi_ret);
+    }
+
+    return spi_ret;
+}
+
+int drv_server_main() {
+    int arp_ret = ARP_E_UNKNOWN_ERROR;
+    int spi_ret = SPI_E_UNKNOWN_ERROR;
+    int plca_mode = PLCA_MODE_INVALID;
+    bool reg_initstatus = false;
+    int opt = 0;
+    uint32_t regval;
+
+    spi_ret = api_spi_init();
+    if (spi_ret != SPI_E_SUCCESS) {
+        printf_debug("spi_init failed; the error code is %d\n", spi_ret);
+    }
+
+    printf("Coordinator mode\n");
+    plca_mode = PLCA_MODE_COORDINATOR;
+    reg_initstatus = set_register(plca_mode);
+
+    printf("Coordinator mode\n");
+    plca_mode = PLCA_MODE_COORDINATOR;
+    reg_initstatus = set_register(plca_mode);
+
+    arp_ret = arp_test(plca_mode);
+    printf("Result of arp_test is %d\n", arp_ret);
+
+    regval = read_register(MMS1, MAC_NCFGR);
+    printf_debug("MAC_NCFGR value after ARP test is %x\n", regval);
+    regval = read_register(MMS1, STATS2);
+    printf_debug("STATS2 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, MIDVER);
+    printf_debug("MIDVER value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_CTRL0);
+    printf_debug("PLCA_CTRL0 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_CTRL1);
+    printf_debug("PLCA_CTRL1 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_STS);
+    printf_debug("PLCA_STS value after ARP test is %x\n", regval);
+    regval = read_register(MMS0, OA_CONFIG0);
+    printf_debug("OA_CONFIG0 value after ARP test is %x\n", regval);
+
+cleanup:
+    spi_ret = spi_cleanup();
+    if (spi_ret != SPI_E_SUCCESS) {
+        printf_debug("spi_cleanup failed; the error code is %d\n", spi_ret);
+    }
+
+    return spi_ret;
+}
