@@ -75,7 +75,7 @@ cleanup:
     return spi_ret;
 }
 
-int drv_client_main(int argc, char* argv[]) {
+int drv_client_main() {
     int arp_ret = ARP_E_UNKNOWN_ERROR;
     int spi_ret = SPI_E_UNKNOWN_ERROR;
     int plca_mode = PLCA_MODE_INVALID;

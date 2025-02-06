@@ -354,6 +354,8 @@ void register_signal_handler() {
 
 uint32_t ipv4 = 0xc0a80a0b;
 
+int drv_client_main();
+int drv_server_main();
 int do_run(int mode, uint32_t ipv4) {
 
     pthread_t tid1, tid2;
@@ -364,6 +366,21 @@ int do_run(int mode, uint32_t ipv4) {
 
     printf(">>> %s(mode: %s, ipv4: %d.%d.%d.%d)\n", __func__, mode ? "SERVER" : "CLIENT", (ipv4 >> 24) & 0xFF,
            (ipv4 >> 16) & 0xFF, (ipv4 >> 8) & 0xFF, ipv4 & 0xFF);
+
+#if 1
+    switch (mode) {
+    case RUN_MODE_CLIENT:
+        return drv_client_main();
+    case RUN_MODE_SERVER:
+        return drv_server_main();
+        break;
+    default:
+        printf("%s - Unknown mode(%d)\n", __func__, mode);
+        break;
+    }
+
+    return 0;
+#endif
 
     ret = api_spi_init();
     if (ret) {
