@@ -186,6 +186,64 @@ uint16_t make_arp_packet(uint8_t* packet) {
     return PACKET_SIZE_ARP;
 }
 
+#define ETH_ALEN 6
+#define ETH_HLEN 14
+#define ARP_HLEN 28
+
+struct ethhdr_l {
+    unsigned char h_dest[ETH_ALEN];
+    unsigned char h_source[ETH_ALEN];
+    unsigned short h_proto;
+};
+
+struct arphdr_l {
+    unsigned short ar_hrd;
+    unsigned short ar_pro;
+    unsigned char ar_hln;
+    unsigned char ar_pln;
+    unsigned short ar_op;
+    unsigned char ar_sha[ETH_ALEN];
+    unsigned char ar_sip[4];
+    unsigned char ar_tha[ETH_ALEN];
+    unsigned char ar_tip[4];
+};
+
+void create_arp_reply(unsigned char* request_packet, unsigned char* reply_packet, unsigned char* my_mac,
+                      unsigned char* my_ip) {
+    struct ethhdr_l* eth_req = (struct ethhdr_l*)request_packet;
+    struct arphdr_l* arp_req = (struct arphdr_l*)(request_packet + ETH_HLEN);
+
+    struct ethhdr_l* eth_reply = (struct ethhdr_l*)reply_packet;
+    struct arphdr_l* arp_reply = (struct arphdr_l*)(reply_packet + ETH_HLEN);
+
+    // 이더넷 헤더 설정
+    memcpy(eth_reply->h_dest, eth_req->h_source, ETH_ALEN);
+    memcpy(eth_reply->h_source, my_mac, ETH_ALEN);
+    eth_reply->h_proto = htons(0x0806); // ARP 프로토콜
+
+    // ARP 헤더 설정
+    arp_reply->ar_hrd = htons(1);      // 이더넷
+    arp_reply->ar_pro = htons(0x0800); // IPv4
+    arp_reply->ar_hln = 6;             // MAC 주소 길이
+    arp_reply->ar_pln = 4;             // IP 주소 길이
+    arp_reply->ar_op = htons(2);       // ARP 응답
+
+    memcpy(arp_reply->ar_sha, my_mac, ETH_ALEN);
+    memcpy(arp_reply->ar_sip, my_ip, 4);
+    memcpy(arp_reply->ar_tha, arp_req->ar_sha, ETH_ALEN);
+    memcpy(arp_reply->ar_tip, arp_req->ar_sip, 4);
+}
+
+int reply_to_request(uint8_t* request_packet) {
+    unsigned char reply_packet[ETH_HLEN + ARP_HLEN];
+    unsigned char my_mac[ETH_ALEN] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+    unsigned char my_ip[4] = {192, 168, 0, 1};
+
+    create_arp_reply(request_packet, reply_packet, my_mac, my_ip);
+
+    return 0;
+}
+
 static int check_arp_packet(uint8_t* packet) {
     struct ethhdr* eth = (struct ethhdr*)packet;
     struct arphdr_ipv4* arp = (struct arphdr_ipv4*)(eth + 1);
@@ -224,6 +282,9 @@ int arp_test(int plca_mode) {
     unsigned char buffer[MAX_PAYLOAD_BYTE] = {
         0,
     };
+    unsigned char reply_packet[ETH_HLEN + ARP_HLEN];
+    unsigned char my_mac[ETH_ALEN] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+    unsigned char my_ip[4] = {192, 168, 0, 1};
 
     if (plca_mode == PLCA_MODE_COORDINATOR) {
         // Make ARP request buffer
@@ -232,16 +293,32 @@ int arp_test(int plca_mode) {
         // Send ARP request
         ret = send_packet(buffer, length);
         if (ret != ARP_E_SUCCESS) {
-            printf("ARP request failed, the error code is %d\n", ret);
+            printf("Fail to send ARP request, the error code is %d\n", ret);
+        } else {
+            ret = receive_packet(reply_packet, &received_length);
+            if (ret != ARP_E_SUCCESS) {
+                printf("Fail to receive ARP reply, the error code is %d\n", ret);
+            }
+
+            ret = check_arp_packet(reply_packet);
         }
     } else if (plca_mode == PLCA_MODE_FOLLOWER) {
         // Receive ARP Reply
         ret = receive_packet(buffer, &received_length);
         if (ret != ARP_E_SUCCESS) {
-            printf("ARP reply failed, the error code is %d\n", ret);
-        }
+            printf("Fail to recieve ARP request, the error code is %d\n", ret);
+        } else {
+            ret = check_arp_packet(buffer);
 
-        ret = check_arp_packet(buffer);
+            if (ret == ARP_E_SUCCESS) {
+                create_arp_reply(buffer, reply_packet, my_mac, my_ip);
+                length = PACKET_SIZE_ARP;
+                ret = send_packet(reply_packet, length);
+                if (ret != ARP_E_SUCCESS) {
+                    printf("Fail to send ARP reply, the error code is %d\n", ret);
+                }
+            }
+        }
 
     } else {
         printf("Invalid PLCA mode\n");
