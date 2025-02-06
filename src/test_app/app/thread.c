@@ -11,6 +11,8 @@
 #include "xbase-t1s.h"
 #include "xbase_common.h"
 
+extern pthread_mutex_t spi_mutex;
+
 int rx_thread_run = 1;
 int tx_thread_run = 1;
 
@@ -98,13 +100,16 @@ static void receiver_as_server() {
 
         frame = buffer;
         bytes_rcv = 0;
+        pthread_mutex_lock(&spi_mutex);
         if (api_spi_receive_frame((uint8_t*)frame->data, &bytes_rcv)) {
+            pthread_mutex_unlock(&spi_mutex);
             if (buffer_pool_free(buffer)) {
                 // debug_printf("FAILURE: Could not buffer_pool_free.\n");
             }
             rx_stats.rxErrors++;
             continue;
         }
+        pthread_mutex_unlock(&spi_mutex);
         if (bytes_rcv > MAX_BUFFER_LENGTH) {
             if (buffer_pool_free(buffer)) {
                 // debug_printf("FAILURE: Could not buffer_pool_free.\n");
@@ -217,13 +222,16 @@ static void receiver_as_client() {
 
         frame = buffer;
         bytes_rcv = 0;
+        pthread_mutex_lock(&spi_mutex);
         if (api_spi_receive_frame((uint8_t*)frame->data, &bytes_rcv)) {
+            pthread_mutex_unlock(&spi_mutex);
             if (buffer_pool_free(buffer)) {
                 // debug_printf("FAILURE: Could not buffer_pool_free.\n");
             }
             rx_stats.rxErrors++;
             continue;
         }
+        pthread_mutex_unlock(&spi_mutex);
         if (bytes_rcv > MAX_BUFFER_LENGTH) {
             if (buffer_pool_free(buffer)) {
                 // debug_printf("FAILURE: Could not buffer_pool_free.\n");
@@ -376,7 +384,9 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
     }
 
     tx_metadata->frame_length = tx_len;
+    pthread_mutex_lock(&spi_mutex);
     api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
+    pthread_mutex_unlock(&spi_mutex);
     return 0;
 }
 
@@ -472,8 +482,9 @@ static void sender_as_client() {
     tx.metadata.frame_length = 64;
 
     while (tx_thread_run) {
+        pthread_mutex_lock(&spi_mutex);
         api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
-
+        pthread_mutex_unlock(&spi_mutex);
         sleep(1);
     }
 }
