@@ -127,9 +127,13 @@ int drv_client_main() {
     bool reg_initstatus = false;
     int opt = 0;
     uint32_t regval;
+    static uint32_t try = 0;
 
     plca_mode = PLCA_MODE_FOLLOWER;
 
+    printf("\n");
+    try++;
+    printf("[TRY: %6d]\n", try);
     arp_ret = arp_test(plca_mode);
     printf("Result of arp_test is %d\n", arp_ret);
 
@@ -158,9 +162,13 @@ int drv_server_main() {
     bool reg_initstatus = false;
     int opt = 0;
     uint32_t regval;
+    static uint32_t try = 0;
 
     plca_mode = PLCA_MODE_COORDINATOR;
 
+    printf("\n");
+    try++;
+    printf("[TRY: %6d]\n", try);
     arp_ret = arp_test(plca_mode);
     printf("Result of arp_test is %d\n", arp_ret);
 

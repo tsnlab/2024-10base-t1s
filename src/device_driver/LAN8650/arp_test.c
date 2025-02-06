@@ -140,6 +140,7 @@ static int receive_packet(uint8_t* packet, uint16_t* length) {
         memcpy(packet, rxbuffer, actual_length);
         *length = actual_length;
 
+#if 0
         // Ethernet packet check
         printf("Destination MAC: ");
         printf("%02x:%02x:%02x:%02x:%02x:%02x\n", // clang-format off
@@ -151,6 +152,7 @@ static int receive_packet(uint8_t* packet, uint16_t* length) {
                 packet[9], packet[10], packet[11]);
         printf("EtherType: %02x%02x\n",
                 packet[12], packet[13]); // clang-format on
+#endif
 
         return ARP_E_SUCCESS;
     }

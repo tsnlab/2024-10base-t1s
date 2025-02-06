@@ -302,14 +302,24 @@ static void set_sqi_register() {
 
 bool set_register(int mode) {
     uint32_t regval;
+
+    /* Read OA_STATUS0 */
+    regval = read_register(MMS0, OA_STATUS0);
+
+    /* Write 1 to RESETC bit of OA_STATUS0 */
+    regval |= (1 << 6);
+    write_register(MMS0, OA_STATUS0, regval);
+
+#if 0
     regval = read_register(MMS4, CDCTL0);
     write_register(MMS4, CDCTL0, regval | (1 << 15)); // Initial logic (disable collision detection)
+#endif
 
     // PLCA Configuration based on mode
     // TODO: This process is temporary and assumes that there are only two nodes.
     // TODO: Should be changed to get node info. from the command line.
     if (mode == PLCA_MODE_COORDINATOR) {
-        write_register(MMS4, PLCA_CTRL1, 0x00000200); // Coordinator(node 0), 2 nodes
+        write_register(MMS4, PLCA_CTRL1, 0x00000800); // Coordinator(node 0), 2 nodes
         write_register(MMS1, MAC_SAB1, 0xBEEFBEEF);   // Configure MAC Address (Temporary)
         write_register(MMS1, MAC_SAT1, 0x0000BEEF);   // Configure MAC Address (Temporary)
     } else if (mode == PLCA_MODE_FOLLOWER) {
@@ -328,8 +338,24 @@ bool set_register(int mode) {
     write_register(MMS4, PLCA_CTRL0, 0x00008000); // Enable PLCA
     write_register(MMS1, MAC_NCFGR, 0x000000C0);  // Enable unicast, multicast
     write_register(MMS1, MAC_NCR, 0x0000000C);    // Enable MACPHY TX, RX
+#if 0
     write_register(MMS0, OA_STATUS0, 0x00000040); // Clear RESETC
     write_register(MMS0, OA_CONFIG0, 0x00008006); // SYNC bit SET (last configuration)
+#endif
+
+    /* Read OA_CONFIG0 */
+    regval = read_register(MMS0, OA_CONFIG0);
+
+    /* Set SYNC bit of OA_CONFIG0 */
+    regval |= (1 << 15);
+    write_register(MMS0, OA_CONFIG0, regval);
+
+    /* Read OA_STATUS0 */
+    regval = read_register(MMS0, OA_STATUS0);
+
+    /* Clear RESETC bit of OA_STATUS0 */
+    regval &= ~(1UL << 6);
+    write_register(MMS0, OA_STATUS0, regval);
 
     return true;
 }
