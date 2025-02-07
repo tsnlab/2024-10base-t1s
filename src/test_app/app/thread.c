@@ -4,8 +4,6 @@
 #include <stdint.h>
 
 #include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
 
 #include "arp.h"
 #include "ethernet.h"
@@ -409,9 +407,9 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
     return 0;
 }
 
+#if 0
 #define ETH_ALEN 6
 
-#if 1
 struct ethhdr {
     unsigned char h_dest[ETH_ALEN];
     unsigned char h_source[ETH_ALEN];
@@ -431,6 +429,39 @@ struct arphdr {
 };
 #endif
 
+#if 1
+void create_arp_request_frame(unsigned char* frame, const char* src_ip, const char* dst_ip) {
+    struct ethernet_header* eth = (struct ethernet_header*)frame;
+    struct arp_header* arp = (struct arp_header*)(frame + ETH_HLEN);
+
+    /* 이더넷 헤더 설정 */
+    memset(eth->dmac, 0xFF, ETH_ALEN); /* 브로드캐스트 주소 */
+    for (int i = 0; i < ETH_ALEN; i++) {
+        eth->smac[i] = my_mac[i];
+    }
+    eth->type = htons(0x0806); /* ARP 프로토콜 */
+
+    /* ARP 헤더 설정 */
+    arp->hw_type = 1;      /* 이더넷 */
+    arp->proto_type = 0x0800; /* IPv4 */
+    arp->hw_size = 6;             /* MAC 주소 길이 */
+    arp->proto_size = 4;             /* IP 주소 길이 */
+    arp->opcode = 1;       /* ARP 요청 */
+
+    /* 송신자 MAC 및 IP 주소 설정 */
+    memcpy(arp->sender_hw, eth->smac, ETH_ALEN);
+    inet_pton(AF_INET, src_ip, arp->sender_proto);
+
+    /* 목적지 MAC 주소는 알 수 없으므로 0으로 설정 */
+    memset(arp->target_hw, 0, ETH_ALEN);
+
+    /* 목적지 IP 주소 설정 */
+    inet_pton(AF_INET, dst_ip, arp->target_proto);
+
+    /* 패딩 추가 (최소 프레임 크기 64바이트를 맞추기 위해) */
+    memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
+}
+#else
 void create_arp_request_frame(unsigned char* frame, const char* src_ip, const char* dst_ip) {
     struct ethhdr* eth = (struct ethhdr*)frame;
     struct arphdr* arp = (struct arphdr*)(frame + ETH_HLEN);
@@ -462,6 +493,7 @@ void create_arp_request_frame(unsigned char* frame, const char* src_ip, const ch
     /* 패딩 추가 (최소 프레임 크기 64바이트를 맞추기 위해) */
     memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
 }
+#endif
 
 #if 0
 void packet_handler(const u_char *packet) {

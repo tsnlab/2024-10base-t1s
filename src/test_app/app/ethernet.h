@@ -3,6 +3,8 @@
 #define ETH_HLEN (sizeof(struct ethernet_header))
 #define ETH_PAYLOAD(ethernet_p) (void*)((uint8_t*)ethernet_p + ETH_HLEN)
 
+#define ETH_ALEN 6
+
 enum ethernet_type {
     ETH_TYPE_ARP = 0x0806,
     ETH_TYPE_IPv4 = 0x0800,
