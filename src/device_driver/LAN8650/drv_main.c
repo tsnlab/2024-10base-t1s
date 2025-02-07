@@ -83,6 +83,7 @@ int drv_init_client() {
     spi_ret = api_spi_init();
     if (spi_ret != SPI_E_SUCCESS) {
         printf_debug("spi_init failed; the error code is %d\n", spi_ret);
+        return -1;
     }
 
     printf("Follower mode\n");
@@ -100,6 +101,7 @@ int drv_init_server() {
     spi_ret = api_spi_init();
     if (spi_ret != SPI_E_SUCCESS) {
         printf_debug("spi_init failed; the error code is %d\n", spi_ret);
+        return -1;
     }
 
     printf("Coordinator mode\n");

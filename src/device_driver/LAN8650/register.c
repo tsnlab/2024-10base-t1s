@@ -316,18 +316,20 @@ bool set_register(int mode) {
     // PLCA Configuration based on mode
     // TODO: This process is temporary and assumes that there are only two nodes.
     // TODO: Should be changed to get node info. from the command line.
+#if 0
     if (mode == PLCA_MODE_COORDINATOR) {
-        write_register(MMS4, PLCA_CTRL1, 0x00000800); // Coordinator(node 0), 2 nodes
-        write_register(MMS1, MAC_SAB1, 0x11111111);   // Configure MAC Address (Temporary)
-        write_register(MMS1, MAC_SAT1, 0x00001111);   // Configure MAC Address (Temporary)
+//        write_register(MMS4, PLCA_CTRL1, 0x00000800); // Coordinator(node 0), 2 nodes
+//        write_register(MMS1, MAC_SAB1, 0x11111111);   // Configure MAC Address (Temporary)
+//        write_register(MMS1, MAC_SAT1, 0x00001111);   // Configure MAC Address (Temporary)
     } else if (mode == PLCA_MODE_FOLLOWER) {
-        write_register(MMS4, PLCA_CTRL1, 0x00000801); // Follower, node 1
-       write_register(MMS1, MAC_SAB1, 0x22222222);   // Configure MAC Address (Temporary)
-       write_register(MMS1, MAC_SAT1, 0x00002222);   // Configure MAC Address (Temporary)
+//        write_register(MMS4, PLCA_CTRL1, 0x00000801); // Follower, node 1
+//        write_register(MMS1, MAC_SAB1, 0x22222222);   // Configure MAC Address (Temporary)
+//        write_register(MMS1, MAC_SAT1, 0x00002222);   // Configure MAC Address (Temporary)
     } else {
         printf("Invalid mode: %d\n", mode);
         return false;
     }
+#endif
     set_macphy_register(); // AN_LAN865x-Configuration
 #ifdef SQI
     set_sqi_register();

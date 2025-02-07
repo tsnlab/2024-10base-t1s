@@ -17,12 +17,14 @@
 #include "error_define.h"
 #include "thread.h"
 #include "xbase-t1s.h"
+#include "xbase_common.h"
 
 menu_command_t main_command_tbl[] = {
-    {"run", EXECUTION_ATTR, process_main_run, "   run -r <role> -i <ip address>",
+    {"run", EXECUTION_ATTR, process_main_run, "   run -r <role> -i <ip address> -t <target ip address>",
      "   Run xbase-t1s application as role\n"
-     "            <role> default value: 0 (0: client, 1: server)\n"
-     "      <ip address> default value: 192.168.10.11\n"},
+     "                   <role> default value: 0 (0: client, 1: server)\n"
+     "             <ip address> default value: 192.168.10.11\n"
+     "      <target ip address> default value: 192.168.10.21\n"},
     {"read", EXECUTION_ATTR, process_main_read, "   read -m <Memory Map Selector>\n",
      "   Read all register values in Memory Map Selector\n"
      "        <Memory Map Selector> default value: 0 ( 0: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
@@ -71,6 +73,9 @@ int watch_stop = 1;
 extern int rx_thread_run;
 extern int tx_thread_run;
 extern int verbose;
+extern unsigned char my_mac[HW_ADDR_LEN];
+extern unsigned char my_ipv4[IP_ADDR_LEN];
+extern unsigned char dst_ipv4[IP_ADDR_LEN];
 
 #if 0
 struct reginfo reg_open_alliance[] = {{"Identification Register", OA_ID},
@@ -381,42 +386,70 @@ int do_as_client_main() {
     return drv_spi_cleanup();
 }
 
-int do_run(int mode, uint32_t ipv4) {
-
-    pthread_t tid1, tid2;
-    rx_thread_arg_t rx_arg;
-    tx_thread_arg_t tx_arg;
+int fill_my_mac_address() {
+    int i;
     uint64_t mac;
-    int ret;
-
-    printf(">>> %s(mode: %s, ipv4: %d.%d.%d.%d)\n", __func__, mode ? "SERVER" : "CLIENT", (ipv4 >> 24) & 0xFF,
-           (ipv4 >> 16) & 0xFF, (ipv4 >> 8) & 0xFF, ipv4 & 0xFF);
-
-#if 1
-    switch (mode) {
-    case RUN_MODE_CLIENT:
-        return do_as_client_main();
-    case RUN_MODE_SERVER:
-        return do_as_server_main();
-        break;
-    default:
-        printf("%s - Unknown mode(%d)\n", __func__, mode);
-        break;
-    }
-
-    return 0;
-#endif
-
-    ret = api_spi_init();
-    if (ret) {
-        printf("[%s]Fail to initialize SPI(error code: %d)\n", __func__, ret);
-        return ret;
-    }
 
     mac = api_get_mac_address();
     if (mac == 0) {
         printf("[%s]MAC address(%ld) has not been set yet. Check your settings first !\n", __func__, mac);
-        goto out_spi;
+        return -1;
+    }
+
+    for (i = 0; i < HW_ADDR_LEN; i++) {
+        my_mac[HW_ADDR_LEN - 1 - i] = (unsigned char)((mac >> (i * 8)) & 0xff);
+    }
+
+    printf("MY MAC: \n    ");
+    for (i = 0; i < HW_ADDR_LEN-1; i++) {
+        printf("%02x:", my_mac[i]);
+    }
+    printf("%02x\n", my_mac[i]);
+
+    return 0;
+}
+
+void fill_ipv4_address(unsigned char * b_ipv4,  uint32_t a_ipv4, char *name) {
+    int i;
+
+    for (i = 0; i < IP_ADDR_LEN; i++) {
+        b_ipv4[IP_ADDR_LEN - 1 - i] = (unsigned char)((a_ipv4 >> (i * 8)) & 0xff);
+    }
+    printf("%s: \n    ", name);
+    for (i = 0; i < IP_ADDR_LEN; i++) {
+        printf("%d.", b_ipv4[i]);
+    }
+    printf("%d\n", b_ipv4[i]);
+}
+
+int init_driver(int mode) {
+
+    switch (mode) {
+    case RUN_MODE_CLIENT:
+        drv_init_client();
+        break;
+    case RUN_MODE_SERVER:
+        drv_init_server();
+        break;
+    default:
+        printf("%s - Unknown mode(%d)\n", __func__, mode);
+        return -1;
+    }
+    return 0;
+}
+
+
+int do_run(int mode, uint32_t ipv4, uint32_t dst_ipv4) {
+
+    pthread_t tid1, tid2;
+    rx_thread_arg_t rx_arg;
+    tx_thread_arg_t tx_arg;
+    int ret;
+
+    printf(">>> %s(mode: %s)\n", __func__, mode ? "SERVER" : "CLIENT");
+
+    if(init_driver(mode)) {
+        return -1;
     }
 
     if (initialize_buffer_allocation()) {
@@ -424,21 +457,24 @@ int do_run(int mode, uint32_t ipv4) {
         goto out_spi;
     }
 
+    if(fill_my_mac_address()) {
+        goto out_buffer;
+    }
+
+    fill_ipv4_address((unsigned char *)my_ipv4, ipv4, "My IPv4");
+    fill_ipv4_address((unsigned char *)dst_ipv4, dst_ipv4, "Dst. IPv4");
+
     pthread_mutex_init(&spi_mutex, NULL);
 
     register_signal_handler();
 
     memset(&rx_arg, 0, sizeof(rx_thread_arg_t));
     rx_arg.mode = mode;
-    rx_arg.ipv4 = ipv4;
-    rx_arg.mac = mac;
     pthread_create(&tid1, NULL, receiver_thread, (void*)&rx_arg);
     sleep(1);
 
     memset(&tx_arg, 0, sizeof(tx_thread_arg_t));
     tx_arg.mode = mode;
-    tx_arg.ipv4 = ipv4;
-    tx_arg.mac = mac;
     pthread_create(&tid2, NULL, sender_thread, (void*)&tx_arg);
     sleep(1);
 
@@ -510,11 +546,12 @@ int do_config_node(int node_id, int node_cnt) {
     return api_config_node(node_id, node_cnt);
 }
 
-#define MAIN_RUN_OPTION_STRING "r:i:hv"
+#define MAIN_RUN_OPTION_STRING "r:i:t:hv"
 int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
     int mode = DEFAULT_RUN_MODE;
     int argflag;
     uint32_t ipv4 = 0xc0a80a0b;
+    uint32_t dst_ipv4 = 0xc0a80a15;
 
     while ((argflag = getopt(argc, (char**)argv, MAIN_RUN_OPTION_STRING)) != -1) {
         switch (argflag) {
@@ -537,6 +574,14 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
             }
             break;
 
+        case 't':
+            dst_ipv4 = ipv4_to_int32((const char*)optarg);
+            if (dst_ipv4 == 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            break;
+
         case 'v':
             log_level_set(++verbose);
             if (verbose == 2) {
@@ -551,7 +596,7 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
         }
     }
 
-    return do_run(mode, ipv4);
+    return do_run(mode, ipv4, dst_ipv4);
 }
 
 #define MAIN_READ_OPTION_STRING "m:hv"

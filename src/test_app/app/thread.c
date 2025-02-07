@@ -1,6 +1,9 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+
+#include <arpa/inet.h>
 
 #include "arp.h"
 #include "ethernet.h"
@@ -93,7 +96,7 @@ static void receiver_as_server() {
     while (rx_thread_run) {
         buffer = buffer_pool_alloc();
         if (buffer == NULL) {
-            // printf("FAILURE: Could not buffer_pool_alloc.\n");
+            printf("FAILURE: Could not buffer_pool_alloc.\n");
             rx_stats.rxNoBuffer++;
             continue;
         }
@@ -104,15 +107,16 @@ static void receiver_as_server() {
         if (api_spi_receive_frame((uint8_t*)frame->data, &bytes_rcv)) {
             pthread_mutex_unlock(&spi_mutex);
             if (buffer_pool_free(buffer)) {
-                // debug_printf("FAILURE: Could not buffer_pool_free.\n");
+                printf("FAILURE: Could not buffer_pool_free.\n");
             }
             rx_stats.rxErrors++;
             continue;
         }
         pthread_mutex_unlock(&spi_mutex);
+
         if (bytes_rcv > MAX_BUFFER_LENGTH) {
             if (buffer_pool_free(buffer)) {
-                // debug_printf("FAILURE: Could not buffer_pool_free.\n");
+                printf("FAILURE: Could not buffer_pool_free.\n");
             }
             rx_stats.rxErrors++;
             continue;
@@ -127,10 +131,6 @@ static void receiver_as_server() {
 }
 
 #if 1
-#include <stdint.h>
-#include <stdio.h>
-
-#include <arpa/inet.h>
 
 #if 0
 // Ethernet 헤더 구조체
@@ -279,8 +279,9 @@ void* receiver_thread(void* arg) {
     return NULL;
 }
 
-static unsigned char my_mac[HW_ADDR_LEN];
-static unsigned char my_ipv4[IP_ADDR_LEN];
+unsigned char my_mac[HW_ADDR_LEN];
+unsigned char my_ipv4[IP_ADDR_LEN];
+unsigned char dst_ipv4[IP_ADDR_LEN];
 
 int api_spi_transmit_frame(uint8_t* packet, uint16_t length);
 
@@ -390,14 +391,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
     return 0;
 }
 
-#include <stdio.h>
-#include <string.h>
-
-#include <arpa/inet.h>
-
 #define ETH_ALEN 6
-#define ETH_HLEN 14
-#define ARP_HLEN 28
 
 struct ethhdr {
     unsigned char h_dest[ETH_ALEN];
@@ -426,10 +420,6 @@ void create_arp_request_frame(unsigned char* frame, const char* src_ip, const ch
     for (int i = 0; i < ETH_ALEN; i++) {
         eth->h_source[i] = my_mac[i];
     }
-#if 0
-    sscanf(src_mac, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &eth->h_source[0], &eth->h_source[1], &eth->h_source[2],
-           &eth->h_source[3], &eth->h_source[4], &eth->h_source[5]);
-#endif
     eth->h_proto = htons(0x0806); /* ARP 프로토콜 */
 
     /* ARP 헤더 설정 */
@@ -466,27 +456,28 @@ void dump_buffer(unsigned char* buffer, int len) {
 
 static void sender_as_client() {
     struct spi_tx_buffer tx;
-    const char* dst_ip = "192.168.10.11"; // 예시 목적지 IP 주소
-    char src_ip[100];
+    char src_ip[16];
+    char dst_ip[16];
 
     memset(src_ip, 0, sizeof(src_ip));
+    memset(dst_ip, 0, sizeof(dst_ip));
     sprintf(src_ip, "%d.%d.%d.%d", my_ipv4[0], my_ipv4[1], my_ipv4[2], my_ipv4[3]);
+    sprintf(dst_ip, "%d.%d.%d.%d", dst_ipv4[0], dst_ipv4[1], dst_ipv4[2], dst_ipv4[3]);
 
-    create_arp_request_frame((unsigned char*)tx.data, (const char*)src_ip, dst_ip);
+    create_arp_request_frame((unsigned char*)tx.data, (const char*)src_ip, (const char*)dst_ip);
 
     dump_buffer((unsigned char*)tx.data, 64);
     printf("\n");
     printf("\n");
-    printf("\n");
 
-    tx.metadata.frame_length = 64;
+    tx.metadata.frame_length = 60;
 
-    while (tx_thread_run) {
+//    while (tx_thread_run) {
         pthread_mutex_lock(&spi_mutex);
         api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
         pthread_mutex_unlock(&spi_mutex);
         sleep(1);
-    }
+//    }
 }
 
 static void sender_as_server() {
@@ -511,19 +502,9 @@ static void sender_as_server() {
 }
 
 void* sender_thread(void* arg) {
-
-    int i;
-
     tx_thread_arg_t* p_arg = (tx_thread_arg_t*)arg;
 
     printf(">>> %s(mode: %d)\n", __func__, p_arg->mode);
-
-    for (i = 0; i < HW_ADDR_LEN; i++) {
-        my_mac[HW_ADDR_LEN - 1 - i] = (unsigned char)((p_arg->mac >> (i * 8)) & 0xff);
-    }
-    for (i = 0; i < IP_ADDR_LEN; i++) {
-        my_ipv4[IP_ADDR_LEN - 1 - i] = (unsigned char)((p_arg->ipv4 >> (i * 8)) & 0xff);
-    }
 
     initialize_statistics(&tx_stats);
 
