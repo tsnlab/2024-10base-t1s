@@ -439,7 +439,7 @@ void create_arp_request_frame(unsigned char* frame, const char* src_ip, const ch
     for (int i = 0; i < ETH_ALEN; i++) {
         eth->smac[i] = my_mac[i];
     }
-    eth->type = htons(0x0806); /* ARP 프로토콜 */
+    eth->type = 0x0806; /* ARP 프로토콜 */
 
     /* ARP 헤더 설정 */
     arp->hw_type = 1;      /* 이더넷 */
