@@ -416,7 +416,7 @@ void fill_ipv4_address(unsigned char * b_ipv4,  uint32_t a_ipv4, char *name) {
         b_ipv4[IP_ADDR_LEN - 1 - i] = (unsigned char)((a_ipv4 >> (i * 8)) & 0xff);
     }
     printf("%s: \n    ", name);
-    for (i = 0; i < IP_ADDR_LEN; i++) {
+    for (i = 0; i < IP_ADDR_LEN -1; i++) {
         printf("%d.", b_ipv4[i]);
     }
     printf("%d\n", b_ipv4[i]);
@@ -439,7 +439,7 @@ int init_driver(int mode) {
 }
 
 
-int do_run(int mode, uint32_t ipv4, uint32_t dst_ipv4) {
+int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4) {
 
     pthread_t tid1, tid2;
     rx_thread_arg_t rx_arg;
@@ -462,8 +462,9 @@ int do_run(int mode, uint32_t ipv4, uint32_t dst_ipv4) {
     }
 
     fill_ipv4_address((unsigned char *)my_ipv4, ipv4, "My IPv4");
-    fill_ipv4_address((unsigned char *)dst_ipv4, dst_ipv4, "Dst. IPv4");
+    fill_ipv4_address((unsigned char *)dst_ipv4, t_ipv4, "Dst. IPv4");
 
+    sleep(1);
     pthread_mutex_init(&spi_mutex, NULL);
 
     register_signal_handler();
@@ -551,7 +552,7 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
     int mode = DEFAULT_RUN_MODE;
     int argflag;
     uint32_t ipv4 = 0xc0a80a0b;
-    uint32_t dst_ipv4 = 0xc0a80a15;
+    uint32_t t_ipv4 = 0xc0a80a15;
 
     while ((argflag = getopt(argc, (char**)argv, MAIN_RUN_OPTION_STRING)) != -1) {
         switch (argflag) {
@@ -575,8 +576,8 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
             break;
 
         case 't':
-            dst_ipv4 = ipv4_to_int32((const char*)optarg);
-            if (dst_ipv4 == 0) {
+            t_ipv4 = ipv4_to_int32((const char*)optarg);
+            if (t_ipv4 == 0) {
                 printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
@@ -596,7 +597,7 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
         }
     }
 
-    return do_run(mode, ipv4, dst_ipv4);
+    return do_run(mode, ipv4, t_ipv4);
 }
 
 #define MAIN_READ_OPTION_STRING "m:hv"
@@ -800,6 +801,11 @@ int fn_config_node_argument(int argc, const char* argv[]) {
 }
 
 int process_main_config(int argc, const char* argv[], menu_command_t* menu_tbl) {
+
+    if((argc <= 1) || (!strcmp(argv[1], "-h"))) {
+        print_argument_warning_message(argc, argv, menu_tbl, NO_ECHO);
+        return ERR_PARAMETER_MISSED;
+    }
 
     argv++, argc--;
     for (int index = 0; config_argument_tbl[index].name; index++)

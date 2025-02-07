@@ -194,7 +194,9 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
                 packet[9], packet[10], packet[11]);
         printf("EtherType: %02x%02x\n",
                 packet[12], packet[13]); // clang-format on
+
+        return 0;
     }
 
-    return 0;
+    return -1;
 }

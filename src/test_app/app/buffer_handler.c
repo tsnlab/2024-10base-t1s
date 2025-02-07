@@ -192,12 +192,14 @@ int initialize_buffer_allocation() {
         }
     }
 
+#if 0
     printf("      stack->elements[%4d]: %p\n", 0, stack->elements[0]);
     printf("      stack->elements[%4d]: %p\n", NUMBER_OF_BUFFER - 1, stack->elements[NUMBER_OF_BUFFER - 1]);
     printf("       RESERVED_BUFFER_BASE: %p\n", RESERVED_BUFFER_BASE);
     printf("reserved_stack->elements[%d]: %p\n", 0, reserved_stack->elements[0]);
     printf("reserved_stack->elements[%d]: %p\n", NUMBER_OF_RESERVED_BUFFER - 1,
            reserved_stack->elements[NUMBER_OF_RESERVED_BUFFER - 1]);
+#endif
 
     printf("Successfully allocated buffers(%u)\n", NUMBER_OF_BUFFER + NUMBER_OF_RESERVED_BUFFER);
 

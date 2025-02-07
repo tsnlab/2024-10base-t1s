@@ -86,7 +86,7 @@ int drv_init_client() {
         return -1;
     }
 
-    printf("Follower mode\n");
+//    printf("Follower mode\n");
     plca_mode = PLCA_MODE_FOLLOWER;
     reg_initstatus = set_register(plca_mode);
 
@@ -104,7 +104,7 @@ int drv_init_server() {
         return -1;
     }
 
-    printf("Coordinator mode\n");
+//    printf("Coordinator mode\n");
     plca_mode = PLCA_MODE_COORDINATOR;
     reg_initstatus = set_register(plca_mode);
 

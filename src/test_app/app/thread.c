@@ -132,15 +132,6 @@ static void receiver_as_server() {
 
 #if 1
 
-#if 0
-// Ethernet 헤더 구조체
-struct ethernet_header {
-    uint8_t dest_mac[6];
-    uint8_t src_mac[6];
-    uint16_t ether_type;
-};
-#endif
-
 // ARP 패킷 구조체
 struct arp_packet {
     uint16_t hardware_type;
@@ -206,47 +197,31 @@ void process_packet(uint8_t* packet, int packet_len) {
 
 static void receiver_as_client() {
 
-    BUF_POINTER buffer;
-    struct spi_rx_buffer* frame;
+    struct spi_rx_buffer rx;
     uint16_t bytes_rcv;
 
     printf(">>> %s\n", __func__);
 
     while (rx_thread_run) {
-        buffer = buffer_pool_alloc();
-        if (buffer == NULL) {
-            // printf("FAILURE: Could not buffer_pool_alloc.\n");
-            rx_stats.rxNoBuffer++;
-            continue;
-        }
+        memset(&rx, 0, sizeof(rx));
 
-        frame = buffer;
         bytes_rcv = 0;
         pthread_mutex_lock(&spi_mutex);
-        if (api_spi_receive_frame((uint8_t*)frame->data, &bytes_rcv)) {
+        if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
             pthread_mutex_unlock(&spi_mutex);
-            if (buffer_pool_free(buffer)) {
-                // debug_printf("FAILURE: Could not buffer_pool_free.\n");
-            }
             rx_stats.rxErrors++;
             continue;
         }
         pthread_mutex_unlock(&spi_mutex);
         if (bytes_rcv > MAX_BUFFER_LENGTH) {
-            if (buffer_pool_free(buffer)) {
-                // debug_printf("FAILURE: Could not buffer_pool_free.\n");
-            }
             rx_stats.rxErrors++;
             continue;
         }
         rx_stats.rxPackets++;
         rx_stats.rxBytes += bytes_rcv;
-        frame->metadata.frame_length = bytes_rcv;
+        rx.metadata.frame_length = bytes_rcv;
 
-        process_packet((uint8_t*)frame->data, (int)bytes_rcv);
-        if (buffer_pool_free(buffer)) {
-            // debug_printf("FAILURE: Could not buffer_pool_free.\n");
-        }
+        process_packet((uint8_t*)rx.data, (int)bytes_rcv);
     }
     printf("<<< %s\n", __func__);
 }
@@ -472,12 +447,12 @@ static void sender_as_client() {
 
     tx.metadata.frame_length = 60;
 
-//    while (tx_thread_run) {
+    while (tx_thread_run) {
         pthread_mutex_lock(&spi_mutex);
         api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
         pthread_mutex_unlock(&spi_mutex);
         sleep(1);
-//    }
+    }
 }
 
 static void sender_as_server() {
