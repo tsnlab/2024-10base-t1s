@@ -117,6 +117,7 @@ static void receiver_as_server() {
         rx_stats.rxBytes += bytes_rcv;
         rx.metadata.frame_length = bytes_rcv;
 
+        dump_buffer((unsigned char*)rx.data, bytes_rcv);
         status = process_send_packet((struct spi_rx_buffer*)&rx);
         if (status == -1) {
             tx_stats.txFiltered++;
@@ -242,6 +243,7 @@ static void receiver_as_client() {
     printf(">>> %s\n", __func__);
 
     while (rx_thread_run) {
+        sleep(1);
         memset(&rx, 0, sizeof(rx));
 
         bytes_rcv = 0;
@@ -400,6 +402,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
 
     if(tx_len < 60) tx_len = 60;
     tx_metadata->frame_length = tx_len;
+    dump_buffer((unsigned char*)tx->data, tx_len);
     pthread_mutex_lock(&spi_mutex);
     api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
     pthread_mutex_unlock(&spi_mutex);

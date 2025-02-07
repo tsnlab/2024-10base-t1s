@@ -1,6 +1,7 @@
 #include "arch.h"
 #include "arp_test.h"
 #include "spi.h"
+#include "register.h"
 
 static int spi_transmit_frame(uint8_t* packet, uint16_t length, uint32_t sv, uint32_t ev) {
     uint8_t txbuffer[HEADER_SIZE + MAX_PAYLOAD_BYTE] = {
@@ -162,6 +163,14 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
     };
     union data_footer data_transfer_rx_footer;
     int result;
+    uint32_t regval;
+
+    /* Buffer Status Register Bits 7:0 – RBA[7:0] Receive Blocks Available */
+    regval = read_register(MMS0, OA_BUFSTS);
+    if((regval & 0xFF) == 0) {
+        /* There is no Ethernet frame data available for reading. */
+        return -1;
+    }
 
     result = spi_receive_frame(rxbuffer);
 
