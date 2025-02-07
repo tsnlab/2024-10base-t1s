@@ -1,10 +1,3 @@
-/*
- * icmp.c
- *
- *  Created on: Apr 24, 2023
- *      Author: pooky
- */
-
 #include "icmp.h"
 
 void icmp_checksum(struct icmp_header* icmp, uint16_t len) {
@@ -26,10 +19,8 @@ void icmp_checksum(struct icmp_header* icmp, uint16_t len) {
         }
     }
 
-    // Finalise
     checksum = (checksum >> 16) + (checksum & 0xFFFF);
     checksum = (checksum >> 16) + (checksum & 0xFFFF);
 
     icmp->checksum = ~checksum;
 }
-

@@ -77,259 +77,9 @@ extern unsigned char my_mac[HW_ADDR_LEN];
 extern unsigned char my_ipv4[IP_ADDR_LEN];
 extern unsigned char dst_ipv4[IP_ADDR_LEN];
 
-#if 0
-struct reginfo reg_open_alliance[] = {{"Identification Register", OA_ID},
-                                      {"PHY Identification Register", OA_PHYID},
-                                      {"Standard Capabilities", OA_STDCAP},
-                                      {"Reset Control and Status Register", OA_RESET},
-                                      {"Configuration 0 Register", OA_CONFIG0},
-                                      {"Status 0 Register", OA_STATUS0},
-                                      {"Status 1 Register", OA_STATUS1},
-                                      {"Buffer Status Register", OA_BUFSTS},
-                                      {"Interrupt Mask 0 Register", OA_IMASK0},
-                                      {"Interrupt Mask 1 Register", OA_IMASK1},
-                                      {"Transmit Timestamp Capture A (High)", TTSCAH},
-                                      {"Transmit Timestamp Capture A (Low)", TTSCAL},
-                                      {"Transmit Timestamp Capture B (High)", TTSCBH},
-                                      {"Transmit Timestamp Capture B (Low)", TTSCBL},
-                                      {"Transmit Timestamp Capture C (High)", TTSCCH},
-                                      {"Transmit Timestamp Capture C (Low)", TTSCCL},
-                                      {"Basic Control", BASIC_CONTROL},
-                                      {"Basic Status", BASIC_STATUS},
-                                      {"PHY Identifier 1 Register", PHY_ID1},
-                                      {"PHY Identifier 2 Register", PHY_ID2},
-                                      {"MMD Access Control Register", MMDCTRL},
-                                      {"MMD Access Address/Data Register", MMDAD},
-                                      {"", -1}};
-
-struct reginfo reg_mac[] = {{"Network Control Register", MAC_NCR},
-                            {"Network Configuration Register", MAC_NCFGR},
-                            {"Hash Register Bottom", MAC_HRB},
-                            {"Hash Register Top", MAC_HRT},
-                            {"Specific Address 1 Bottom", MAC_SAB1},
-                            {"Specific Address 1 Top", MAC_SAT1},
-                            {"Specific Address 2 Bottom", MAC_SAB2},
-                            {"Specific Address 2 Top", MAC_SAT2},
-                            {"Specific Address 3 Bottom", MAC_SAB3},
-                            {"Specific Address 3 Top", MAC_SAT3},
-                            {"Specific Address 4 Bottom", MAC_SAB4},
-                            {"Specific Address 4 Top", MAC_SAT4},
-                            {"MAC Type ID Match 1", MAC_TIDM1},
-                            {"MAC Type ID Match 2", MAC_TIDM2},
-                            {"MAC Type ID Match 3", MAC_TIDM3},
-                            {"MAC Type ID Match 4", MAC_TIDM4},
-                            {"Specific Address Match 1 Bottom", MAC_SAMB1},
-                            {"Specific Address Match 1 Top", MAC_SAMT1},
-                            {"Timer Increment Sub-Nanoseconds", MAC_TISUBN},
-                            {"Timestamp Seconds High", MAC_TSH},
-                            {"Timestamp Seconds Low", MAC_TSL},
-                            {"Timestamp Nanoseconds", MAC_TN},
-                            {"TSU Timer Adjust", MAC_TA},
-                            {"TSU Timer Increment", MAC_TI},
-                            {"Buffer Manager Control", BMGR_CTL},
-                            {"Statistics 0", STATS0},
-                            {"Statistics 1", STATS1},
-                            {"Statistics 2", STATS2},
-                            {"Statistics 3", STATS3},
-                            {"Statistics 4", STATS4},
-                            {"Statistics 5", STATS5},
-                            {"Statistics 6", STATS6},
-                            {"Statistics 7", STATS7},
-                            {"Statistics 8", STATS8},
-                            {"Statistics 9", STATS9},
-                            {"Statistics 10", STATS10},
-                            {"Statistics 11", STATS11},
-                            {"Statistics 12", STATS12},
-                            {"", -1}};
-
-struct reginfo reg_phy_pcs[] = {{"10BASE-T1S PCS Control", T1SPCSCTL},
-                                {"10BASE-T1S PCS Status", T1SPCSSTS},
-                                {"10BASE-T1S PCS Diagnostic 1", T1SPCSDIAG1},
-                                {"10BASE-T1S PCS Diagnostic 2", T1SPCSDIAG2},
-                                {"", -1}};
-
-struct reginfo reg_phy_pma_pmd[] = {{"BASE-T1 PMA/PMD Extended Ability", T1PMAPMDEXTA},
-                                    {"BASE-T1 PMA/PMD Control", T1PMAPMDCTL},
-                                    {"10BASE-T1S PMA Control", T1SPMACTL},
-                                    {"10BASE-T1S PMA Status", T1SPMASTS},
-                                    {"10BASE-T1S Test Mode Control", T1STSTCTL},
-                                    {"", -1}};
-
-struct reginfo reg_phy_vendor_specific[] = {{"Control 1 Register", CTRL1},
-                                            {"Status 1 Register", STS1},
-                                            {"Status 2 Register", STS2},
-                                            {"Status 3 Register", STS3},
-                                            {"Interrupt Mask 1 Register", IMSK1},
-                                            {"Interrupt Mask 2 Register", IMSK2},
-                                            {"Counter Control Register", CTRCTRL},
-                                            {"Transmit Opportunity Count (High)", TOCNTH},
-                                            {"Transmit Opportunity Count (Low)", TOCNTL},
-                                            {"BEACON Count (High)", BCNCNTH},
-                                            {"BEACON Count (Low)", BCNCNTL},
-                                            {"PLCA Multiple ID 0 Register", MULTID0},
-                                            {"PLCA Multiple ID 1 Register", MULTID1},
-                                            {"PLCA Multiple ID 2 Register", MULTID2},
-                                            {"PLCA Multiple ID 3 Register", MULTID3},
-                                            {"PLCA Reconciliation Sublayer Status", PRSSTS},
-                                            {"Port Management 2", PRTMGMT2},
-                                            {"Inactivity Watchdog Timeout (High)", IWDTOH},
-                                            {"Inactivity Watchdog Timeout (Low)", IWDTOL},
-                                            {"Transmit Match Control Register", TXMCTL},
-                                            {"Transmit Match Pattern (High) Register", TXMPATH},
-                                            {"Transmit Match Pattern (Low) Register", TXMPATL},
-                                            {"Transmit Match Mask (High) Register", TXMMSKH},
-                                            {"Transmit Match Mask (Low) Register", TXMMSKL},
-                                            {"Transmit Match Location Register", TXMLOC},
-                                            {"Transmit Matched Packet Delay Register", TXMDLY},
-                                            {"Receive Match Control Register", RXMCTL},
-                                            {"Receive Match Pattern (High) Register", RXMPATH},
-                                            {"Receive Match Pattern (Low) Register", RXMPATL},
-                                            {"Receive Match Mask (High) Register", RXMMSKH},
-                                            {"Receive Match Mask (Low) Register", RXMMSKL},
-                                            {"Receive Match Location Register", RXMLOC},
-                                            {"Receive Matched Packet Delay Register", RXMDLY},
-                                            {"Credit Based Shaper Stop Threshold (High) Register", CBSSPTHH},
-                                            {"Credit Based Shaper Stop Threshold (Low) Register", CBSSPTHL},
-                                            {"Credit Based Shaper Start Threshold (High) Register", CBSSTTHH},
-                                            {"Credit Based Shaper Start Threshold (Low) Register", CBSSTTHL},
-                                            {"Credit Based Shaper Slope Control Register", CBSSLPCTL},
-                                            {"Credit Based Shaper Top Limit (High) Register", CBSTPLMTH},
-                                            {"Credit Based Shaper Top Limit (Low) Register", CBSTPLMTL},
-                                            {"Credit Based Shaper Bottom Limit (High) Register", CBSBTLMTH},
-                                            {"Credit Based Shaper Bottom Limit (Low) Register", CBSBTLMTL},
-                                            {"Credit Based Shaper Credit Counter (High) Register", CBSCRCTRH},
-                                            {"Credit Based Shaper Credit Counter (Low) Register", CBSCRCTRL},
-                                            {"Credit Based Shaper Control Register", CBSCTRL},
-                                            {"PLCA Skip Control Register", PLCASKPCTL},
-                                            {"PLCA Transmit Opportunity Skip Register", PLCATOSKP},
-                                            {"Application Controlled Media Access Control Register", ACMACTL},
-                                            {"Sleep Control 0 Register", SLPCTL0},
-                                            {"Sleep Control 1 Register", SLPCTL1},
-                                            {"Collision Detector Control 0 Register", CDCTL0},
-                                            {"SQI Control Register", SQICTL},
-                                            {"SQI Status 0 Register", SQISTS0},
-                                            {"SQI Configuration 0 Register", SQICFG0},
-                                            {"SQI Configuration 2 Register", SQICFG2},
-                                            {"Analog Control 5", ANALOG5},
-                                            {"OPEN Alliance Map ID and Version Register", MIDVER},
-                                            {"PLCA Control 0 Register", PLCA_CTRL0},
-                                            {"PLCA Control 1 Register", PLCA_CTRL1},
-                                            {"PLCA Status Register", PLCA_STS},
-                                            {"PLCA Transmit Opportunity Timer Register", PLCA_TOTMR},
-                                            {"PLCA Burst Mode Register", PLCA_BURST},
-                                            {"", -1}};
-
-struct reginfo reg_miscellaneous[] = {{"Queue Transmit Configuration", QTXCFG},
-                                      {"Queue Receive Configuration", QRXCFG},
-                                      {"Pad Control", PADCTRL},
-                                      {"Clock Output Control", CLKOCTL},
-                                      {"Miscellaneous", MISC},
-                                      {"Device Identification", DEVID},
-                                      {"Bus Parity Control and Status", BUSPCS},
-                                      {"Configuration Protection Control", CFGPRTCTL},
-                                      {"SRAM Error Correction Code Control", ECCCTRL},
-                                      {"SRAM Error Correction Code Status", ECCSTS},
-                                      {"SRAM Error Correction Code Fault Injection Control", ECCFLTCTRL},
-                                      {"Event Capture 0 Control", EC0CTRL},
-                                      {"Event Capture 1 Control", EC1CTRL},
-                                      {"Event Capture 2 Control", EC2CTRL},
-                                      {"Event Capture 3 Control", EC3CTRL},
-                                      {"Event Capture Read Status Register", ECRDSTS},
-                                      {"Event Capture Total Counts Register", ECTOT},
-                                      {"Event Capture Clock Seconds High Register", ECCLKSH},
-                                      {"Event Capture Clock Seconds Low Register", ECCLKSL},
-                                      {"Event Capture Clock Nanoseconds Register", ECCLKNS},
-                                      {"Event Capture Read Timestamp Register 0", ECRDTS0},
-                                      {"Event Capture Read Timestamp Register 1", ECRDTS1},
-                                      {"Event Capture Read Timestamp Register 2", ECRDTS2},
-                                      {"Event Capture Read Timestamp Register 3", ECRDTS3},
-                                      {"Event Capture Read Timestamp Register 4", ECRDTS4},
-                                      {"Event Capture Read Timestamp Register 5", ECRDTS5},
-                                      {"Event Capture Read Timestamp Register 6", ECRDTS6},
-                                      {"Event Capture Read Timestamp Register 7", ECRDTS7},
-                                      {"Event Capture Read Timestamp Register 8", ECRDTS8},
-                                      {"Event Capture Read Timestamp Register 9", ECRDTS9},
-                                      {"Event Capture Read Timestamp Register 10", ECRDTS10},
-                                      {"Event Capture Read Timestamp Register 11", ECRDTS11},
-                                      {"Event Capture Read Timestamp Register 12", ECRDTS12},
-                                      {"Event Capture Read Timestamp Register 13", ECRDTS13},
-                                      {"Event Capture Read Timestamp Register 14", ECRDTS14},
-                                      {"Event Capture Read Timestamp Register 15", ECRDTS15},
-                                      {"Phase Adjuster Cycles Register", PACYC},
-                                      {"Phase Adjuster Control Register", PACTRL},
-                                      {"Event 0 Start Time Nanoseconds Register", EG0STNS},
-                                      {"Event 0 Start Time Seconds Low Register", EG0STSECL},
-                                      {"Event 0 Start Time Seconds High Register", EG0STSECH},
-                                      {"Event 0 Pulse Width Register", EG0PW},
-                                      {"Event 0 Idle Time Register", EG0IT},
-                                      {"Event Generator 0 Control Register", EG0CTL},
-                                      {"Event 1 Start Time Nanoseconds Register", EG1STNS},
-                                      {"Event 1 Start Time Seconds Low Register", EG1STSECL},
-                                      {"Event 1 Start Time Seconds High Register", EG1STSECH},
-                                      {"Event 1 Pulse Width Register", EG1PW},
-                                      {"Event 1 Idle Time Register", EG1IT},
-                                      {"Event Generator 1 Control Register", EG1CTL},
-                                      {"Event 2 Start Time Nanoseconds Register", EG2STNS},
-                                      {"Event 2 Start Time Seconds Low Register", EG2STSECL},
-                                      {"Event 2 Start Time Seconds High Register", EG2STSECH},
-                                      {"Event 2 Pulse Width Register", EG2PW},
-                                      {"Event 2 Idle Time Register", EG2IT},
-                                      {"Event Generator 2 Control Register", EG2CTL},
-                                      {"Event 3 Start Time Nanoseconds Register", EG3STNS},
-                                      {"Event 3 Start Time Seconds Low Register", EG3STSECL},
-                                      {"Event 3 Start Time Seconds High Register", EG3STSECH},
-                                      {"Event 3 Pulse Width Register", EG3PW},
-                                      {"Event 3 Idle Time Register", EG3IT},
-                                      {"Event Generator 3 Control Register", EG3CTL},
-                                      {"One Pulse-per-Second Control Register", PPSCTL},
-                                      {"Synchronization Event Interrupt Enable Register", SEVINTEN},
-                                      {"Synchronization Event Interrupt Disable Register", SEVINTDIS},
-                                      {"Synchronization Event Interrupt Mask Status Register", SEVIM},
-                                      {"Synchronization Event Status Register", SEVSTS},
-                                      {"", -1}};
-#endif
-
-#if 0
-int process_int_arg(const char* optarg, int* value, const char* err_msg) {
-    if (str2int(optarg, value) != 0) {
-        lprintf(LOG_ERR, "Invalid parameter given or out of range for '%s'.", err_msg);
-        return -1;
-    }
-    if (*value < 0) {
-        lprintf(LOG_ERR, "%s %d is out of range.", err_msg, *value);
-        return -1;
-    }
-    return 0;
-}
-
-void process_verbose_option() {
-    log_level_set(++verbose);
-    if (verbose == 2) {
-        /* add version info to debug output */
-        lprintf(LOG_DEBUG, "%s\n", VERSION_STRING);
-    }
-}
-
-int process_hex_arg(const char* optarg, unsigned char* output_buf, int length) {
-    char data_buf[256];
-    char* ptr_buf;
-
-    memset(data_buf, 0, sizeof(data_buf));
-    strcpy(data_buf, optarg);
-    ptr_buf = (strncmp(data_buf, "0x", 2) && strncmp(data_buf, "0X", 2)) ? data_buf : &data_buf[2];
-
-    if (is_hexdecimal(ptr_buf)) {
-        lprintf(LOG_ERR, "data-value(%s) is invalid.", data_buf);
-        return -1;
-    }
-    fill_nbytes_string_2_hexadecimal(ptr_buf, output_buf, length);
-    return 0;
-}
-#endif
-
 void signal_handler(int sig) {
 
-    printf("\nXDMA-APP is exiting, cause (%d)!!\n", sig);
+    printf("\n10Base-T1S is exiting, cause (%d)!!\n", sig);
     tx_thread_run = 0;
     sleep(1);
     rx_thread_run = 0;
@@ -397,12 +147,11 @@ int fill_my_mac_address() {
     }
 
     for (i = 0; i < HW_ADDR_LEN; i++) {
-        //my_mac[HW_ADDR_LEN - 1 - i] = (unsigned char)((mac >> (i * 8)) & 0xff);
         my_mac[i] = (unsigned char)((mac >> (i * 8)) & 0xff);
     }
 
     printf("MY MAC: \n    ");
-    for (i = 0; i < HW_ADDR_LEN-1; i++) {
+    for (i = 0; i < HW_ADDR_LEN - 1; i++) {
         printf("%02x:", my_mac[i]);
     }
     printf("%02x\n", my_mac[i]);
@@ -410,14 +159,14 @@ int fill_my_mac_address() {
     return 0;
 }
 
-void fill_ipv4_address(unsigned char * b_ipv4,  uint32_t a_ipv4, char *name) {
+void fill_ipv4_address(unsigned char* b_ipv4, uint32_t a_ipv4, char* name) {
     int i;
 
     for (i = 0; i < IP_ADDR_LEN; i++) {
         b_ipv4[IP_ADDR_LEN - 1 - i] = (unsigned char)((a_ipv4 >> (i * 8)) & 0xff);
     }
     printf("%s: \n    ", name);
-    for (i = 0; i < IP_ADDR_LEN -1; i++) {
+    for (i = 0; i < IP_ADDR_LEN - 1; i++) {
         printf("%d.", b_ipv4[i]);
     }
     printf("%d\n", b_ipv4[i]);
@@ -439,7 +188,6 @@ int init_driver(int mode) {
     return 0;
 }
 
-
 int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4) {
 
     pthread_t tid1, tid2;
@@ -449,21 +197,16 @@ int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4) {
 
     printf(">>> %s(mode: %s)\n", __func__, mode ? "SERVER" : "CLIENT");
 
-    if(init_driver(mode)) {
+    if (init_driver(mode)) {
         return -1;
     }
 
-    if (initialize_buffer_allocation()) {
-        printf("[%s]Fail to initialize buffer allocation\n", __func__);
+    if (fill_my_mac_address()) {
         goto out_spi;
     }
 
-    if(fill_my_mac_address()) {
-        goto out_buffer;
-    }
-
-    fill_ipv4_address((unsigned char *)my_ipv4, ipv4, "My IPv4");
-    fill_ipv4_address((unsigned char *)dst_ipv4, t_ipv4, "Dst. IPv4");
+    fill_ipv4_address((unsigned char*)my_ipv4, ipv4, "My IPv4");
+    fill_ipv4_address((unsigned char*)dst_ipv4, t_ipv4, "Dst. IPv4");
 
     sleep(1);
     pthread_mutex_init(&spi_mutex, NULL);
@@ -485,8 +228,6 @@ int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4) {
 
     pthread_mutex_destroy(&spi_mutex);
 
-out_buffer:
-    buffer_release();
 out_spi:
     api_spi_cleanup();
 
@@ -803,7 +544,7 @@ int fn_config_node_argument(int argc, const char* argv[]) {
 
 int process_main_config(int argc, const char* argv[], menu_command_t* menu_tbl) {
 
-    if((argc <= 1) || (!strcmp(argv[1], "-h"))) {
+    if ((argc <= 1) || (!strcmp(argv[1], "-h"))) {
         print_argument_warning_message(argc, argv, menu_tbl, NO_ECHO);
         return ERR_PARAMETER_MISSED;
     }

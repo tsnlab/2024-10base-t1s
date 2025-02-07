@@ -1,7 +1,7 @@
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
 
 #include <netinet/ip.h>
 
@@ -19,12 +19,20 @@ extern pthread_mutex_t spi_mutex;
 int rx_thread_run = 1;
 int tx_thread_run = 1;
 
+#if 0
 static CircularQueue_t g_queue;
 static CircularQueue_t* queue = NULL;
+
+#endif
+
+unsigned char my_mac[HW_ADDR_LEN];
+unsigned char my_ipv4[IP_ADDR_LEN];
+unsigned char dst_ipv4[IP_ADDR_LEN];
 
 stats_t rx_stats;
 stats_t tx_stats;
 
+#if 0
 void initialize_queue(CircularQueue_t* p_queue) {
     queue = p_queue;
 
@@ -50,7 +58,6 @@ static void xbuffer_enqueue(QueueElement element) {
     pthread_mutex_lock(&queue->mutex);
 
     if (isQueueFull()) {
-        // debug_printf("Queue is full. Cannot xbuffer_enqueue.\n");
         pthread_mutex_unlock(&queue->mutex);
         return;
     }
@@ -66,7 +73,6 @@ static QueueElement xbuffer_dequeue() {
     pthread_mutex_lock(&queue->mutex);
 
     if (isQueueEmpty()) {
-        // debug_printf("Queue is empty. Cannot xbuffer_dequeue.\n");
         pthread_mutex_unlock(&queue->mutex);
         return EMPTY_ELEMENT;
     }
@@ -79,6 +85,7 @@ static QueueElement xbuffer_dequeue() {
 
     return dequeuedElement;
 }
+#endif
 
 void initialize_statistics(stats_t* p_stats) {
 
@@ -88,7 +95,6 @@ void initialize_statistics(stats_t* p_stats) {
 static int process_send_packet(struct spi_rx_buffer* rx);
 static void receiver_as_server() {
 
-#if 1
     struct spi_rx_buffer rx;
     uint16_t bytes_rcv;
     int status;
@@ -122,73 +128,14 @@ static void receiver_as_server() {
         }
     }
     printf("<<< %s\n", __func__);
-
-#else
-    BUF_POINTER buffer;
-    struct spi_rx_buffer* frame;
-    uint16_t bytes_rcv;
-
-    printf(">>> %s\n", __func__);
-
-    while (rx_thread_run) {
-        buffer = buffer_pool_alloc();
-        if (buffer == NULL) {
-            printf("FAILURE: Could not buffer_pool_alloc.\n");
-            rx_stats.rxNoBuffer++;
-            continue;
-        }
-
-        frame = (struct spi_rx_buffer*)buffer;
-        bytes_rcv = 0;
-        pthread_mutex_lock(&spi_mutex);
-        if (api_spi_receive_frame((uint8_t*)frame->data, &bytes_rcv)) {
-            pthread_mutex_unlock(&spi_mutex);
-            if (buffer_pool_free(buffer)) {
-                printf("FAILURE: Could not buffer_pool_free.\n");
-            }
-            rx_stats.rxErrors++;
-            continue;
-        }
-        pthread_mutex_unlock(&spi_mutex);
-
-        if (bytes_rcv > MAX_BUFFER_LENGTH) {
-            if (buffer_pool_free(buffer)) {
-                printf("FAILURE: Could not buffer_pool_free.\n");
-            }
-            rx_stats.rxErrors++;
-            continue;
-        }
-        rx_stats.rxPackets++;
-        rx_stats.rxBytes += bytes_rcv;
-        frame->metadata.frame_length = bytes_rcv;
-
-        xbuffer_enqueue((QueueElement)buffer);
-    }
-    printf("<<< %s\n", __func__);
-#endif
 }
 
 #if 1
-
-// ARP 패킷 구조체
-struct arp_packet {
-    uint16_t hardware_type;
-    uint16_t protocol_type;
-    uint8_t hardware_size;
-    uint8_t protocol_size;
-    uint16_t opcode;
-    uint8_t sender_mac[6];
-    uint32_t sender_ip;
-    uint8_t target_mac[6];
-    uint32_t target_ip;
-};
-
 void print_mac(uint8_t* mac) {
     printf("%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-void print_ip(uint32_t ip) {
-    uint8_t* ip_bytes = (uint8_t*)&ip;
+void print_ip(uint8_t* ip_bytes) {
     printf("%d.%d.%d.%d", ip_bytes[0], ip_bytes[1], ip_bytes[2], ip_bytes[3]);
 }
 
@@ -196,38 +143,38 @@ void process_packet(uint8_t* packet, int packet_len) {
     struct ethernet_header* eth_header = (struct ethernet_header*)packet;
 
     // 이더넷 타입이 ARP인지 확인 (0x0806)
-    if (ntohs(eth_header->type) != 0x0806) {
+    if (eth_header->type != 0x0806) {
         return;
     }
 
-    struct arp_packet* arp = (struct arp_packet*)(packet + sizeof(struct ethernet_header));
+    struct arp_header* arp = (struct arp_header*)(packet + sizeof(struct ethernet_header));
 
     // ARP 응답 패킷인지 확인 (opcode == 2)
-    if (ntohs(arp->opcode) != 2) {
+    if (arp->opcode != 2) {
         return;
     }
 
     printf("ARP Response Packet Detected:\n");
-    printf("Hardware Type: 0x%04x\n", ntohs(arp->hardware_type));
-    printf("Protocol Type: 0x%04x\n", ntohs(arp->protocol_type));
-    printf("Hardware Size: %d\n", arp->hardware_size);
-    printf("Protocol Size: %d\n", arp->protocol_size);
-    printf("Opcode: %d\n", ntohs(arp->opcode));
+    printf("Hardware Type: 0x%04x\n", arp->hw_type);
+    printf("Protocol Type: 0x%04x\n", arp->proto_type);
+    printf("Hardware Size: %d\n", arp->hw_size);
+    printf("Protocol Size: %d\n", arp->proto_size);
+    printf("Opcode: %d\n", arp->opcode);
 
     printf("Sender MAC: ");
-    print_mac(arp->sender_mac);
+    print_mac(arp->sender_hw);
     printf("\n");
 
     printf("Sender IP: ");
-    print_ip(ntohl(arp->sender_ip));
+    print_ip(arp->sender_proto);
     printf("\n");
 
     printf("Target MAC: ");
-    print_mac(arp->target_mac);
+    print_mac(arp->target_hw);
     printf("\n");
 
     printf("Target IP: ");
-    print_ip(ntohl(arp->target_ip));
+    print_ip(arp->target_proto);
     printf("\n");
 }
 
@@ -271,7 +218,6 @@ void* receiver_thread(void* arg) {
 
     printf(">>> %s(mode: %d)\n", __func__, p_arg->mode);
 
-    initialize_queue(&g_queue);
     initialize_statistics(&rx_stats);
 
     switch (p_arg->mode) {
@@ -286,16 +232,10 @@ void* receiver_thread(void* arg) {
         break;
     }
 
-    pthread_mutex_destroy(&g_queue.mutex);
-
     printf("<<< %s\n", __func__);
 
     return NULL;
 }
-
-unsigned char my_mac[HW_ADDR_LEN];
-unsigned char my_ipv4[IP_ADDR_LEN];
-unsigned char dst_ipv4[IP_ADDR_LEN];
 
 int api_spi_transmit_frame(uint8_t* packet, uint16_t length);
 
@@ -398,7 +338,8 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
         return -1;
     }
 
-    if(tx_len < 60) tx_len = 60;
+    if (tx_len < 60)
+        tx_len = 60;
     tx_metadata->frame_length = tx_len;
     dump_buffer((unsigned char*)tx->data, tx_len);
     pthread_mutex_lock(&spi_mutex);
@@ -407,29 +348,6 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
     return 0;
 }
 
-#if 0
-#define ETH_ALEN 6
-
-struct ethhdr {
-    unsigned char h_dest[ETH_ALEN];
-    unsigned char h_source[ETH_ALEN];
-    unsigned short h_proto;
-};
-
-struct arphdr {
-    unsigned short ar_hrd;
-    unsigned short ar_pro;
-    unsigned char ar_hln;
-    unsigned char ar_pln;
-    unsigned short ar_op;
-    unsigned char ar_sha[ETH_ALEN];
-    unsigned char ar_sip[4];
-    unsigned char ar_tha[ETH_ALEN];
-    unsigned char ar_tip[4];
-};
-#endif
-
-#if 1
 void create_arp_request_frame(unsigned char* frame, const char* src_ip, const char* dst_ip) {
     struct ethernet_header* eth = (struct ethernet_header*)frame;
     struct arp_header* arp = (struct arp_header*)(frame + ETH_HLEN);
@@ -442,11 +360,11 @@ void create_arp_request_frame(unsigned char* frame, const char* src_ip, const ch
     eth->type = 0x0806; /* ARP 프로토콜 */
 
     /* ARP 헤더 설정 */
-    arp->hw_type = 1;      /* 이더넷 */
+    arp->hw_type = 1;         /* 이더넷 */
     arp->proto_type = 0x0800; /* IPv4 */
-    arp->hw_size = 6;             /* MAC 주소 길이 */
-    arp->proto_size = 4;             /* IP 주소 길이 */
-    arp->opcode = 1;       /* ARP 요청 */
+    arp->hw_size = 6;         /* MAC 주소 길이 */
+    arp->proto_size = 4;      /* IP 주소 길이 */
+    arp->opcode = 1;          /* ARP 요청 */
 
     /* 송신자 MAC 및 IP 주소 설정 */
     memcpy(arp->sender_hw, eth->smac, ETH_ALEN);
@@ -461,39 +379,6 @@ void create_arp_request_frame(unsigned char* frame, const char* src_ip, const ch
     /* 패딩 추가 (최소 프레임 크기 64바이트를 맞추기 위해) */
     memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
 }
-#else
-void create_arp_request_frame(unsigned char* frame, const char* src_ip, const char* dst_ip) {
-    struct ethhdr* eth = (struct ethhdr*)frame;
-    struct arphdr* arp = (struct arphdr*)(frame + ETH_HLEN);
-
-    /* 이더넷 헤더 설정 */
-    memset(eth->h_dest, 0xFF, ETH_ALEN); /* 브로드캐스트 주소 */
-    for (int i = 0; i < ETH_ALEN; i++) {
-        eth->h_source[i] = my_mac[i];
-    }
-    eth->h_proto = htons(0x0806); /* ARP 프로토콜 */
-
-    /* ARP 헤더 설정 */
-    arp->ar_hrd = htons(1);      /* 이더넷 */
-    arp->ar_pro = htons(0x0800); /* IPv4 */
-    arp->ar_hln = 6;             /* MAC 주소 길이 */
-    arp->ar_pln = 4;             /* IP 주소 길이 */
-    arp->ar_op = htons(1);       /* ARP 요청 */
-
-    /* 송신자 MAC 및 IP 주소 설정 */
-    memcpy(arp->ar_sha, eth->h_source, ETH_ALEN);
-    inet_pton(AF_INET, src_ip, arp->ar_sip);
-
-    /* 목적지 MAC 주소는 알 수 없으므로 0으로 설정 */
-    memset(arp->ar_tha, 0, ETH_ALEN);
-
-    /* 목적지 IP 주소 설정 */
-    inet_pton(AF_INET, dst_ip, arp->ar_tip);
-
-    /* 패딩 추가 (최소 프레임 크기 64바이트를 맞추기 위해) */
-    memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
-}
-#endif
 
 #if 0
 void packet_handler(const u_char *packet) {
@@ -577,22 +462,8 @@ static void sender_as_client() {
 
 static void sender_as_server() {
 
-    QueueElement buffer = NULL;
-    int status;
-
     while (tx_thread_run) {
-        buffer = NULL;
-        buffer = xbuffer_dequeue();
-        if (buffer == NULL) {
-            continue;
-        }
-
-        status = process_send_packet((struct spi_rx_buffer*)buffer);
-        if (status == -1) {
-            tx_stats.txFiltered++;
-        }
-
-        buffer_pool_free((BUF_POINTER)buffer);
+        ;
     }
 }
 
