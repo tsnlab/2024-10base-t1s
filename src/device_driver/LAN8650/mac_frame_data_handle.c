@@ -1,7 +1,7 @@
 #include "arch.h"
 #include "arp_test.h"
-#include "spi.h"
 #include "register.h"
+#include "spi.h"
 
 static int spi_transmit_frame(uint8_t* packet, uint16_t length, uint32_t sv, uint32_t ev) {
     uint8_t txbuffer[HEADER_SIZE + MAX_PAYLOAD_BYTE] = {
@@ -57,8 +57,19 @@ int api_spi_transmit_frame(uint8_t* packet, uint16_t length) {
     uint16_t acc_byte = 0;
     uint16_t remainder = length;
     int result;
+    uint32_t regval;
 
     printf(">>> %s - length: %d\n", __func__, length);
+
+    /* Buffer Status Register Bits 15:8 – TXC[7:0] Transmit Credits Available */
+    regval = read_register(MMS0, OA_BUFSTS);
+    regval = (regval >> 8) & 0xFF;
+
+    if (length > (regval * 64)) {
+        /* There are not enough Transmit Creditsi */
+        printf("<<< %s - length: %d, Transmit Credits: %d\n", __func__, length, regval);
+        return -1;
+    }
 
     while (remainder > 0) {
         if (remainder <= MAX_PAYLOAD_BYTE) {
@@ -129,7 +140,7 @@ static int spi_receive_frame(uint8_t* rxbuffer) {
     // receive buffer
     result = spi_transfer(rxbuffer, txbuffer, sizeof(txbuffer));
 
-//    debug_spi_transfer_result(txbuffer, "txbuffer");
+    //    debug_spi_transfer_result(txbuffer, "txbuffer");
 
     return result;
 }
@@ -161,42 +172,95 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
     uint8_t rxbuffer[MAX_PAYLOAD_BYTE + FOOTER_SIZE] = {
         0,
     };
-    union data_footer data_transfer_rx_footer;
+    union data_footer footer;
     int result;
     uint32_t regval;
+    uint32_t acc_bytes = 0;
+    uint8_t stop_flag = 0;
+    uint16_t actual_length;
 
-    /* Buffer Status Register Bits 7:0 – RBA[7:0] Receive Blocks Available */
-    regval = read_register(MMS0, OA_BUFSTS);
-    if((regval & 0xFF) == 0) {
-        /* There is no Ethernet frame data available for reading. */
-        return -1;
-    }
+    while (stop_flag == 0) {
 
-    result = spi_receive_frame(rxbuffer);
+        /* Buffer Status Register Bits 7:0 – RBA[7:0] Receive Blocks Available */
+        regval = read_register(MMS0, OA_BUFSTS);
+        if ((regval & 0xFF) == 0) {
+            stop_flag = 1;
+            /* There is no Ethernet frame data available for reading. */
+            return -1;
+        }
 
-    if(result != SPI_E_SUCCESS) {
-        return -1;
+        result = spi_receive_frame(rxbuffer);
+
+        if (result != SPI_E_SUCCESS) {
+            stop_flag = 1;
+            return -1;
+        }
+
+        // Footer check
+        // memset(&footer, 0, sizeof(footer));
+        memcpy((uint8_t*)&footer.data_frame_foot, &rxbuffer[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
+        footer.data_frame_foot = ntohl(footer.data_frame_foot);
+
+        print_footer(&footer);
+
+        /* Frame Drop */
+        if (footer.rx_footer_bits.fd) {
+            stop_flag = 1;
+            return -1;
+        }
+
+        /* Check if data is valid */
+        /* There is no start of an Ethernet frame in the frame that came in at the time when the frame was started to be
+         * received.*/
+        if ((!footer.rx_footer_bits.dv) || ((acc_bytes == 0) && (!footer.rx_footer_bits.sv))) {
+            continue;
+        }
+
+        if (footer.rx_footer_bits.sv) {
+            acc_bytes = 0;
+            if (footer.rx_footer_bits.ev) {
+                /* Ethernet Frame Start + Ethernet Frame End*/
+                actual_length = (footer.rx_footer_bits.ebo + 1) - footer.rx_footer_bits.swo * 4;
+                memcpy(&packet[acc_bytes], &rxbuffer[footer.rx_footer_bits.swo * 4], actual_length);
+                acc_bytes += actual_length;
+                *length = acc_bytes;
+                stop_flag = 1;
+                return 0;
+
+            } else {
+                /* Ethernet Frame Start + Not Ethernet Frame End*/
+                actual_length = MAX_PAYLOAD_BYTE - footer.rx_footer_bits.swo * 4;
+                memcpy(&packet[acc_bytes], &rxbuffer[footer.rx_footer_bits.swo * 4], actual_length);
+                acc_bytes += actual_length;
+            }
+        } else {
+            if (footer.rx_footer_bits.ev) {
+                /* Not Ethernet Frame Start + Ethernet Frame End*/
+                actual_length = footer.rx_footer_bits.ebo + 1;
+                memcpy(&packet[acc_bytes], &rxbuffer[0], actual_length);
+                acc_bytes += actual_length;
+                *length = acc_bytes;
+                stop_flag = 1;
+                return 0;
+            } else {
+                /* Not Ethernet Frame Start + Not Ethernet Frame End*/
+                actual_length = MAX_PAYLOAD_BYTE;
+                memcpy(&packet[acc_bytes], &rxbuffer[0], actual_length);
+                acc_bytes += actual_length;
+            }
+        }
     }
 
     // print buffer for debugging
     // debug_spi_transfer_result(rxbuffer, "rxbuffer");
 
-    // Footer check
-    memset(&data_transfer_rx_footer, 0, sizeof(data_transfer_rx_footer));
-    memcpy((uint8_t*)&data_transfer_rx_footer.data_frame_foot, &rxbuffer[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
-    data_transfer_rx_footer.data_frame_foot = ntohl(data_transfer_rx_footer.data_frame_foot);
-
-    print_footer(&data_transfer_rx_footer);
-
+#if 0
     // receive data validation
-    if (data_transfer_rx_footer.rx_footer_bits.dv && !data_transfer_rx_footer.rx_footer_bits.exst) {
+    if (footer.rx_footer_bits.dv && !footer.rx_footer_bits.exst) {
 
-        uint16_t actual_length = data_transfer_rx_footer.rx_footer_bits.ebo + 1;
-        printf("actual_length: %d\n", actual_length);
+        uint16_t actual_length = footer.rx_footer_bits.ebo + 1;
         memcpy(packet, rxbuffer, actual_length);
-        printf("actual_length: %d\n", actual_length);
         *length = actual_length;
-        printf("*length: %d\n", *length);
 
         // Ethernet packet check
         printf("Destination MAC: ");
@@ -212,6 +276,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
 
         return 0;
     }
+#endif
 
     return -1;
 }
