@@ -136,6 +136,7 @@ static int spi_receive_frame(uint8_t* rxbuffer) {
 void print_footer(union data_footer* footer) {
 
     printf("Footer\n");
+#if 0
     printf("     exst: %u\n", footer->rx_footer_bits.exst);
     printf("     hdrb: %u\n", footer->rx_footer_bits.hdrb);
     printf("     sync: %u\n", footer->rx_footer_bits.sync);
@@ -151,6 +152,7 @@ void print_footer(union data_footer* footer) {
     printf("     rtps: %u\n", footer->rx_footer_bits.rtps);
     printf("      txc: %u\n", footer->rx_footer_bits.txc);
     printf("        p: %u\n", footer->rx_footer_bits.p);
+#endif
     printf("Raw value: 0x%08x\n", footer->data_frame_foot);
 }
 
@@ -168,9 +170,10 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
     }
 
     // print buffer for debugging
-    debug_spi_transfer_result(rxbuffer, "rxbuffer");
+    // debug_spi_transfer_result(rxbuffer, "rxbuffer");
 
     // Footer check
+    memset(&data_transfer_rx_footer, 0, sizeof(data_transfer_rx_footer));
     memcpy((uint8_t*)&data_transfer_rx_footer.data_frame_foot, &rxbuffer[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
     data_transfer_rx_footer.data_frame_foot = ntohl(data_transfer_rx_footer.data_frame_foot);
 
@@ -180,8 +183,11 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
     if (data_transfer_rx_footer.rx_footer_bits.dv && !data_transfer_rx_footer.rx_footer_bits.exst) {
 
         uint16_t actual_length = data_transfer_rx_footer.rx_footer_bits.ebo + 1;
+        printf("actual_length: %d\n", actual_length);
         memcpy(packet, rxbuffer, actual_length);
+        printf("actual_length: %d\n", actual_length);
         *length = actual_length;
+        printf("*length: %d\n", *length);
 
         // Ethernet packet check
         printf("Destination MAC: ");

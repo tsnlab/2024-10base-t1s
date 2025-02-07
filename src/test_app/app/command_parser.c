@@ -398,6 +398,7 @@ int fill_my_mac_address() {
 
     for (i = 0; i < HW_ADDR_LEN; i++) {
         my_mac[HW_ADDR_LEN - 1 - i] = (unsigned char)((mac >> (i * 8)) & 0xff);
+        //my_mac[i] = (unsigned char)((mac >> (i * 8)) & 0xff);
     }
 
     printf("MY MAC: \n    ");

@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 
 #include "arp.h"
@@ -85,8 +87,44 @@ void initialize_statistics(stats_t* p_stats) {
     memset(p_stats, 0, sizeof(stats_t));
 }
 
+static int process_send_packet(struct spi_rx_buffer* rx);
 static void receiver_as_server() {
 
+#if 1
+    struct spi_rx_buffer rx;
+    uint16_t bytes_rcv;
+    int status;
+
+    printf(">>> %s\n", __func__);
+
+    while (rx_thread_run) {
+        sleep(1);
+        memset(&rx, 0, sizeof(rx));
+
+        bytes_rcv = 0;
+        pthread_mutex_lock(&spi_mutex);
+        if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
+            pthread_mutex_unlock(&spi_mutex);
+            rx_stats.rxErrors++;
+            continue;
+        }
+        pthread_mutex_unlock(&spi_mutex);
+        if (bytes_rcv > MAX_BUFFER_LENGTH) {
+            rx_stats.rxErrors++;
+            continue;
+        }
+        rx_stats.rxPackets++;
+        rx_stats.rxBytes += bytes_rcv;
+        rx.metadata.frame_length = bytes_rcv;
+
+        status = process_send_packet((struct spi_rx_buffer*)&rx);
+        if (status == -1) {
+            tx_stats.txFiltered++;
+        }
+    }
+    printf("<<< %s\n", __func__);
+
+#else
     BUF_POINTER buffer;
     struct spi_rx_buffer* frame;
     uint16_t bytes_rcv;
@@ -101,7 +139,7 @@ static void receiver_as_server() {
             continue;
         }
 
-        frame = buffer;
+        frame = (struct spi_rx_buffer*)buffer;
         bytes_rcv = 0;
         pthread_mutex_lock(&spi_mutex);
         if (api_spi_receive_frame((uint8_t*)frame->data, &bytes_rcv)) {
@@ -128,6 +166,7 @@ static void receiver_as_server() {
         xbuffer_enqueue((QueueElement)buffer);
     }
     printf("<<< %s\n", __func__);
+#endif
 }
 
 #if 1
@@ -359,6 +398,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
         return -1;
     }
 
+    if(tx_len < 60) tx_len = 60;
     tx_metadata->frame_length = tx_len;
     pthread_mutex_lock(&spi_mutex);
     api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
@@ -368,6 +408,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
 
 #define ETH_ALEN 6
 
+#if 1
 struct ethhdr {
     unsigned char h_dest[ETH_ALEN];
     unsigned char h_source[ETH_ALEN];
@@ -385,6 +426,7 @@ struct arphdr {
     unsigned char ar_tha[ETH_ALEN];
     unsigned char ar_tip[4];
 };
+#endif
 
 void create_arp_request_frame(unsigned char* frame, const char* src_ip, const char* dst_ip) {
     struct ethhdr* eth = (struct ethhdr*)frame;
@@ -417,6 +459,49 @@ void create_arp_request_frame(unsigned char* frame, const char* src_ip, const ch
     /* 패딩 추가 (최소 프레임 크기 64바이트를 맞추기 위해) */
     memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
 }
+
+#if 0
+void packet_handler(const u_char *packet) {
+    struct ether_header *eth_header;
+    struct ip *ip_header;
+    struct tcphdr *tcp_header;
+
+    // 이더넷 헤더 파싱
+    eth_header = (struct ether_header *)packet;
+
+    printf("Ethernet Header:\n");
+    printf("Source MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+           eth_header->ether_shost[0], eth_header->ether_shost[1],
+           eth_header->ether_shost[2], eth_header->ether_shost[3],
+           eth_header->ether_shost[4], eth_header->ether_shost[5]);
+    printf("Destination MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+           eth_header->ether_dhost[0], eth_header->ether_dhost[1],
+           eth_header->ether_dhost[2], eth_header->ether_dhost[3],
+           eth_header->ether_dhost[4], eth_header->ether_dhost[5]);
+
+    // IP 패킷인 경우에만 처리
+    if (ntohs(eth_header->ether_type) == ETHERTYPE_IP) {
+        // IP 헤더 파싱
+        ip_header = (struct ip *)(packet + sizeof(struct ether_header));
+
+        printf("\nIP Header:\n");
+        printf("Source IP: %s\n", inet_ntoa(ip_header->ip_src));
+        printf("Destination IP: %s\n", inet_ntoa(ip_header->ip_dst));
+
+        // TCP 패킷인 경우에만 처리
+        if (ip_header->ip_p == IPPROTO_TCP) {
+            // TCP 헤더 파싱
+            tcp_header = (struct tcphdr *)(packet + sizeof(struct ether_header) + ip_header->ip_hl * 4);
+
+            printf("\nTCP Header:\n");
+            printf("Source Port: %d\n", ntohs(tcp_header->th_sport));
+            printf("Destination Port: %d\n", ntohs(tcp_header->th_dport));
+        }
+    }
+
+    printf("\n-----------------------------\n");
+}
+#endif
 
 void dump_buffer(unsigned char* buffer, int len) {
 

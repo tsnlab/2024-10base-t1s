@@ -79,8 +79,8 @@ uint64_t mac_to_int64(const char* mac_address) {
     uint64_t result = 0;
     unsigned int values[6];
 
-    if (sscanf(mac_address, "%x:%x:%x:%x:%x:%x", &values[0], &values[1], &values[2], &values[3], &values[4],
-               &values[5]) == 6) {
+    if (sscanf(mac_address, "%x:%x:%x:%x:%x:%x", &values[5], &values[4], &values[3], &values[2], &values[1],
+               &values[0]) == 6) {
         for (int i = 0; i < 6; i++) {
             result = (result << 8) | (values[i] & 0xFF);
         }
