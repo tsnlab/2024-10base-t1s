@@ -327,7 +327,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
         tx_len = 60;
     // tx_metadata->frame_length = tx_len;
     tx_metadata->frame_length = 1500;
-    dump_buffer((unsigned char*)tx->data, tx_len);
+    // dump_buffer((unsigned char*)tx->data, tx_len);
     pthread_mutex_lock(&spi_mutex);
     status = api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
     pthread_mutex_unlock(&spi_mutex);
