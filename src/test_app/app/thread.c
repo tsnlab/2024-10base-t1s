@@ -253,6 +253,9 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
             return -1;
         }
 
+        if (memcmp(rx_arp->target_proto, my_ipv4, IP_ADDR_LEN)) {
+            return -1;
+        }
         // make arp packet
         // tx_arp->hw_type = rx_arp->hw_type;
         // tx_arp->proto_type = rx_arp->proto_type;
