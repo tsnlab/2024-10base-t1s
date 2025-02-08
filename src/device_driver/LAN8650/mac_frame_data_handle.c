@@ -225,6 +225,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
                 acc_bytes += actual_length;
                 *length = acc_bytes;
                 stop_flag = 1;
+                printf("*length: %d\n", *length);
                 return 0;
 
             } else {
@@ -241,6 +242,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
                 acc_bytes += actual_length;
                 *length = acc_bytes;
                 stop_flag = 1;
+                printf("*length: %d\n", *length);
                 return 0;
             } else {
                 /* Not Ethernet Frame Start + Not Ethernet Frame End*/

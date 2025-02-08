@@ -340,7 +340,8 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
 
     if (tx_len < 60)
         tx_len = 60;
-    tx_metadata->frame_length = tx_len;
+    //tx_metadata->frame_length = tx_len;
+    tx_metadata->frame_length = 1500;
     dump_buffer((unsigned char*)tx->data, tx_len);
     pthread_mutex_lock(&spi_mutex);
     api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
@@ -450,7 +451,8 @@ static void sender_as_client() {
     printf("\n");
     printf("\n");
 
-    tx.metadata.frame_length = 60;
+    //tx.metadata.frame_length = 60;
+    tx.metadata.frame_length = 1500;
 
     while (tx_thread_run) {
         pthread_mutex_lock(&spi_mutex);
