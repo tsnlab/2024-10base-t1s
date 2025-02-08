@@ -411,7 +411,7 @@ static bool t1s_hw_readreg(struct ctrl_cmd_reg* p_regInfoInput, struct ctrl_cmd_
         readstatus = true;
     } else {
         // TODO: Error handling if MACPHY received with header parity error
-        printf("Parity Error READMACPHYReg header value : 0x%08x\n", commandheader_echoed.ctrl_frame_head);
+        // printf("Parity Error READMACPHYReg header value : 0x%08x\n", commandheader_echoed.ctrl_frame_head);
     }
 
     return readstatus;
@@ -535,7 +535,7 @@ uint32_t read_register(uint8_t mms, uint16_t address) {
     if (execution_status == true) {
         return readreg_data.databuffer[0];
     } else {
-        printf("ERROR: Register Read failed at MMS %d, Address %4x\n", mms, address);
+        // printf("ERROR: Register Read failed at MMS %d, Address %4x\n", mms, address);
         return 0;
     }
 }

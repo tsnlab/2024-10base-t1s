@@ -319,7 +319,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
         }
         break;
     default:
-        printf("Unknown type: %04x\n", rx_eth->type);
+        //        printf("Unknown type: %04x\n", rx_eth->type);
         return -1;
     }
 

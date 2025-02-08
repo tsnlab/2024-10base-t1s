@@ -59,7 +59,7 @@ int api_spi_transmit_frame(uint8_t* packet, uint16_t length) {
     int result;
     uint32_t regval;
 
-    printf(">>> %s - length: %d\n", __func__, length);
+    //    printf(">>> %s - length: %d\n", __func__, length);
 
     /* Buffer Status Register Bits 15:8 – TXC[7:0] Transmit Credits Available */
     regval = read_register(MMS0, OA_BUFSTS);
@@ -67,7 +67,7 @@ int api_spi_transmit_frame(uint8_t* packet, uint16_t length) {
 
     if (length > (regval * 64)) {
         /* There are not enough Transmit Creditsi */
-        printf("<<< %s - length: %d, Transmit Credits: %d\n", __func__, length, regval);
+        //       printf("<<< %s - length: %d, Transmit Credits: %d\n", __func__, length, regval);
         return -1;
     }
 
@@ -83,7 +83,7 @@ int api_spi_transmit_frame(uint8_t* packet, uint16_t length) {
 
         result = spi_transmit_frame((uint8_t*)&packet[acc_byte], send_bytes, start_valid, end_valid);
         if (result) {
-            printf("%s - Fail to transmit frame(packet[%d], send_bytes: %d)\n", __func__, acc_byte, send_bytes);
+            // printf("%s - Fail to transmit frame(packet[%d], send_bytes: %d)\n", __func__, acc_byte, send_bytes);
             return -1;
         }
         acc_byte += send_bytes;
@@ -91,7 +91,7 @@ int api_spi_transmit_frame(uint8_t* packet, uint16_t length) {
         start_valid = 0;
     }
 
-    printf("<<< %s - length: %d\n", __func__, length);
+    // printf("<<< %s - length: %d\n", __func__, length);
 
     return 0;
 }
@@ -201,7 +201,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
         memcpy((uint8_t*)&footer.data_frame_foot, &rxbuffer[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
         footer.data_frame_foot = ntohl(footer.data_frame_foot);
 
-        print_footer(&footer);
+        //  print_footer(&footer);
 
         /* Frame Drop */
         if (footer.rx_footer_bits.fd) {
@@ -225,7 +225,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
                 acc_bytes += actual_length;
                 *length = acc_bytes;
                 stop_flag = 1;
-                printf("*length: %d\n", *length);
+                // printf("*length: %d\n", *length);
                 return 0;
 
             } else {
@@ -242,7 +242,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
                 acc_bytes += actual_length;
                 *length = acc_bytes;
                 stop_flag = 1;
-                printf("*length: %d\n", *length);
+                // printf("*length: %d\n", *length);
                 return 0;
             } else {
                 /* Not Ethernet Frame Start + Not Ethernet Frame End*/
