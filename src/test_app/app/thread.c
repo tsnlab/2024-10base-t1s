@@ -101,7 +101,10 @@ static void receiver_as_server(int sts_flag) {
         rx_stats.rxBytes += bytes_rcv;
         rx.metadata.frame_length = bytes_rcv;
 
-        dump_buffer((unsigned char*)rx.data, bytes_rcv);
+        if (sts_flag == 0) {
+            dump_buffer((unsigned char*)rx.data, bytes_rcv);
+        }
+
         status = process_send_packet((struct spi_rx_buffer*)&rx);
         if (status == -1) {
             tx_stats.txFiltered++;
@@ -172,7 +175,6 @@ static void receiver_as_client(int sts_flag) {
             sleep(1);
         }
         memset(&rx, 0, sizeof(rx));
-
         bytes_rcv = 0;
         pthread_mutex_lock(&spi_mutex);
         if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
@@ -189,7 +191,9 @@ static void receiver_as_client(int sts_flag) {
         rx_stats.rxBytes += bytes_rcv;
         rx.metadata.frame_length = bytes_rcv;
 
-        process_packet((uint8_t*)rx.data, (int)bytes_rcv);
+        if (sts_flag == 0) {
+            process_packet((uint8_t*)rx.data, (int)bytes_rcv);
+        }
     }
     printf("<<< %s\n", __func__);
 }
@@ -229,6 +233,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
     uint8_t* tx_frame = (uint8_t*)&tx->data;
     struct ethernet_header* rx_eth = (struct ethernet_header*)rx_frame;
     struct ethernet_header* tx_eth = (struct ethernet_header*)tx_frame;
+    int status;
 
     tx_metadata->reserved = 0;
 
@@ -324,8 +329,14 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
     tx_metadata->frame_length = 1500;
     dump_buffer((unsigned char*)tx->data, tx_len);
     pthread_mutex_lock(&spi_mutex);
-    api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
+    status = api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
     pthread_mutex_unlock(&spi_mutex);
+    if (status) {
+        tx_stats.txFiltered++;
+    } else {
+        tx_stats.txPackets++;
+        tx_stats.txBytes += (tx_metadata->frame_length + 4);
+    }
     return 0;
 }
 
@@ -408,6 +419,7 @@ static void sender_as_client(int sts_flag) {
     struct spi_tx_buffer tx;
     char src_ip[16];
     char dst_ip[16];
+    int status;
 
     memset(src_ip, 0, sizeof(src_ip));
     memset(dst_ip, 0, sizeof(dst_ip));
@@ -418,15 +430,20 @@ static void sender_as_client(int sts_flag) {
 
     dump_buffer((unsigned char*)tx.data, 64);
     printf("\n");
-    printf("\n");
 
     // tx.metadata.frame_length = 60;
     tx.metadata.frame_length = 1500;
 
     while (tx_thread_run) {
         pthread_mutex_lock(&spi_mutex);
-        api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
+        status = api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
         pthread_mutex_unlock(&spi_mutex);
+        if (status) {
+            tx_stats.txErrors++;
+        } else {
+            tx_stats.txPackets++;
+            tx_stats.txBytes += (tx.metadata.frame_length + 4);
+        }
         if (sts_flag == 0) {
             sleep(1);
         }
@@ -588,6 +605,7 @@ void* stats_thread(void* arg) {
         }
     }
 
+    print_stats();
     printf("<<< %s\n", __func__);
 
     return NULL;
