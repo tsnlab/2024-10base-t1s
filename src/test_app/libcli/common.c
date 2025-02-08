@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 int is_hexdecimal(char* param) {
@@ -87,4 +88,15 @@ uint64_t mac_to_int64(const char* mac_address) {
     }
 
     return result;
+}
+
+void dump_buffer(unsigned char* buffer, int len) {
+
+    for (int idx = 0; idx < len; idx++) {
+        if ((idx % 16) == 0) {
+            printf("\n  ");
+        }
+        printf("0x%02x ", buffer[idx] & 0xFF);
+    }
+    printf("\n");
 }

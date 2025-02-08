@@ -13,9 +13,10 @@ enum {
 
 typedef struct thread_arg {
     int mode;
+    int sts_flag;
     uint32_t ipv4;
     uint32_t dst_ipv4;
     uint64_t mac;
-} rx_thread_arg_t, tx_thread_arg_t;
+} rx_thread_arg_t, tx_thread_arg_t, stats_thread_arg_t;
 
 #endif /* APP_XBASE_T1S_H */

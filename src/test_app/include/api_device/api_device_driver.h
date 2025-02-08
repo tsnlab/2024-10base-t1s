@@ -13,4 +13,8 @@ int api_config_node(int node_id, int node_cnt);
 int api_config_mac_address(uint64_t mac);
 int api_configure_plca_to_mac_phy();
 
+int drv_init_client();
+int drv_init_server();
+int drv_spi_cleanup();
+
 #endif /* API_DEVICE_API_DEVICE_DRIVER_H */

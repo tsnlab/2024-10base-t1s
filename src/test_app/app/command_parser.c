@@ -20,11 +20,12 @@
 #include "xbase_common.h"
 
 menu_command_t main_command_tbl[] = {
-    {"run", EXECUTION_ATTR, process_main_run, "   run -r <role> -i <ip address> -t <target ip address>",
+    {"run", EXECUTION_ATTR, process_main_run, "   run -r <role> -i <ip address> -t <target ip address> -s <statistics>",
      "   Run xbase-t1s application as role\n"
      "                   <role> default value: 0 (0: client, 1: server)\n"
      "             <ip address> default value: 192.168.10.11\n"
-     "      <target ip address> default value: 192.168.10.21\n"},
+     "      <target ip address> default value: 192.168.10.21\n"
+     "             <statistics> default value: 0 (0: deactivate, 1:activate)\n"},
     {"read", EXECUTION_ATTR, process_main_read, "   read -m <Memory Map Selector>\n",
      "   Read all register values in Memory Map Selector\n"
      "        <Memory Map Selector> default value: 0 ( 0: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
@@ -72,6 +73,7 @@ int watch_stop = 1;
 
 extern int rx_thread_run;
 extern int tx_thread_run;
+extern int stats_thread_run;
 extern int verbose;
 extern unsigned char my_mac[HW_ADDR_LEN];
 extern unsigned char my_ipv4[IP_ADDR_LEN];
@@ -83,6 +85,8 @@ void signal_handler(int sig) {
     tx_thread_run = 0;
     sleep(1);
     rx_thread_run = 0;
+    sleep(1);
+    stats_thread_run = 0;
     sleep(1);
     exit(0);
 }
@@ -188,12 +192,12 @@ int init_driver(int mode) {
     return 0;
 }
 
-int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4) {
+int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag) {
 
-    pthread_t tid1, tid2;
+    pthread_t tid1, tid2, tid3;
     rx_thread_arg_t rx_arg;
     tx_thread_arg_t tx_arg;
-    int ret;
+    stats_thread_arg_t st_arg;
 
     printf(">>> %s(mode: %s)\n", __func__, mode ? "SERVER" : "CLIENT");
 
@@ -215,16 +219,27 @@ int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4) {
 
     memset(&rx_arg, 0, sizeof(rx_thread_arg_t));
     rx_arg.mode = mode;
+    rx_arg.sts_flag = sts_flag;
     pthread_create(&tid1, NULL, receiver_thread, (void*)&rx_arg);
     sleep(1);
 
     memset(&tx_arg, 0, sizeof(tx_thread_arg_t));
     tx_arg.mode = mode;
+    tx_arg.sts_flag = sts_flag;
     pthread_create(&tid2, NULL, sender_thread, (void*)&tx_arg);
     sleep(1);
 
+    if (sts_flag) {
+        memset(&st_arg, 0, sizeof(stats_thread_arg_t));
+        st_arg.mode = mode;
+        st_arg.sts_flag = sts_flag;
+        pthread_create(&tid3, NULL, stats_thread, (void*)&st_arg);
+    }
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
+    if (sts_flag) {
+        pthread_join(tid3, NULL);
+    }
 
     pthread_mutex_destroy(&spi_mutex);
 
@@ -289,9 +304,10 @@ int do_config_node(int node_id, int node_cnt) {
     return api_config_node(node_id, node_cnt);
 }
 
-#define MAIN_RUN_OPTION_STRING "r:i:t:hv"
+#define MAIN_RUN_OPTION_STRING "r:i:t:s:hv"
 int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
     int mode = DEFAULT_RUN_MODE;
+    int sts_flag = 0;
     int argflag;
     uint32_t ipv4 = 0xc0a80a0b;
     uint32_t t_ipv4 = 0xc0a80a15;
@@ -325,6 +341,17 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
             }
             break;
 
+        case 's':
+            if (str2int(optarg, &sts_flag) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((sts_flag < 0) || (sts_flag > 1)) {
+                printf("statistics %d is out of range.\n", sts_flag);
+                return -1;
+            }
+            break;
+
         case 'v':
             log_level_set(++verbose);
             if (verbose == 2) {
@@ -339,7 +366,7 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
         }
     }
 
-    return do_run(mode, ipv4, t_ipv4);
+    return do_run(mode, ipv4, t_ipv4, sts_flag);
 }
 
 #define MAIN_READ_OPTION_STRING "m:hv"

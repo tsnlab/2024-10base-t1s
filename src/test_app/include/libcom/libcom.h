@@ -17,4 +17,6 @@ int fill_nbytes_string_2_hexadecimal(char* str, unsigned char* v, int n);
 uint64_t mac_to_int64(const char* mac_address);
 uint32_t ipv4_to_int32(const char* ipv4_address);
 
+void dump_buffer(unsigned char* buffer, int len);
+
 #endif // __LIBCOM_H__

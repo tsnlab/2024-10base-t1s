@@ -1,9 +1,16 @@
+#include "thread.h"
+
+#include <libcom.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+#include <arpa/inet.h>
 #include <netinet/ip.h>
+#include <sys/time.h>
 
 #include "arp.h"
 #include "ethernet.h"
@@ -18,12 +25,7 @@ extern pthread_mutex_t spi_mutex;
 
 int rx_thread_run = 1;
 int tx_thread_run = 1;
-
-#if 0
-static CircularQueue_t g_queue;
-static CircularQueue_t* queue = NULL;
-
-#endif
+int stats_thread_run = 1;
 
 unsigned char my_mac[HW_ADDR_LEN];
 unsigned char my_ipv4[IP_ADDR_LEN];
@@ -32,68 +34,44 @@ unsigned char dst_ipv4[IP_ADDR_LEN];
 stats_t rx_stats;
 stats_t tx_stats;
 
-#if 0
-void initialize_queue(CircularQueue_t* p_queue) {
-    queue = p_queue;
+stats_t cs; /* total stats */
+stats_t os; /* total stats */
 
-    p_queue->front = 0;
-    p_queue->rear = -1;
-    p_queue->count = 0;
-    pthread_mutex_init(&p_queue->mutex, NULL);
-}
+unsigned long long currTv;
+unsigned long long lastTv;
 
-static int isQueueEmpty() {
-    return (queue->count == 0);
-}
+time_t start_time;
+time_t stopTime;
 
-static int isQueueFull() {
-    return (queue->count == NUMBER_OF_QUEUE);
-}
+char* counter_name[MAX_COUNTERS] = {
+    "rxPackets", "rxBytes",    "rxErrors", "rxNoBuffer", "rxPps", "rxBps", "txPackets",
+    "txBytes",   "txFiltered", "txErrors", "txPps",      "txBps", NULL,
+};
 
-int getQueueCount() {
-    return queue->count;
-}
+int printCounters[] = {
+    COUNTERS_RXPACKETS,
+    COUNTERS_RXBYTES,
+    COUNTERS_RXPPS,
+    COUNTERS_RXBPS,
 
-static void xbuffer_enqueue(QueueElement element) {
-    pthread_mutex_lock(&queue->mutex);
+    COUNTERS_TXPACKETS,
+    COUNTERS_TXBYTES,
+    COUNTERS_TXPPS,
+    COUNTERS_TXBPS,
 
-    if (isQueueFull()) {
-        pthread_mutex_unlock(&queue->mutex);
-        return;
-    }
+    0xffff,
+};
 
-    queue->rear = (queue->rear + 1) % NUMBER_OF_QUEUE;
-    queue->elements[queue->rear] = element;
-    queue->count++;
-
-    pthread_mutex_unlock(&queue->mutex);
-}
-
-static QueueElement xbuffer_dequeue() {
-    pthread_mutex_lock(&queue->mutex);
-
-    if (isQueueEmpty()) {
-        pthread_mutex_unlock(&queue->mutex);
-        return EMPTY_ELEMENT;
-    }
-
-    QueueElement dequeuedElement = queue->elements[queue->front];
-    queue->front = (queue->front + 1) % NUMBER_OF_QUEUE;
-    queue->count--;
-
-    pthread_mutex_unlock(&queue->mutex);
-
-    return dequeuedElement;
-}
-#endif
+static int process_send_packet(struct spi_rx_buffer* rx);
+int api_spi_transmit_frame(uint8_t* packet, uint16_t length);
+int api_spi_receive_frame(uint8_t* packet, uint16_t* length);
 
 void initialize_statistics(stats_t* p_stats) {
 
     memset(p_stats, 0, sizeof(stats_t));
 }
 
-static int process_send_packet(struct spi_rx_buffer* rx);
-static void receiver_as_server() {
+static void receiver_as_server(int sts_flag) {
 
     struct spi_rx_buffer rx;
     uint16_t bytes_rcv;
@@ -102,7 +80,9 @@ static void receiver_as_server() {
     printf(">>> %s\n", __func__);
 
     while (rx_thread_run) {
-        sleep(1);
+        if (sts_flag == 0) {
+            sleep(1);
+        }
         memset(&rx, 0, sizeof(rx));
 
         bytes_rcv = 0;
@@ -180,7 +160,7 @@ void process_packet(uint8_t* packet, int packet_len) {
 
 #endif
 
-static void receiver_as_client() {
+static void receiver_as_client(int sts_flag) {
 
     struct spi_rx_buffer rx;
     uint16_t bytes_rcv;
@@ -188,7 +168,9 @@ static void receiver_as_client() {
     printf(">>> %s\n", __func__);
 
     while (rx_thread_run) {
-        sleep(1);
+        if (sts_flag == 0) {
+            sleep(1);
+        }
         memset(&rx, 0, sizeof(rx));
 
         bytes_rcv = 0;
@@ -222,10 +204,10 @@ void* receiver_thread(void* arg) {
 
     switch (p_arg->mode) {
     case RUN_MODE_CLIENT:
-        receiver_as_client();
+        receiver_as_client(p_arg->sts_flag);
         break;
     case RUN_MODE_SERVER:
-        receiver_as_server();
+        receiver_as_server(p_arg->sts_flag);
         break;
     default:
         printf("%s - Unknown mode(%d)\n", __func__, p_arg->mode);
@@ -236,8 +218,6 @@ void* receiver_thread(void* arg) {
 
     return NULL;
 }
-
-int api_spi_transmit_frame(uint8_t* packet, uint16_t length);
 
 static int process_send_packet(struct spi_rx_buffer* rx) {
     uint8_t* buffer = (uint8_t*)rx;
@@ -319,7 +299,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
                 return -1;
             }
 
-            struct udp_header* tx_udp = IPv4_PAYLOAD(tx_ipv4);
+            struct udp_header* tx_udp = (struct udp_header*)IPv4_PAYLOAD(tx_ipv4);
 
             // Fill UDP header
             // memcpy(tx_udp, rx_udp, rx_udp->length);
@@ -340,7 +320,7 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
 
     if (tx_len < 60)
         tx_len = 60;
-    //tx_metadata->frame_length = tx_len;
+    // tx_metadata->frame_length = tx_len;
     tx_metadata->frame_length = 1500;
     dump_buffer((unsigned char*)tx->data, tx_len);
     pthread_mutex_lock(&spi_mutex);
@@ -424,18 +404,7 @@ void packet_handler(const u_char *packet) {
 }
 #endif
 
-void dump_buffer(unsigned char* buffer, int len) {
-
-    for (int idx = 0; idx < len; idx++) {
-        if ((idx % 16) == 0) {
-            printf("\n  ");
-        }
-        printf("0x%02x ", buffer[idx] & 0xFF);
-    }
-    printf("\n");
-}
-
-static void sender_as_client() {
+static void sender_as_client(int sts_flag) {
     struct spi_tx_buffer tx;
     char src_ip[16];
     char dst_ip[16];
@@ -451,21 +420,25 @@ static void sender_as_client() {
     printf("\n");
     printf("\n");
 
-    //tx.metadata.frame_length = 60;
+    // tx.metadata.frame_length = 60;
     tx.metadata.frame_length = 1500;
 
     while (tx_thread_run) {
         pthread_mutex_lock(&spi_mutex);
         api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
         pthread_mutex_unlock(&spi_mutex);
-        sleep(1);
+        if (sts_flag == 0) {
+            sleep(1);
+        }
     }
 }
 
-static void sender_as_server() {
+static void sender_as_server(int sts_flag) {
 
     while (tx_thread_run) {
-        ;
+        if (sts_flag == 0) {
+            sleep(1);
+        };
     }
 }
 
@@ -478,14 +451,141 @@ void* sender_thread(void* arg) {
 
     switch (p_arg->mode) {
     case RUN_MODE_CLIENT:
-        sender_as_client();
+        sender_as_client(p_arg->sts_flag);
         break;
     case RUN_MODE_SERVER:
-        sender_as_server();
+        sender_as_server(p_arg->sts_flag);
         break;
     default:
         printf("%s - Unknown mode(%d)\n", __func__, p_arg->mode);
         break;
+    }
+
+    printf("<<< %s\n", __func__);
+
+    return NULL;
+}
+
+void calculate_stats() {
+    unsigned long long usec = currTv - lastTv;
+
+    cs.rxPackets = rx_stats.rxPackets;
+    cs.rxBytes = rx_stats.rxBytes;
+    cs.txPackets = tx_stats.txPackets;
+    cs.txBytes = tx_stats.txBytes;
+    cs.rxPps = ((rx_stats.rxPackets - os.rxPackets) * 1000000) / usec;
+    cs.rxBps = ((rx_stats.rxBytes - os.rxBytes) * 8000000) / usec;
+    cs.txPps = ((tx_stats.txPackets - os.txPackets) * 1000000) / usec;
+    cs.txBps = ((tx_stats.txBytes - os.txBytes) * 8000000) / usec;
+    memcpy(&os, &cs, sizeof(stats_t));
+}
+
+void print_counter() {
+
+    printf("%20s", counter_name[COUNTERS_RXPACKETS]);
+    printf("%16llu\n", rx_stats.rxPackets);
+    printf("%20s", counter_name[COUNTERS_RXBYTES]);
+    printf("%16llu\n", rx_stats.rxBytes);
+    printf("%20s", counter_name[COUNTERS_RXERRORS]);
+    printf("%16llu\n", rx_stats.rxErrors);
+    printf("%20s", counter_name[COUNTERS_RXNOBUF]);
+    printf("%16llu\n", rx_stats.rxNoBuffer);
+    printf("%20s", counter_name[COUNTERS_RXPPS]);
+    printf("%16llu\n", cs.rxPps);
+    printf("%20s", counter_name[COUNTERS_RXBPS]);
+    printf("%16llu\n", cs.rxBps);
+    printf("%20s", counter_name[COUNTERS_TXPACKETS]);
+    printf("%16llu\n", tx_stats.txPackets);
+    printf("%20s", counter_name[COUNTERS_TXBYTES]);
+    printf("%16llu\n", tx_stats.txBytes);
+    printf("%20s", counter_name[COUNTERS_TXFILTERED]);
+    printf("%16llu\n", tx_stats.txFiltered);
+    printf("%20s", counter_name[COUNTERS_TXERRORS]);
+    printf("%16llu\n", tx_stats.txErrors);
+    printf("%20s", counter_name[COUNTERS_TXPPS]);
+    printf("%16llu\n", cs.txPps);
+    printf("%20s", counter_name[COUNTERS_TXBPS]);
+    printf("%16llu\n", cs.txBps);
+}
+
+void CalExecTimeInfo(int seed, execTime_t* info) {
+
+    int day = 0;
+    int hour = 0;
+    int min = 0;
+    int sec = 0;
+    int tmp;
+
+    day = seed / DAY;
+    tmp = seed % DAY;
+    if (tmp) {
+        seed = tmp;
+        hour = seed / HOUR;
+        tmp = seed % HOUR;
+        if (tmp) {
+            seed = tmp;
+            min = seed / MIN;
+            sec = seed % MIN;
+        }
+    }
+
+    info->day = day;
+    info->hour = hour;
+    info->min = min;
+    info->sec = sec;
+}
+
+void print_stats() {
+
+    int totalRunTime;
+    time_t cur_time;
+    struct timeval tv;
+    execTime_t runTimeInfo;
+
+    int systemRet = system("clear");
+    if (systemRet == -1) {
+    }
+
+    gettimeofday(&tv, NULL);
+    currTv = tv.tv_sec * 1000000 + tv.tv_usec;
+
+    calculate_stats();
+
+    time(&cur_time);
+    totalRunTime = cur_time - start_time;
+    CalExecTimeInfo(totalRunTime, &runTimeInfo);
+
+    print_counter();
+    printf("%20s %u sec (%d-%d:%d:%d)\n", "Running", (unsigned int)totalRunTime, runTimeInfo.day, runTimeInfo.hour,
+           runTimeInfo.min, runTimeInfo.sec);
+
+    lastTv = currTv;
+}
+
+void* stats_thread(void* arg) {
+
+    stats_thread_arg_t* p_arg = (stats_thread_arg_t*)arg;
+    struct timeval previousTime, currentTime;
+    double elapsedTime;
+    struct timeval tv;
+
+    printf(">>> %s(mode: %d)\n", __func__, p_arg->mode);
+
+    time(&start_time);
+    gettimeofday(&tv, NULL);
+    lastTv = tv.tv_sec * 1000000 + tv.tv_usec;
+
+    gettimeofday(&previousTime, NULL);
+
+    while (stats_thread_run) {
+        gettimeofday(&currentTime, NULL);
+        elapsedTime =
+            (currentTime.tv_sec - previousTime.tv_sec) + (currentTime.tv_usec - previousTime.tv_usec) / 1000000.0;
+
+        if (elapsedTime >= 1.0) {
+            print_stats();
+            memcpy(&previousTime, &currentTime, sizeof(struct timeval));
+        }
     }
 
     printf("<<< %s\n", __func__);
