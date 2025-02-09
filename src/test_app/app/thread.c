@@ -281,6 +281,10 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
         // Fill IPv4 header
         // memcpy(tx_ipv4, rx_ipv4, IPv4_HLEN(rx_ipv4));
         src = rx_ipv4->dst;
+        /* To Do: check it first */
+        if (memcmp(&src, my_ipv4, IP_ADDR_LEN)) {
+            return -1;
+        }
         tx_ipv4->dst = rx_ipv4->src;
         tx_ipv4->src = src;
         tx_len += IPv4_HLEN(rx_ipv4);
