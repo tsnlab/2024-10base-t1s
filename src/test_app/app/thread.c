@@ -87,13 +87,13 @@ static void receiver_as_server(int sts_flag) {
         memset(&rx, 0, sizeof(rx));
 
         bytes_rcv = 0;
-        pthread_mutex_lock(&spi_mutex);
+        //        pthread_mutex_lock(&spi_mutex);
         if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
-            pthread_mutex_unlock(&spi_mutex);
+            //            pthread_mutex_unlock(&spi_mutex);
             rx_stats.rxErrors++;
             continue;
         }
-        pthread_mutex_unlock(&spi_mutex);
+        //        pthread_mutex_unlock(&spi_mutex);
         if (bytes_rcv > MAX_BUFFER_LENGTH) {
             rx_stats.rxErrors++;
             continue;
@@ -166,12 +166,16 @@ void process_packet(uint8_t* packet, int packet_len) {
 
 static void receiver_as_client(int sts_flag) {
 
+#if 0
     struct spi_rx_buffer rx;
     uint16_t bytes_rcv;
+#endif
 
     printf(">>> %s\n", __func__);
 
     while (rx_thread_run) {
+        ;
+#if 0
         if (sts_flag == 0) {
             sleep(1);
         }
@@ -195,6 +199,9 @@ static void receiver_as_client(int sts_flag) {
         if (sts_flag == 0) {
             process_packet((uint8_t*)rx.data, (int)bytes_rcv);
         }
+#else
+        sleep(1);
+#endif
     }
     printf("<<< %s\n", __func__);
 }
@@ -421,6 +428,30 @@ void packet_handler(const u_char *packet) {
 }
 #endif
 
+static inline void receive_task_as_client(int sts_flag) {
+
+    struct spi_rx_buffer rx;
+    uint16_t bytes_rcv;
+
+    memset(&rx, 0, sizeof(rx));
+    bytes_rcv = 0;
+    if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
+        rx_stats.rxErrors++;
+        return;
+    }
+    if (bytes_rcv > MAX_BUFFER_LENGTH) {
+        rx_stats.rxErrors++;
+        return;
+    }
+    rx_stats.rxPackets++;
+    rx_stats.rxBytes += bytes_rcv;
+    rx.metadata.frame_length = bytes_rcv;
+
+    if (sts_flag == 0) {
+        process_packet((uint8_t*)rx.data, (int)bytes_rcv);
+    }
+}
+
 static void sender_as_client(int sts_flag) {
     struct spi_tx_buffer tx;
     char src_ip[16];
@@ -440,9 +471,7 @@ static void sender_as_client(int sts_flag) {
     tx.metadata.frame_length = 60;
 
     while (tx_thread_run) {
-        pthread_mutex_lock(&spi_mutex);
         status = api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
-        pthread_mutex_unlock(&spi_mutex);
         if (status) {
             tx_stats.txErrors++;
         } else {
@@ -452,15 +481,20 @@ static void sender_as_client(int sts_flag) {
         if (sts_flag == 0) {
             sleep(1);
         }
+
+        receive_task_as_client(sts_flag);
     }
 }
 
 static void sender_as_server(int sts_flag) {
 
     while (tx_thread_run) {
+#if 0
         if (sts_flag == 0) {
             sleep(1);
         };
+#endif
+        sleep(1);
     }
 }
 
