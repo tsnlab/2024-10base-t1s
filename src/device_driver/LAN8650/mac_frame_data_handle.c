@@ -128,18 +128,29 @@ void debug_spi_transfer_result(uint8_t* buffer, char* name) {
 }
 
 static int spi_receive_frame(uint8_t* rxbuffer) {
-    uint8_t txbuffer[HEADER_SIZE + MAX_PAYLOAD_BYTE] = {
-        0,
-    };
-    uint32_t be_header;
+    static uint8_t txbuffer[2][HEADER_SIZE + MAX_PAYLOAD_BYTE] = {{
+                                                                      0,
+                                                                  },
+                                                                  {
+                                                                      0,
+                                                                  }};
+    static uint8_t header_index = 0;
+    static uint8_t init_header = 0;
+    static uint32_t be_header[2];
     int result;
 
-    config_receive_dummy_header(&be_header);
-    memcpy(txbuffer, &be_header, HEADER_SIZE);
+    if (init_header == 0) {
+        config_receive_dummy_header(&be_header[0]);
+        memcpy(txbuffer[0], &be_header[0], HEADER_SIZE);
+        config_receive_dummy_header(&be_header[1]);
+        memcpy(txbuffer[1], &be_header[1], HEADER_SIZE);
+        init_header = 1;
+    }
 
     // receive buffer
-    result = spi_transfer(rxbuffer, txbuffer, sizeof(txbuffer));
+    result = spi_transfer(rxbuffer, &txbuffer[header_index][0], sizeof(txbuffer));
 
+    header_index = (!header_index) & 0x1;
     //    debug_spi_transfer_result(txbuffer, "txbuffer");
 
     return result;
@@ -181,6 +192,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
 
     while (stop_flag == 0) {
 
+#if 1
         /* Buffer Status Register Bits 7:0 – RBA[7:0] Receive Blocks Available */
         regval = read_register(MMS0, OA_BUFSTS);
         if ((regval & 0xFF) == 0) {
@@ -188,6 +200,7 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
             /* There is no Ethernet frame data available for reading. */
             return -1;
         }
+#endif
 
         result = spi_receive_frame(rxbuffer);
 
