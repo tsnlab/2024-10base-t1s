@@ -63,7 +63,7 @@ int printCounters[] = {
     0xffff,
 };
 
-static int process_send_packet(struct spi_rx_buffer* rx);
+static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length);
 int api_spi_transmit_frame(uint8_t* packet, uint16_t length);
 int api_spi_receive_frame(uint8_t* packet, uint16_t* length);
 
@@ -72,7 +72,7 @@ void initialize_statistics(stats_t* p_stats) {
     memset(p_stats, 0, sizeof(stats_t));
 }
 
-static void receiver_as_server(int sts_flag) {
+static void receiver_as_server(int sts_flag, int pkt_length) {
 
     struct spi_rx_buffer rx;
     uint16_t bytes_rcv;
@@ -106,7 +106,7 @@ static void receiver_as_server(int sts_flag) {
             dump_buffer((unsigned char*)rx.data, bytes_rcv);
         }
 
-        status = process_send_packet((struct spi_rx_buffer*)&rx);
+        status = process_send_packet((struct spi_rx_buffer*)&rx, pkt_length);
         if (status == -1) {
             tx_stats.txFiltered++;
         }
@@ -164,7 +164,7 @@ void process_packet(uint8_t* packet, int packet_len) {
 
 #endif
 
-static void receiver_as_client(int sts_flag) {
+static void receiver_as_client(int sts_flag, int pkt_length) {
 
 #if 0
     struct spi_rx_buffer rx;
@@ -216,10 +216,10 @@ void* receiver_thread(void* arg) {
 
     switch (p_arg->mode) {
     case RUN_MODE_CLIENT:
-        receiver_as_client(p_arg->sts_flag);
+        receiver_as_client(p_arg->sts_flag, p_arg->pkt_length);
         break;
     case RUN_MODE_SERVER:
-        receiver_as_server(p_arg->sts_flag);
+        receiver_as_server(p_arg->sts_flag, p_arg->pkt_length);
         break;
     default:
         printf("%s - Unknown mode(%d)\n", __func__, p_arg->mode);
@@ -231,7 +231,7 @@ void* receiver_thread(void* arg) {
     return NULL;
 }
 
-static int process_send_packet(struct spi_rx_buffer* rx) {
+static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
     uint8_t* buffer = (uint8_t*)rx;
     int tx_len;
     struct spi_tx_buffer* tx =
@@ -337,11 +337,12 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
     if (tx_len < 60) {
         tx_len = 60;
     }
-    tx_metadata->frame_length = tx_len;
+    // tx_metadata->frame_length = tx_len;
+    tx_metadata->frame_length = (uint16_t)pkt_length;
     // dump_buffer((unsigned char*)tx->data, tx_len);
-    pthread_mutex_lock(&spi_mutex);
+    //    pthread_mutex_lock(&spi_mutex);
     status = api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
-    pthread_mutex_unlock(&spi_mutex);
+    //    pthread_mutex_unlock(&spi_mutex);
     if (status) {
         tx_stats.txFiltered++;
     } else {
@@ -452,7 +453,7 @@ static inline void receive_task_as_client(int sts_flag) {
     }
 }
 
-static void sender_as_client(int sts_flag) {
+static void sender_as_client(int sts_flag, int pkt_length) {
     struct spi_tx_buffer tx;
     char src_ip[16];
     char dst_ip[16];
@@ -465,10 +466,10 @@ static void sender_as_client(int sts_flag) {
 
     create_arp_request_frame((unsigned char*)tx.data, my_mac, (const char*)src_ip, (const char*)dst_ip);
 
-    dump_buffer((unsigned char*)tx.data, 64);
+    dump_buffer((unsigned char*)tx.data, pkt_length);
     printf("\n");
 
-    tx.metadata.frame_length = 60;
+    tx.metadata.frame_length = pkt_length;
 
     while (tx_thread_run) {
         status = api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
@@ -486,7 +487,7 @@ static void sender_as_client(int sts_flag) {
     }
 }
 
-static void sender_as_server(int sts_flag) {
+static void sender_as_server(int sts_flag, int pkt_length) {
 
     while (tx_thread_run) {
 #if 0
@@ -507,10 +508,10 @@ void* sender_thread(void* arg) {
 
     switch (p_arg->mode) {
     case RUN_MODE_CLIENT:
-        sender_as_client(p_arg->sts_flag);
+        sender_as_client(p_arg->sts_flag, p_arg->pkt_length);
         break;
     case RUN_MODE_SERVER:
-        sender_as_server(p_arg->sts_flag);
+        sender_as_server(p_arg->sts_flag, p_arg->pkt_length);
         break;
     default:
         printf("%s - Unknown mode(%d)\n", __func__, p_arg->mode);

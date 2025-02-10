@@ -14,6 +14,7 @@ enum {
 typedef struct thread_arg {
     int mode;
     int sts_flag;
+    int pkt_length;
     uint32_t ipv4;
     uint32_t dst_ipv4;
     uint64_t mac;

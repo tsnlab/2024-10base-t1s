@@ -20,12 +20,14 @@
 #include "xbase_common.h"
 
 menu_command_t main_command_tbl[] = {
-    {"run", EXECUTION_ATTR, process_main_run, "   run -r <role> -i <ip address> -t <target ip address> -s <statistics>",
+    {"run", EXECUTION_ATTR, process_main_run,
+     "   run -r <role> -i <ip address> -t <target ip address> -s <statistics> -l <Packet length>",
      "   Run xbase-t1s application as role\n"
      "                   <role> default value: 0 (0: client, 1: server)\n"
      "             <ip address> default value: 192.168.10.11\n"
      "      <target ip address> default value: 192.168.10.21\n"
-     "             <statistics> default value: 0 (0: deactivate, 1:activate)\n"},
+     "             <statistics> default value: 0 (0: deactivate, 1:activate)\n"
+     "         <Packet lengths> default value: 1514 (60 ~ 1514)\n"},
     {"read", EXECUTION_ATTR, process_main_read, "   read -m <Memory Map Selector>\n",
      "   Read all register values in Memory Map Selector\n"
      "        <Memory Map Selector> default value: 0 ( 0: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
@@ -192,7 +194,7 @@ int init_driver(int mode) {
     return 0;
 }
 
-int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag) {
+int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag, int pkt_length) {
 
     pthread_t tid1, tid2, tid3;
     rx_thread_arg_t rx_arg;
@@ -220,12 +222,14 @@ int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag) {
     memset(&rx_arg, 0, sizeof(rx_thread_arg_t));
     rx_arg.mode = mode;
     rx_arg.sts_flag = sts_flag;
+    rx_arg.pkt_length = pkt_length;
     pthread_create(&tid1, NULL, receiver_thread, (void*)&rx_arg);
     sleep(1);
 
     memset(&tx_arg, 0, sizeof(tx_thread_arg_t));
     tx_arg.mode = mode;
     tx_arg.sts_flag = sts_flag;
+    tx_arg.pkt_length = pkt_length;
     pthread_create(&tid2, NULL, sender_thread, (void*)&tx_arg);
     sleep(1);
 
@@ -304,10 +308,11 @@ int do_config_node(int node_id, int node_cnt) {
     return api_config_node(node_id, node_cnt);
 }
 
-#define MAIN_RUN_OPTION_STRING "r:i:t:s:hv"
+#define MAIN_RUN_OPTION_STRING "r:i:t:s:l:hv"
 int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
     int mode = DEFAULT_RUN_MODE;
     int sts_flag = 0;
+    int pkt_length = 1514;
     int argflag;
     uint32_t ipv4 = 0xc0a80a0b;
     uint32_t t_ipv4 = 0xc0a80a15;
@@ -352,6 +357,17 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
             }
             break;
 
+        case 'l':
+            if (str2int(optarg, &pkt_length) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((pkt_length < 60) || (pkt_length > 1514)) {
+                printf("Packet lengths %d is out of range.\n", pkt_length);
+                return -1;
+            }
+            break;
+
         case 'v':
             log_level_set(++verbose);
             if (verbose == 2) {
@@ -366,7 +382,7 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
         }
     }
 
-    return do_run(mode, ipv4, t_ipv4, sts_flag);
+    return do_run(mode, ipv4, t_ipv4, sts_flag, pkt_length);
 }
 
 #define MAIN_READ_OPTION_STRING "m:hv"
