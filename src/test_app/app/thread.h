@@ -10,12 +10,14 @@ enum {
     COUNTERS_RXNOBUF,
     COUNTERS_RXPPS,
     COUNTERS_RXBPS,
+    COUNTERS_RXPBPS,
     COUNTERS_TXPACKETS,
     COUNTERS_TXBYTES,
     COUNTERS_TXFILTERED,
     COUNTERS_TXERRORS,
     COUNTERS_TXPPS,
     COUNTERS_TXBPS,
+    COUNTERS_TXPBPS,
 
     COUNTERS_CNT,
 };
@@ -39,12 +41,14 @@ typedef struct stats {
     unsigned long long rxNoBuffer; /* BD is not available */
     unsigned long long rxPps;
     unsigned long long rxBps;
+    unsigned long long rxPBps;
     unsigned long long txPackets;
     unsigned long long txBytes;
     unsigned long long txFiltered;
     unsigned long long txErrors;
     unsigned long long txPps;
     unsigned long long txBps;
+    unsigned long long txPBps;
 } stats_t;
 
 void* receiver_thread(void* arg);

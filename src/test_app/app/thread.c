@@ -45,8 +45,8 @@ time_t start_time;
 time_t stopTime;
 
 char* counter_name[MAX_COUNTERS] = {
-    "rxPackets", "rxBytes",    "rxErrors", "rxNoBuffer", "rxPps", "rxBps", "txPackets",
-    "txBytes",   "txFiltered", "txErrors", "txPps",      "txBps", NULL,
+    "rxPackets", "rxBytes",    "rxErrors", "rxNoBuffer", "rxPps", "rxbps",      "rxPure-bps", "txPackets",
+    "txBytes",   "txFiltered", "txErrors", "txPps",      "txbps", "txPure-bps", NULL,
 };
 
 int printCounters[] = {
@@ -54,11 +54,13 @@ int printCounters[] = {
     COUNTERS_RXBYTES,
     COUNTERS_RXPPS,
     COUNTERS_RXBPS,
+    COUNTERS_RXPBPS,
 
     COUNTERS_TXPACKETS,
     COUNTERS_TXBYTES,
     COUNTERS_TXPPS,
     COUNTERS_TXBPS,
+    COUNTERS_TXPBPS,
 
     0xffff,
 };
@@ -532,8 +534,10 @@ void calculate_stats() {
     cs.txBytes = tx_stats.txBytes;
     cs.rxPps = ((rx_stats.rxPackets - os.rxPackets) * 1000000) / usec;
     cs.rxBps = ((rx_stats.rxBytes - os.rxBytes) * 8000000) / usec;
+    cs.rxPBps = ((rx_stats.rxBytes - (cs.rxPps * 12) - os.rxBytes) * 8000000) / usec; /* remove FCS & Preamble */
     cs.txPps = ((tx_stats.txPackets - os.txPackets) * 1000000) / usec;
     cs.txBps = ((tx_stats.txBytes - os.txBytes) * 8000000) / usec;
+    cs.txPBps = ((tx_stats.txBytes - (cs.txPps * 12) - os.txBytes) * 8000000) / usec; /* remove FCS & Preamble */
     memcpy(&os, &cs, sizeof(stats_t));
 }
 
