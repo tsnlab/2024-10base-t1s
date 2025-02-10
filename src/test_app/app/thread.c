@@ -13,6 +13,7 @@
 #include <sys/time.h>
 
 #include "arp.h"
+#include "create_ethernet_packet.h"
 #include "ethernet.h"
 #include "icmp.h"
 #include "ip.h"
@@ -281,10 +282,6 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
         // Fill IPv4 header
         // memcpy(tx_ipv4, rx_ipv4, IPv4_HLEN(rx_ipv4));
         src = rx_ipv4->dst;
-        /* To Do: check it first */
-        if (memcmp(&src, my_ipv4, IP_ADDR_LEN)) {
-            return -1;
-        }
         tx_ipv4->dst = rx_ipv4->src;
         tx_ipv4->src = src;
         tx_len += IPv4_HLEN(rx_ipv4);
@@ -330,10 +327,10 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
         return -1;
     }
 
-    if (tx_len < 60)
+    if (tx_len < 60) {
         tx_len = 60;
-    // tx_metadata->frame_length = tx_len;
-    tx_metadata->frame_length = 1500;
+    }
+    tx_metadata->frame_length = tx_len;
     // dump_buffer((unsigned char*)tx->data, tx_len);
     pthread_mutex_lock(&spi_mutex);
     status = api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
@@ -347,7 +344,8 @@ static int process_send_packet(struct spi_rx_buffer* rx) {
     return 0;
 }
 
-void create_arp_request_frame(unsigned char* frame, const char* src_ip, const char* dst_ip) {
+#if 0
+void create_arp_request_frame(unsigned char* frame, unsigned char * smac, const char* src_ip, const char* dst_ip) {
     struct ethernet_header* eth = (struct ethernet_header*)frame;
     struct arp_header* arp = (struct arp_header*)(frame + ETH_HLEN);
 
@@ -378,6 +376,7 @@ void create_arp_request_frame(unsigned char* frame, const char* src_ip, const ch
     /* 패딩 추가 (최소 프레임 크기 64바이트를 맞추기 위해) */
     memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
 }
+#endif
 
 #if 0
 void packet_handler(const u_char *packet) {
@@ -433,13 +432,12 @@ static void sender_as_client(int sts_flag) {
     sprintf(src_ip, "%d.%d.%d.%d", my_ipv4[0], my_ipv4[1], my_ipv4[2], my_ipv4[3]);
     sprintf(dst_ip, "%d.%d.%d.%d", dst_ipv4[0], dst_ipv4[1], dst_ipv4[2], dst_ipv4[3]);
 
-    create_arp_request_frame((unsigned char*)tx.data, (const char*)src_ip, (const char*)dst_ip);
+    create_arp_request_frame((unsigned char*)tx.data, my_mac, (const char*)src_ip, (const char*)dst_ip);
 
     dump_buffer((unsigned char*)tx.data, 64);
     printf("\n");
 
-    // tx.metadata.frame_length = 60;
-    tx.metadata.frame_length = 1500;
+    tx.metadata.frame_length = 60;
 
     while (tx_thread_run) {
         pthread_mutex_lock(&spi_mutex);
