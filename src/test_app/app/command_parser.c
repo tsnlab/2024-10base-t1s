@@ -55,6 +55,15 @@ menu_command_t main_command_tbl[] = {
      "        config mac -m  <MAC address>\n"
      "             <MAC address> default value: d8:3a:95:30:23:42\n\n"
      "        config plca\n\n"},
+    {"test", EXECUTION_ATTR, process_main_test,
+     "   run -r <role> -m <dst. MAC address> -i <ip address> -t <target ip address> -s <statistics> -l <Packet length>",
+     "   Run xbase-t1s application as role\n"
+     "                   <role> default value: 0 (0: reciever, 1: transmitter, 2: tranceiver)\n"
+     "       <dst. MAC address> default value: d8:3a:95:30:23:42\n"
+     "             <ip address> default value: 192.168.10.11\n"
+     "      <target ip address> default value: 192.168.10.21\n"
+     "             <statistics> default value: 0 (0: deactivate, 1:activate)\n"
+     "         <Packet lengths> default value: 1514 (60 ~ 1514)\n"},
 #if 0
     {"set", EXECUTION_ATTR, process_main_setCmd,
      "   set register [gen, rx, tx, h2c, c2h, irq, con, h2cs, c2hs, com, msix] <addr(Hex)> <data(Hex)>\n",
@@ -253,6 +262,73 @@ out_spi:
     return 0;
 }
 
+int do_test(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag, int pkt_length, uint64_t dmac) {
+
+    pthread_t tid1, tid2, tid3;
+    rx_thread_arg_t rx_arg;
+    tx_thread_arg_t tx_arg;
+    stats_thread_arg_t st_arg;
+
+    printf(">>> %s(mode: %s)\n", __func__, mode ? "SERVER" : "CLIENT");
+
+    if (init_driver(mode)) {
+        return -1;
+    }
+
+    if (fill_my_mac_address()) {
+        goto out_spi;
+    }
+
+    fill_ipv4_address((unsigned char*)my_ipv4, ipv4, "My IPv4");
+    fill_ipv4_address((unsigned char*)dst_ipv4, t_ipv4, "Dst. IPv4");
+
+    sleep(1);
+    pthread_mutex_init(&spi_mutex, NULL);
+
+    register_signal_handler();
+
+    /* Reciever or Tranceiver */
+    if ((mode == 0) || (mode == 2)) {
+        memset(&rx_arg, 0, sizeof(rx_thread_arg_t));
+        rx_arg.mode = mode;
+        rx_arg.sts_flag = sts_flag;
+        rx_arg.pkt_length = pkt_length;
+        rx_arg.dmac = dmac;
+        pthread_create(&tid1, NULL, receiver_thread, (void*)&rx_arg);
+        sleep(1);
+    }
+
+    /* Reansmitter or Tranceiver */
+    if ((mode == 1) || (mode == 2)) {
+        memset(&tx_arg, 0, sizeof(tx_thread_arg_t));
+        tx_arg.mode = mode;
+        tx_arg.sts_flag = sts_flag;
+        tx_arg.pkt_length = pkt_length;
+        tx_arg.dmac = dmac;
+        pthread_create(&tid2, NULL, sender_thread, (void*)&tx_arg);
+        sleep(1);
+    }
+
+    if (sts_flag) {
+        memset(&st_arg, 0, sizeof(stats_thread_arg_t));
+        st_arg.mode = mode;
+        st_arg.sts_flag = sts_flag;
+        pthread_create(&tid3, NULL, stats_thread, (void*)&st_arg);
+    }
+    pthread_join(tid1, NULL);
+    pthread_join(tid2, NULL);
+    if (sts_flag) {
+        pthread_join(tid3, NULL);
+    }
+
+    pthread_mutex_destroy(&spi_mutex);
+
+out_spi:
+    api_spi_cleanup();
+
+    return 0;
+}
+
 int do_read(int mms) {
     int spi_ret;
 
@@ -383,6 +459,92 @@ int process_main_run(int argc, const char* argv[], menu_command_t* menu_tbl) {
     }
 
     return do_run(mode, ipv4, t_ipv4, sts_flag, pkt_length);
+}
+
+#define MAIN_TEST_OPTION_STRING "r:m:i:t:s:l:hv"
+int process_main_test(int argc, const char* argv[], menu_command_t* menu_tbl) {
+    int mode = DEFAULT_RUN_MODE;
+    int sts_flag = 0;
+    int pkt_length = 1514;
+    int argflag;
+    uint32_t ipv4 = 0xc0a80a0b;
+    uint32_t t_ipv4 = 0xc0a80a15;
+    uint64_t mac = 0xd83a95302342;
+
+    while ((argflag = getopt(argc, (char**)argv, MAIN_TEST_OPTION_STRING)) != -1) {
+        switch (argflag) {
+        case 'r':
+            if (str2int(optarg, &mode) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((mode < 0) || (mode >= 3)) {
+                printf("mode %d is out of range.\n", mode);
+                return -1;
+            }
+            break;
+
+        case 'i':
+            ipv4 = ipv4_to_int32((const char*)optarg);
+            if (ipv4 == 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            break;
+
+        case 't':
+            t_ipv4 = ipv4_to_int32((const char*)optarg);
+            if (t_ipv4 == 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            break;
+
+        case 's':
+            if (str2int(optarg, &sts_flag) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((sts_flag < 0) || (sts_flag > 1)) {
+                printf("statistics %d is out of range.\n", sts_flag);
+                return -1;
+            }
+            break;
+
+        case 'l':
+            if (str2int(optarg, &pkt_length) != 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            if ((pkt_length < 60) || (pkt_length > 1514)) {
+                printf("Packet lengths %d is out of range.\n", pkt_length);
+                return -1;
+            }
+            break;
+
+        case 'm':
+            mac = mac_to_int64((const char*)optarg);
+            if (mac == 0) {
+                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
+                return -1;
+            }
+            break;
+
+        case 'v':
+            log_level_set(++verbose);
+            if (verbose == 2) {
+                /* add version info to debug output */
+                lprintf(LOG_DEBUG, "%s\n", VERSION_STRING);
+            }
+            break;
+
+        case 'h':
+            process_man_cmd(argc, argv, menu_tbl, ECHO);
+            return 0;
+        }
+    }
+
+    return do_test(mode, ipv4, t_ipv4, sts_flag, pkt_length, mac);
 }
 
 #define MAIN_READ_OPTION_STRING "m:hv"
