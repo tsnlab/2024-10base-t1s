@@ -99,7 +99,7 @@ static void receiver_as_server(int sts_flag, int pkt_length) {
             continue;
         }
         rx_stats.rxPackets++;
-        rx_stats.rxBytes += bytes_rcv;
+        rx_stats.rxBytes += (bytes_rcv + 8); /* Preamble */
         rx.metadata.frame_length = bytes_rcv;
 
         if (sts_flag == 0) {
@@ -347,7 +347,7 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
         tx_stats.txFiltered++;
     } else {
         tx_stats.txPackets++;
-        tx_stats.txBytes += (tx_metadata->frame_length + 4);
+        tx_stats.txBytes += (tx_metadata->frame_length + 4 + 8);
     }
     return 0;
 }
@@ -445,7 +445,7 @@ static inline void receive_task_as_client(int sts_flag) {
         return;
     }
     rx_stats.rxPackets++;
-    rx_stats.rxBytes += bytes_rcv;
+    rx_stats.rxBytes += (bytes_rcv + 8);
     rx.metadata.frame_length = bytes_rcv;
 
     if (sts_flag == 0) {
@@ -477,7 +477,7 @@ static void sender_as_client(int sts_flag, int pkt_length) {
             tx_stats.txErrors++;
         } else {
             tx_stats.txPackets++;
-            tx_stats.txBytes += (tx.metadata.frame_length + 4);
+            tx_stats.txBytes += (tx.metadata.frame_length + 4 + 8);
         }
         if (sts_flag == 0) {
             sleep(1);
