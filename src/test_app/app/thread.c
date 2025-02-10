@@ -555,6 +555,8 @@ void print_counter() {
     printf("%16llu\n", cs.rxPps);
     printf("%20s", counter_name[COUNTERS_RXBPS]);
     printf("%16llu\n", cs.rxBps);
+    printf("%20s", counter_name[COUNTERS_RXPBPS]);
+    printf("%16llu\n", cs.rxPBps);
     printf("%20s", counter_name[COUNTERS_TXPACKETS]);
     printf("%16llu\n", tx_stats.txPackets);
     printf("%20s", counter_name[COUNTERS_TXBYTES]);
@@ -567,6 +569,8 @@ void print_counter() {
     printf("%16llu\n", cs.txPps);
     printf("%20s", counter_name[COUNTERS_TXBPS]);
     printf("%16llu\n", cs.txBps);
+    printf("%20s", counter_name[COUNTERS_TXPBPS]);
+    printf("%16llu\n", cs.txPBps);
 }
 
 void CalExecTimeInfo(int seed, execTime_t* info) {
