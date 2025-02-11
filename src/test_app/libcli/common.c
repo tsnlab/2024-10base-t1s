@@ -100,3 +100,25 @@ void dump_buffer(unsigned char* buffer, int len) {
     }
     printf("\n");
 }
+
+void mac_address(unsigned char* mac, char* name) {
+
+    int i;
+
+    printf("%s", name);
+    for (i = 0; i < 5; i++) {
+        printf("%02x:", mac[i]);
+    }
+    printf("%02x\n", mac[i]);
+}
+
+void ipv4_address(unsigned char* ip, char* name) {
+
+    int i;
+
+    printf("%s", name);
+    for (i = 0; i < 3; i++) {
+        printf("%d.", ip[i]);
+    }
+    printf("%d\n", ip[i]);
+}

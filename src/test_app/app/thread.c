@@ -66,6 +66,7 @@ int printCounters[] = {
     0xffff,
 };
 
+static void packet_parse(struct spi_rx_buffer* rx);
 static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length);
 int api_spi_transmit_frame(uint8_t* packet, uint16_t length);
 int api_spi_receive_frame(uint8_t* packet, uint16_t* length);
@@ -114,89 +115,13 @@ static void receiver_as_server(int sts_flag, int pkt_length) {
     printf("<<< %s\n", __func__);
 }
 
-#if 1
-void print_mac(uint8_t* mac) {
-    printf("%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-}
-
-void print_ip(uint8_t* ip_bytes) {
-    printf("%d.%d.%d.%d", ip_bytes[0], ip_bytes[1], ip_bytes[2], ip_bytes[3]);
-}
-
-void process_packet(uint8_t* packet, int packet_len) {
-    struct ethernet_header* eth_header = (struct ethernet_header*)packet;
-
-    if (eth_header->type != 0x0806) {
-        return;
-    }
-
-    struct arp_header* arp = (struct arp_header*)(packet + sizeof(struct ethernet_header));
-
-    if (arp->opcode != 2) {
-        return;
-    }
-
-    printf("ARP Response Packet Detected:\n");
-    printf("Hardware Type: 0x%04x\n", arp->hw_type);
-    printf("Protocol Type: 0x%04x\n", arp->proto_type);
-    printf("Hardware Size: %d\n", arp->hw_size);
-    printf("Protocol Size: %d\n", arp->proto_size);
-    printf("Opcode: %d\n", arp->opcode);
-
-    printf("Sender MAC: ");
-    print_mac(arp->sender_hw);
-    printf("\n");
-
-    printf("Sender IP: ");
-    print_ip(arp->sender_proto);
-    printf("\n");
-
-    printf("Target MAC: ");
-    print_mac(arp->target_hw);
-    printf("\n");
-
-    printf("Target IP: ");
-    print_ip(arp->target_proto);
-    printf("\n");
-}
-
-#endif
-
 static void receiver_as_client(int sts_flag, int pkt_length) {
-
-#if 0
-    struct spi_rx_buffer rx;
-    uint16_t bytes_rcv;
-#endif
 
     printf(">>> %s\n", __func__);
 
     while (rx_thread_run) {
         ;
-#if 0
-        if (sts_flag == 0) {
-            sleep(1);
-        }
-        memset(&rx, 0, sizeof(rx));
-        bytes_rcv = 0;
-        if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
-            rx_stats.rxErrors++;
-            continue;
-        }
-        if (bytes_rcv > MAX_BUFFER_LENGTH) {
-            rx_stats.rxErrors++;
-            continue;
-        }
-        rx_stats.rxPackets++;
-        rx_stats.rxBytes += bytes_rcv;
-        rx.metadata.frame_length = bytes_rcv;
-
-        if (sts_flag == 0) {
-            process_packet((uint8_t*)rx.data, (int)bytes_rcv);
-        }
-#else
         sleep(1);
-#endif
     }
     printf("<<< %s\n", __func__);
 }
@@ -252,7 +177,7 @@ static void test_receiver(int sts_flag, int pkt_length) {
         rx.metadata.frame_length = bytes_rcv;
 
         if (sts_flag == 0) {
-            process_packet((uint8_t*)rx.data, (int)bytes_rcv);
+            packet_parse((struct spi_rx_buffer*)&rx);
         }
     }
     printf("<<< %s\n", __func__);
@@ -280,6 +205,103 @@ void* test_receiver_thread(void* arg) {
     return NULL;
 }
 
+static void packet_parse(struct spi_rx_buffer* rx) {
+    uint8_t* rx_frame = (uint8_t*)&rx->data;
+    struct ethernet_header* rx_eth = (struct ethernet_header*)rx_frame;
+    unsigned char ipv4_addr[4];
+    int i;
+
+    mac_address(rx_eth->dmac, "      Dst. MAC: ");
+    mac_address(rx_eth->smac, "      Src. MAC: ");
+
+    switch (rx_eth->type) {
+    case ETH_TYPE_ARP:
+        struct arp_header* rx_arp = (struct arp_header*)ETH_PAYLOAD(rx_frame);
+
+        printf(" ETHERNET TYPE: %s\n", "ARP");
+        printf("       HW Type: %04x\n", rx_arp->hw_type);
+        printf("   Proto. Type: %04x\n", rx_arp->proto_type);
+        printf("       HW Size: %d\n", rx_arp->hw_size);
+        printf("   Proto. Size: %d\n", rx_arp->hw_size);
+        switch (rx_arp->opcode) {
+        case ARP_OPCODE_ARP_REQUEST:
+            printf("        Opcode: ARP_REQUEST(%d)\n", rx_arp->opcode);
+            break;
+        case ARP_OPCODE_ARP_REPLY:
+            printf("        Opcode: ARP_REPLY(%d)\n", rx_arp->opcode);
+            break;
+        default:
+            printf("Unknown Opcode: %d\n", rx_arp->opcode);
+            return;
+        }
+
+        mac_address(rx_arp->sender_hw, "     Sender HW: ");
+        ipv4_address(rx_arp->sender_proto, " Sender Proto.: ");
+        mac_address(rx_arp->target_hw, "     Target HW: ");
+        ipv4_address(rx_arp->target_proto, " Target Proto.: ");
+        break;
+
+    case ETH_TYPE_IPv4:
+        struct ipv4_header* rx_ipv4 = (struct ipv4_header*)ETH_PAYLOAD(rx_frame);
+
+        printf(" ETHERNET TYPE: %s\n", "IPv4");
+
+        printf("       Version: %d\n", rx_ipv4->version);
+        printf("     HDR. LEN.: %d\n", rx_ipv4->hdr_len);
+        printf("          DSCP: %d\n", rx_ipv4->dscp);
+        printf("           ECN: %d\n", rx_ipv4->ecn);
+        printf("        LENGTH: %d\n", rx_ipv4->len);
+        printf("            ID: %d\n", rx_ipv4->id);
+        printf("         Flags: %d\n", rx_ipv4->flags);
+        printf("   Flag Offset: %d\n", rx_ipv4->frag_offset);
+        printf("           TTL: %d\n", rx_ipv4->ttl);
+        printf("      Checksum: %d\n", rx_ipv4->checksum);
+
+        for (i = 0; i < 4; i++) {
+            ipv4_addr[3 - i] = (unsigned char)((rx_ipv4->src >> (i * 8)) & 0xff);
+        }
+        ipv4_address(ipv4_addr, "  Src. Address: ");
+
+        for (i = 0; i < 4; i++) {
+            ipv4_addr[3 - i] = (unsigned char)((rx_ipv4->dst >> (i * 8)) & 0xff);
+        }
+        ipv4_address(ipv4_addr, "  Dst. Address: ");
+
+        if (rx_ipv4->proto == IP_PROTO_ICMP) {
+            struct icmp_header* rx_icmp = (struct icmp_header*)IPv4_PAYLOAD(rx_ipv4);
+            printf("      IP PROTO: %s\n", "ICMP");
+
+            switch (rx_icmp->type) {
+            case ICMP_TYPE_ECHO_REQUEST:
+                printf("     ICMP Type: %s\n", "ECHO REQUEST");
+                break;
+            case ICMP_TYPE_ECHO_REPLY:
+                printf("     ICMP Type: %s\n", "ECHO REPLY");
+                break;
+            default:
+                printf("     ICMP Type: Unknown(%d)\n", rx_icmp->type);
+                return;
+            }
+            printf(" ICMP Checksum: 0x%04x\n", rx_icmp->checksum);
+
+        } else if (rx_ipv4->proto == IP_PROTO_UDP) {
+            struct udp_header* rx_udp = (struct udp_header*)IPv4_PAYLOAD(rx_ipv4);
+            printf("      IP PROTO: %s\n", "UDP");
+
+            printf("     Src. Port: %d\n", rx_udp->srcport);
+            printf("     Dst. Port: %d\n", rx_udp->dstport);
+            printf("        Length: %d\n", rx_udp->length);
+            printf("     Dst. Port: %d\n", rx_udp->dstport);
+            printf("      Checksum: 0x%04x\n", rx_udp->checksum);
+        } else {
+            printf("      IP PROTO: Unknown(%d)\n", rx_ipv4->proto);
+        }
+        break;
+    default:
+        printf(" ETHERNET TYPE: Unknown(0x%04x)\n", rx_eth->type);
+    }
+}
+
 static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
     uint8_t* buffer = (uint8_t*)rx;
     int tx_len;
@@ -294,16 +316,13 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
 
     tx_metadata->reserved = 0;
 
-    // make ethernet frame
     memcpy(&(tx_eth->dmac), &(rx_eth->smac), 6);
     memcpy(&(tx_eth->smac), my_mac, 6);
 
     tx_len = ETH_HLEN;
 
-    // do arp, udp echo, etc.
     switch (rx_eth->type) {
-    case ETH_TYPE_ARP: // arp
-        ;
+    case ETH_TYPE_ARP:;
         struct arp_header* rx_arp = (struct arp_header*)ETH_PAYLOAD(rx_frame);
         struct arp_header* tx_arp = (struct arp_header*)ETH_PAYLOAD(tx_frame);
         if (rx_arp->opcode != ARP_OPCODE_ARP_REQUEST) {
@@ -313,11 +332,6 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
         if (memcmp(rx_arp->target_proto, my_ipv4, IP_ADDR_LEN)) {
             return -1;
         }
-        // make arp packet
-        // tx_arp->hw_type = rx_arp->hw_type;
-        // tx_arp->proto_type = rx_arp->proto_type;
-        // tx_arp->hw_size = rx_arp->hw_size;
-        // tx_arp->proto_size = rx_arp->proto_size;
         tx_arp->opcode = ARP_OPCODE_ARP_REPLY;
         memcpy(tx_arp->target_hw, rx_arp->sender_hw, HW_ADDR_LEN);
         memcpy(tx_arp->sender_hw, my_mac, HW_ADDR_LEN);
@@ -328,15 +342,12 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
 
         tx_len += ARP_HLEN;
         break;
-    case ETH_TYPE_IPv4: // ip
-        ;
+    case ETH_TYPE_IPv4:;
         struct ipv4_header* rx_ipv4 = (struct ipv4_header*)ETH_PAYLOAD(rx_frame);
         struct ipv4_header* tx_ipv4 = (struct ipv4_header*)ETH_PAYLOAD(tx_frame);
 
         uint32_t src;
 
-        // Fill IPv4 header
-        // memcpy(tx_ipv4, rx_ipv4, IPv4_HLEN(rx_ipv4));
         src = rx_ipv4->dst;
         tx_ipv4->dst = rx_ipv4->src;
         tx_ipv4->src = src;
@@ -352,8 +363,6 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
             struct icmp_header* tx_icmp = (struct icmp_header*)IPv4_PAYLOAD(tx_ipv4);
             unsigned long icmp_len = IPv4_BODY_LEN(rx_ipv4);
 
-            // Fill ICMP header and body
-            // memcpy(tx_icmp, rx_icmp, icmp_len);
             tx_icmp->type = ICMP_TYPE_ECHO_REPLY;
             icmp_checksum(tx_icmp, icmp_len);
             tx_len += icmp_len;
@@ -366,29 +375,25 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
 
             struct udp_header* tx_udp = (struct udp_header*)IPv4_PAYLOAD(tx_ipv4);
 
-            // Fill UDP header
-            // memcpy(tx_udp, rx_udp, rx_udp->length);
             uint16_t srcport;
             srcport = rx_udp->dstport;
             tx_udp->dstport = rx_udp->srcport;
             tx_udp->srcport = srcport;
             tx_udp->checksum = 0;
-            tx_len += rx_udp->length; // UDP.length contains header length
+            tx_len += rx_udp->length;
         } else {
             return -1;
         }
         break;
     default:
-        //        printf("Unknown type: %04x\n", rx_eth->type);
         return -1;
     }
 
     if (tx_len < 60) {
         tx_len = 60;
     }
-    // tx_metadata->frame_length = tx_len;
-    tx_metadata->frame_length = (uint16_t)pkt_length;
-    // dump_buffer((unsigned char*)tx->data, tx_len);
+    tx_metadata->frame_length = tx_len;
+    // tx_metadata->frame_length = (uint16_t)pkt_length;
     status = api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
     if (status) {
         tx_stats.txFiltered++;
@@ -398,83 +403,6 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
     }
     return 0;
 }
-
-#if 0
-void create_arp_request_frame(unsigned char* frame, unsigned char * smac, const char* src_ip, const char* dst_ip) {
-    struct ethernet_header* eth = (struct ethernet_header*)frame;
-    struct arp_header* arp = (struct arp_header*)(frame + ETH_HLEN);
-
-    /* 이더넷 헤더 설정 */
-    memset(eth->dmac, 0xFF, ETH_ALEN); /* 브로드캐스트 주소 */
-    for (int i = 0; i < ETH_ALEN; i++) {
-        eth->smac[i] = my_mac[i];
-    }
-    eth->type = 0x0806; /* ARP 프로토콜 */
-
-    /* ARP 헤더 설정 */
-    arp->hw_type = 1;         /* 이더넷 */
-    arp->proto_type = 0x0800; /* IPv4 */
-    arp->hw_size = 6;         /* MAC 주소 길이 */
-    arp->proto_size = 4;      /* IP 주소 길이 */
-    arp->opcode = 1;          /* ARP 요청 */
-
-    /* 송신자 MAC 및 IP 주소 설정 */
-    memcpy(arp->sender_hw, eth->smac, ETH_ALEN);
-    inet_pton(AF_INET, src_ip, arp->sender_proto);
-
-    /* 목적지 MAC 주소는 알 수 없으므로 0으로 설정 */
-    memset(arp->target_hw, 0, ETH_ALEN);
-
-    /* 목적지 IP 주소 설정 */
-    inet_pton(AF_INET, dst_ip, arp->target_proto);
-
-    /* 패딩 추가 (최소 프레임 크기 64바이트를 맞추기 위해) */
-    memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
-}
-#endif
-
-#if 0
-void packet_handler(const u_char *packet) {
-    struct ether_header *eth_header;
-    struct ip *ip_header;
-    struct tcphdr *tcp_header;
-
-    // 이더넷 헤더 파싱
-    eth_header = (struct ether_header *)packet;
-
-    printf("Ethernet Header:\n");
-    printf("Source MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-           eth_header->ether_shost[0], eth_header->ether_shost[1],
-           eth_header->ether_shost[2], eth_header->ether_shost[3],
-           eth_header->ether_shost[4], eth_header->ether_shost[5]);
-    printf("Destination MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-           eth_header->ether_dhost[0], eth_header->ether_dhost[1],
-           eth_header->ether_dhost[2], eth_header->ether_dhost[3],
-           eth_header->ether_dhost[4], eth_header->ether_dhost[5]);
-
-    // IP 패킷인 경우에만 처리
-    if (ntohs(eth_header->ether_type) == ETHERTYPE_IP) {
-        // IP 헤더 파싱
-        ip_header = (struct ip *)(packet + sizeof(struct ether_header));
-
-        printf("\nIP Header:\n");
-        printf("Source IP: %s\n", inet_ntoa(ip_header->ip_src));
-        printf("Destination IP: %s\n", inet_ntoa(ip_header->ip_dst));
-
-        // TCP 패킷인 경우에만 처리
-        if (ip_header->ip_p == IPPROTO_TCP) {
-            // TCP 헤더 파싱
-            tcp_header = (struct tcphdr *)(packet + sizeof(struct ether_header) + ip_header->ip_hl * 4);
-
-            printf("\nTCP Header:\n");
-            printf("Source Port: %d\n", ntohs(tcp_header->th_sport));
-            printf("Destination Port: %d\n", ntohs(tcp_header->th_dport));
-        }
-    }
-
-    printf("\n-----------------------------\n");
-}
-#endif
 
 static inline void receive_task_as_client(int sts_flag) {
 
@@ -496,7 +424,7 @@ static inline void receive_task_as_client(int sts_flag) {
     rx.metadata.frame_length = bytes_rcv;
 
     if (sts_flag == 0) {
-        process_packet((uint8_t*)rx.data, (int)bytes_rcv);
+        packet_parse((struct spi_rx_buffer*)&rx);
     }
 }
 
@@ -537,11 +465,6 @@ static void sender_as_client(int sts_flag, int pkt_length) {
 static void sender_as_server(int sts_flag, int pkt_length) {
 
     while (tx_thread_run) {
-#if 0
-        if (sts_flag == 0) {
-            sleep(1);
-        };
-#endif
         sleep(1);
     }
 }
@@ -629,7 +552,7 @@ static inline void receive_task_as_tranceiver(int sts_flag) {
     rx.metadata.frame_length = bytes_rcv;
 
     if (sts_flag == 0) {
-        process_packet((uint8_t*)rx.data, (int)bytes_rcv);
+        packet_parse((struct spi_rx_buffer*)&rx);
     }
 }
 

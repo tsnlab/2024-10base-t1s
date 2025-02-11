@@ -19,4 +19,7 @@ uint32_t ipv4_to_int32(const char* ipv4_address);
 
 void dump_buffer(unsigned char* buffer, int len);
 
+void mac_address(unsigned char* mac, char* name);
+void ipv4_address(unsigned char* ip, char* name);
+
 #endif // __LIBCOM_H__
