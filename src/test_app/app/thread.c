@@ -211,7 +211,7 @@ static void packet_parse(struct spi_rx_buffer* rx) {
     unsigned char ipv4_addr[4];
     int i;
 
-    mac_address(rx_eth->dmac, "      Dst. MAC: ");
+    mac_address(rx_eth->dmac, "\n\n      Dst. MAC: ");
     mac_address(rx_eth->smac, "      Src. MAC: ");
 
     switch (rx_eth->type) {
@@ -258,12 +258,12 @@ static void packet_parse(struct spi_rx_buffer* rx) {
         printf("      Checksum: %d\n", rx_ipv4->checksum);
 
         for (i = 0; i < 4; i++) {
-            ipv4_addr[3 - i] = (unsigned char)((rx_ipv4->src >> (i * 8)) & 0xff);
+            ipv4_addr[i] = (unsigned char)((rx_ipv4->src >> (i * 8)) & 0xff);
         }
         ipv4_address(ipv4_addr, "  Src. Address: ");
 
         for (i = 0; i < 4; i++) {
-            ipv4_addr[3 - i] = (unsigned char)((rx_ipv4->dst >> (i * 8)) & 0xff);
+            ipv4_addr[i] = (unsigned char)((rx_ipv4->dst >> (i * 8)) & 0xff);
         }
         ipv4_address(ipv4_addr, "  Dst. Address: ");
 
@@ -291,7 +291,6 @@ static void packet_parse(struct spi_rx_buffer* rx) {
             printf("     Src. Port: %d\n", rx_udp->srcport);
             printf("     Dst. Port: %d\n", rx_udp->dstport);
             printf("        Length: %d\n", rx_udp->length);
-            printf("     Dst. Port: %d\n", rx_udp->dstport);
             printf("      Checksum: 0x%04x\n", rx_udp->checksum);
         } else {
             printf("      IP PROTO: Unknown(%d)\n", rx_ipv4->proto);
