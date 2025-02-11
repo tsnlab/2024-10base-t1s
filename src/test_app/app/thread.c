@@ -22,7 +22,8 @@
 #include "xbase-t1s.h"
 #include "xbase_common.h"
 
-extern pthread_mutex_t spi_mutex;
+#define FCS_LENGTH 4
+#define PREAMBLE_LENGTH 8
 
 int rx_thread_run = 1;
 int tx_thread_run = 1;
@@ -89,13 +90,10 @@ static void receiver_as_server(int sts_flag, int pkt_length) {
         memset(&rx, 0, sizeof(rx));
 
         bytes_rcv = 0;
-        //        pthread_mutex_lock(&spi_mutex);
         if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
-            //            pthread_mutex_unlock(&spi_mutex);
             rx_stats.rxErrors++;
             continue;
         }
-        //        pthread_mutex_unlock(&spi_mutex);
         if (bytes_rcv > MAX_BUFFER_LENGTH) {
             rx_stats.rxErrors++;
             continue;
@@ -128,14 +126,12 @@ void print_ip(uint8_t* ip_bytes) {
 void process_packet(uint8_t* packet, int packet_len) {
     struct ethernet_header* eth_header = (struct ethernet_header*)packet;
 
-    // 이더넷 타입이 ARP인지 확인 (0x0806)
     if (eth_header->type != 0x0806) {
         return;
     }
 
     struct arp_header* arp = (struct arp_header*)(packet + sizeof(struct ethernet_header));
 
-    // ARP 응답 패킷인지 확인 (opcode == 2)
     if (arp->opcode != 2) {
         return;
     }
@@ -183,13 +179,10 @@ static void receiver_as_client(int sts_flag, int pkt_length) {
         }
         memset(&rx, 0, sizeof(rx));
         bytes_rcv = 0;
-        pthread_mutex_lock(&spi_mutex);
         if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
-            pthread_mutex_unlock(&spi_mutex);
             rx_stats.rxErrors++;
             continue;
         }
-        pthread_mutex_unlock(&spi_mutex);
         if (bytes_rcv > MAX_BUFFER_LENGTH) {
             rx_stats.rxErrors++;
             continue;
@@ -222,6 +215,60 @@ void* receiver_thread(void* arg) {
         break;
     case RUN_MODE_SERVER:
         receiver_as_server(p_arg->sts_flag, p_arg->pkt_length);
+        break;
+    default:
+        printf("%s - Unknown mode(%d)\n", __func__, p_arg->mode);
+        break;
+    }
+
+    printf("<<< %s\n", __func__);
+
+    return NULL;
+}
+
+static void test_receiver(int sts_flag, int pkt_length) {
+
+    struct spi_rx_buffer rx;
+    uint16_t bytes_rcv;
+
+    printf(">>> %s\n", __func__);
+
+    while (rx_thread_run) {
+        if (sts_flag == 0) {
+            sleep(1);
+        }
+        memset(&rx, 0, sizeof(rx));
+        bytes_rcv = 0;
+        if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
+            rx_stats.rxErrors++;
+            continue;
+        }
+        if (bytes_rcv > MAX_BUFFER_LENGTH) {
+            rx_stats.rxErrors++;
+            continue;
+        }
+        rx_stats.rxPackets++;
+        rx_stats.rxBytes += bytes_rcv;
+        rx.metadata.frame_length = bytes_rcv;
+
+        if (sts_flag == 0) {
+            process_packet((uint8_t*)rx.data, (int)bytes_rcv);
+        }
+    }
+    printf("<<< %s\n", __func__);
+}
+
+void* test_receiver_thread(void* arg) {
+
+    rx_thread_arg_t* p_arg = (rx_thread_arg_t*)arg;
+
+    printf(">>> %s(mode: %d)\n", __func__, p_arg->mode);
+
+    initialize_statistics(&rx_stats);
+
+    switch (p_arg->mode) {
+    case TEST_MODE_RECEIVER:
+        test_receiver(p_arg->sts_flag, p_arg->pkt_length);
         break;
     default:
         printf("%s - Unknown mode(%d)\n", __func__, p_arg->mode);
@@ -342,9 +389,7 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
     // tx_metadata->frame_length = tx_len;
     tx_metadata->frame_length = (uint16_t)pkt_length;
     // dump_buffer((unsigned char*)tx->data, tx_len);
-    //    pthread_mutex_lock(&spi_mutex);
     status = api_spi_transmit_frame(tx->data, tx_metadata->frame_length);
-    //    pthread_mutex_unlock(&spi_mutex);
     if (status) {
         tx_stats.txFiltered++;
     } else {
@@ -525,6 +570,134 @@ void* sender_thread(void* arg) {
     return NULL;
 }
 
+static void test_transmitter(int sts_flag, int pkt_length, uint64_t dmac) {
+    struct spi_tx_buffer tx;
+    unsigned char dst_mac[HW_ADDR_LEN];
+    char src_ip[16];
+    char dst_ip[16];
+    int status;
+    int i;
+
+    memset(src_ip, 0, sizeof(src_ip));
+    memset(dst_ip, 0, sizeof(dst_ip));
+    sprintf(src_ip, "%d.%d.%d.%d", my_ipv4[0], my_ipv4[1], my_ipv4[2], my_ipv4[3]);
+    sprintf(dst_ip, "%d.%d.%d.%d", dst_ipv4[0], dst_ipv4[1], dst_ipv4[2], dst_ipv4[3]);
+
+    for (i = 0; i < HW_ADDR_LEN; i++) {
+        dst_mac[i] = (unsigned char)((dmac >> (i * 8)) & 0xff);
+    }
+
+    create_udp_packet(my_mac, dst_mac, (const char*)src_ip, (const char*)dst_ip, 1234, 7, (uint16_t)pkt_length,
+                      (unsigned char*)tx.data);
+
+    dump_buffer((unsigned char*)tx.data, pkt_length);
+    printf("\n");
+
+    tx.metadata.frame_length = pkt_length;
+
+    while (tx_thread_run) {
+        status = api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
+        if (status) {
+            tx_stats.txErrors++;
+        } else {
+            tx_stats.txPackets++;
+            tx_stats.txBytes += (tx.metadata.frame_length + FCS_LENGTH + PREAMBLE_LENGTH);
+        }
+        if (sts_flag == 0) {
+            sleep(1);
+        }
+    }
+}
+
+static inline void receive_task_as_tranceiver(int sts_flag) {
+
+    struct spi_rx_buffer rx;
+    uint16_t bytes_rcv;
+
+    memset(&rx, 0, sizeof(rx));
+    bytes_rcv = 0;
+    if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
+        rx_stats.rxErrors++;
+        return;
+    }
+    if (bytes_rcv > MAX_BUFFER_LENGTH) {
+        rx_stats.rxErrors++;
+        return;
+    }
+    rx_stats.rxPackets++;
+    rx_stats.rxBytes += (bytes_rcv + 8);
+    rx.metadata.frame_length = bytes_rcv;
+
+    if (sts_flag == 0) {
+        process_packet((uint8_t*)rx.data, (int)bytes_rcv);
+    }
+}
+
+static void test_tranceiver(int sts_flag, int pkt_length, uint64_t dmac) {
+    struct spi_tx_buffer tx;
+    unsigned char dst_mac[HW_ADDR_LEN];
+    char src_ip[16];
+    char dst_ip[16];
+    int status;
+    int i;
+
+    memset(src_ip, 0, sizeof(src_ip));
+    memset(dst_ip, 0, sizeof(dst_ip));
+    sprintf(src_ip, "%d.%d.%d.%d", my_ipv4[0], my_ipv4[1], my_ipv4[2], my_ipv4[3]);
+    sprintf(dst_ip, "%d.%d.%d.%d", dst_ipv4[0], dst_ipv4[1], dst_ipv4[2], dst_ipv4[3]);
+
+    for (i = 0; i < HW_ADDR_LEN; i++) {
+        dst_mac[i] = (unsigned char)((dmac >> (i * 8)) & 0xff);
+    }
+
+    create_udp_packet(my_mac, dst_mac, (const char*)src_ip, (const char*)dst_ip, 1234, 7, (uint16_t)pkt_length,
+                      (unsigned char*)tx.data);
+
+    dump_buffer((unsigned char*)tx.data, pkt_length);
+    printf("\n");
+
+    tx.metadata.frame_length = pkt_length;
+
+    while (tx_thread_run) {
+        status = api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
+        if (status) {
+            tx_stats.txErrors++;
+        } else {
+            tx_stats.txPackets++;
+            tx_stats.txBytes += (tx.metadata.frame_length + FCS_LENGTH + PREAMBLE_LENGTH);
+        }
+        if (sts_flag == 0) {
+            sleep(1);
+        }
+
+        receive_task_as_client(sts_flag);
+    }
+}
+
+void* transmitter_thread(void* arg) {
+    tx_thread_arg_t* p_arg = (tx_thread_arg_t*)arg;
+
+    printf(">>> %s(mode: %d)\n", __func__, p_arg->mode);
+
+    initialize_statistics(&tx_stats);
+
+    switch (p_arg->mode) {
+    case TEST_MODE_TRANSMITTER:
+        test_transmitter(p_arg->sts_flag, p_arg->pkt_length, p_arg->dmac);
+        break;
+    case TEST_MODE_TRANCEIVER:
+        test_tranceiver(p_arg->sts_flag, p_arg->pkt_length, p_arg->dmac);
+        break;
+    default:
+        printf("%s - Unknown mode(%d)\n", __func__, p_arg->mode);
+        break;
+    }
+
+    printf("<<< %s\n", __func__);
+
+    return NULL;
+}
+
 void calculate_stats() {
     unsigned long long usec = currTv - lastTv;
 
@@ -534,10 +707,12 @@ void calculate_stats() {
     cs.txBytes = tx_stats.txBytes;
     cs.rxPps = ((rx_stats.rxPackets - os.rxPackets) * 1000000) / usec;
     cs.rxBps = ((rx_stats.rxBytes - os.rxBytes) * 8000000) / usec;
-    cs.rxPBps = ((rx_stats.rxBytes - (cs.rxPps * 12) - os.rxBytes) * 8000000) / usec; /* remove FCS & Preamble */
+    cs.rxPBps = ((rx_stats.rxBytes - (cs.rxPps * (FCS_LENGTH + PREAMBLE_LENGTH)) - os.rxBytes) * 8000000) /
+                usec; /* remove FCS & Preamble */
     cs.txPps = ((tx_stats.txPackets - os.txPackets) * 1000000) / usec;
     cs.txBps = ((tx_stats.txBytes - os.txBytes) * 8000000) / usec;
-    cs.txPBps = ((tx_stats.txBytes - (cs.txPps * 12) - os.txBytes) * 8000000) / usec; /* remove FCS & Preamble */
+    cs.txPBps = ((tx_stats.txBytes - (cs.txPps * (FCS_LENGTH + PREAMBLE_LENGTH)) - os.txBytes) * 8000000) /
+                usec; /* remove FCS & Preamble */
     memcpy(&os, &cs, sizeof(stats_t));
 }
 

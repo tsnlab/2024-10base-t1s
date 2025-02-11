@@ -52,7 +52,9 @@ typedef struct stats {
 } stats_t;
 
 void* receiver_thread(void* arg);
+void* test_receiver_thread(void* arg);
 void* sender_thread(void* arg);
+void* transmitter_thread(void* arg);
 void* stats_thread(void* arg);
 
 #endif /* APP_THREAD_H */

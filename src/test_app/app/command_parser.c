@@ -78,8 +78,6 @@ argument_list_t config_argument_tbl[] = {{"node", fn_config_node_argument},
                                          {"plca", fn_config_plca_argument},
                                          {0, NULL}};
 
-pthread_mutex_t spi_mutex;
-
 int watch_stop = 1;
 
 extern int rx_thread_run;
@@ -191,6 +189,7 @@ int init_driver(int mode) {
 
     switch (mode) {
     case RUN_MODE_CLIENT:
+    case TEST_MODE_TRANCEIVER:
         drv_init_client();
         break;
     case RUN_MODE_SERVER:
@@ -223,9 +222,6 @@ int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag, int pkt_lengt
     fill_ipv4_address((unsigned char*)my_ipv4, ipv4, "My IPv4");
     fill_ipv4_address((unsigned char*)dst_ipv4, t_ipv4, "Dst. IPv4");
 
-    sleep(1);
-    pthread_mutex_init(&spi_mutex, NULL);
-
     register_signal_handler();
 
     memset(&rx_arg, 0, sizeof(rx_thread_arg_t));
@@ -254,8 +250,6 @@ int do_run(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag, int pkt_lengt
         pthread_join(tid3, NULL);
     }
 
-    pthread_mutex_destroy(&spi_mutex);
-
 out_spi:
     api_spi_cleanup();
 
@@ -282,30 +276,27 @@ int do_test(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag, int pkt_leng
     fill_ipv4_address((unsigned char*)my_ipv4, ipv4, "My IPv4");
     fill_ipv4_address((unsigned char*)dst_ipv4, t_ipv4, "Dst. IPv4");
 
-    sleep(1);
-    pthread_mutex_init(&spi_mutex, NULL);
-
     register_signal_handler();
 
     /* Reciever or Tranceiver */
-    if ((mode == 0) || (mode == 2)) {
+    if (mode == TEST_MODE_RECEIVER) {
         memset(&rx_arg, 0, sizeof(rx_thread_arg_t));
         rx_arg.mode = mode;
         rx_arg.sts_flag = sts_flag;
         rx_arg.pkt_length = pkt_length;
         rx_arg.dmac = dmac;
-        pthread_create(&tid1, NULL, receiver_thread, (void*)&rx_arg);
+        pthread_create(&tid1, NULL, test_receiver_thread, (void*)&rx_arg);
         sleep(1);
     }
 
-    /* Reansmitter or Tranceiver */
-    if ((mode == 1) || (mode == 2)) {
+    /* Transmitter or Tranceiver */
+    if ((mode == TEST_MODE_TRANSMITTER) || (mode == TEST_MODE_TRANCEIVER)) {
         memset(&tx_arg, 0, sizeof(tx_thread_arg_t));
         tx_arg.mode = mode;
         tx_arg.sts_flag = sts_flag;
         tx_arg.pkt_length = pkt_length;
         tx_arg.dmac = dmac;
-        pthread_create(&tid2, NULL, sender_thread, (void*)&tx_arg);
+        pthread_create(&tid2, NULL, transmitter_thread, (void*)&tx_arg);
         sleep(1);
     }
 
@@ -315,13 +306,17 @@ int do_test(int mode, uint32_t ipv4, uint32_t t_ipv4, int sts_flag, int pkt_leng
         st_arg.sts_flag = sts_flag;
         pthread_create(&tid3, NULL, stats_thread, (void*)&st_arg);
     }
-    pthread_join(tid1, NULL);
-    pthread_join(tid2, NULL);
+
+    if (mode == TEST_MODE_RECEIVER) {
+        pthread_join(tid1, NULL);
+    }
+
+    if ((mode == TEST_MODE_TRANSMITTER) || (mode == TEST_MODE_TRANCEIVER)) {
+        pthread_join(tid2, NULL);
+    }
     if (sts_flag) {
         pthread_join(tid3, NULL);
     }
-
-    pthread_mutex_destroy(&spi_mutex);
 
 out_spi:
     api_spi_cleanup();
@@ -478,7 +473,7 @@ int process_main_test(int argc, const char* argv[], menu_command_t* menu_tbl) {
                 printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
-            if ((mode < 0) || (mode >= 3)) {
+            if ((mode < 0) || (mode >= TEST_MODE_CNT)) {
                 printf("mode %d is out of range.\n", mode);
                 return -1;
             }

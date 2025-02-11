@@ -11,6 +11,15 @@ enum {
 
 #define DEFAULT_RUN_MODE RUN_MODE_CLIENT
 
+enum {
+    TEST_MODE_RECEIVER,
+    TEST_MODE_TRANSMITTER,
+    TEST_MODE_TRANCEIVER,
+    TEST_MODE_CNT,
+};
+
+#define DEFAULT_TEST_MODE TEST_MODE_CNT
+
 typedef struct thread_arg {
     int mode;
     int sts_flag;
