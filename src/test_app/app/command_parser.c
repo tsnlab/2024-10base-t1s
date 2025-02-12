@@ -182,9 +182,9 @@ void fill_ipv4_address(unsigned char* b_ipv4, uint32_t a_ipv4, char* name) {
     }
     printf("%s: \n    ", name);
     for (i = 0; i < IP_ADDR_LEN - 1; i++) {
-        printf("%d.", b_ipv4[i]);
+        printf("%d.", b_ipv4[IP_ADDR_LEN - 1 - i]);
     }
-    printf("%d\n", b_ipv4[i]);
+    printf("%d\n", b_ipv4[0]);
 }
 
 int init_driver(int mode) {

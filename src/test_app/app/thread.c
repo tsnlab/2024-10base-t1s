@@ -328,9 +328,11 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
             return -1;
         }
 
+#if 0
         if (memcmp(rx_arp->target_proto, my_ipv4, IP_ADDR_LEN)) {
             return -1;
         }
+#endif
         tx_arp->opcode = ARP_OPCODE_ARP_REPLY;
         memcpy(tx_arp->target_hw, rx_arp->sender_hw, HW_ADDR_LEN);
         memcpy(tx_arp->sender_hw, my_mac, HW_ADDR_LEN);

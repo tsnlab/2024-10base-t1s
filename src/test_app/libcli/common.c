@@ -67,7 +67,7 @@ uint32_t ipv4_to_int32(const char* ipv4_address) {
     uint32_t result = 0;
     unsigned int values[4];
 
-    if (sscanf(ipv4_address, "%d.%d.%d.%d", &values[0], &values[1], &values[2], &values[3]) == 4) {
+    if (sscanf(ipv4_address, "%d.%d.%d.%d", &values[3], &values[2], &values[1], &values[0]) == 4) {
         for (int i = 0; i < 4; i++) {
             result = (result << 8) | (values[i] & 0xFF);
         }
