@@ -54,7 +54,8 @@ menu_command_t main_command_tbl[] = {
      "              <Node Count> default value: 8 (2 ~ 0xFE)\n\n"
      "        config mac -m  <MAC address>\n"
      "             <MAC address> default value: d8:3a:95:30:23:42\n\n"
-     "        config plca\n\n"},
+     "        config plca\n\n"
+     "        config reset\n\n"},
     {"test", EXECUTION_ATTR, process_main_test,
      "   run -r <role> -m <dst. MAC address> -i <ip address> -t <target ip address> -s <statistics> -l <Packet length>",
      "   Run xbase-t1s application as role\n"
@@ -76,6 +77,7 @@ menu_command_t main_command_tbl[] = {
 argument_list_t config_argument_tbl[] = {{"node", fn_config_node_argument},
                                          {"mac", fn_config_mac_argument},
                                          {"plca", fn_config_plca_argument},
+                                         {"reset", fn_config_reset_argument},
                                          {0, NULL}};
 
 int watch_stop = 1;
@@ -355,6 +357,14 @@ int do_config_plca() {
         return -1;
     }
     return api_configure_plca_to_mac_phy();
+}
+
+int do_config_reset() {
+    /* MMS0, BASIC_CONTROL, Bit 15 – SW_RESET PHY Soft Reset */
+    api_write_register_in_mms(0, 0xFF00, 0x8000);
+    sleep(1);
+    api_spi_init();
+    return 0;
 }
 
 int do_config_mac(uint64_t mac) {
@@ -669,6 +679,25 @@ int fn_config_plca_argument(int argc, const char* argv[]) {
     }
 
     return do_config_plca();
+}
+
+#define CONFIG_RESET_OPTION_STRING "hv"
+int fn_config_reset_argument(int argc, const char* argv[]) {
+    int argflag;
+
+    while ((argflag = getopt(argc, (char**)argv, CONFIG_RESET_OPTION_STRING)) != -1) {
+        switch (argflag) {
+        case 'v':
+            log_level_set(++verbose);
+            if (verbose == 2) {
+                /* add version info to debug output */
+                lprintf(LOG_DEBUG, "%s\n", VERSION_STRING);
+            }
+            break;
+        }
+    }
+
+    return do_config_reset();
 }
 
 #define CONFIG_MAC_OPTION_STRING "m:hv"
