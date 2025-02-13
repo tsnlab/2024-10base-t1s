@@ -2,6 +2,7 @@
 
 #include "arch.h"
 #include "arp_test.h"
+#include "register.h"
 #include "spi.h"
 
 int main(int argc, char* argv[]) {
@@ -23,12 +24,12 @@ int main(int argc, char* argv[]) {
         case 'c':
             printf("Coordinator mode\n");
             plca_mode = PLCA_MODE_COORDINATOR;
-            reg_initstatus = init_register(plca_mode);
+            reg_initstatus = set_register(plca_mode);
             break;
         case 'f':
             printf("Follower mode\n");
             plca_mode = PLCA_MODE_FOLLOWER;
-            reg_initstatus = init_register(plca_mode);
+            reg_initstatus = set_register(plca_mode);
             break;
         case 'h':
             printf(
@@ -50,18 +51,20 @@ int main(int argc, char* argv[]) {
     arp_ret = arp_test(plca_mode);
     printf("Result of arp_test is %d\n", arp_ret);
 
-    regval = read_register(0x01, 0x0001);
+    regval = read_register(MMS1, MAC_NCFGR);
     printf_debug("MAC_NCFGR value after ARP test is %x\n", regval);
-    regval = read_register(0x01, 0x020A);
+    regval = read_register(MMS1, STATS2);
     printf_debug("STATS2 value after ARP test is %x\n", regval);
-    regval = read_register(0x04, 0xCA00);
-    printf_debug("MMS4, 0xCA00 value after ARP test is %x\n", regval);
-    regval = read_register(0x04, 0xCA01);
-    printf_debug("MMS4, 0xCA01 value after ARP test is %x\n", regval);
-    regval = read_register(0x04, 0xCA02);
-    printf_debug("MMS4, 0xCA02 value after ARP test is %x\n", regval);
-    regval = read_register(0x04, 0xCA03);
-    printf_debug("MMS4, 0xCA03 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, MIDVER);
+    printf_debug("MIDVER value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_CTRL0);
+    printf_debug("PLCA_CTRL0 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_CTRL1);
+    printf_debug("PLCA_CTRL1 value after ARP test is %x\n", regval);
+    regval = read_register(MMS4, PLCA_STS);
+    printf_debug("PLCA_STS value after ARP test is %x\n", regval);
+    regval = read_register(MMS0, OA_CONFIG0);
+    printf_debug("OA_CONFIG0 value after ARP test is %x\n", regval);
 
 cleanup:
     spi_ret = spi_cleanup();

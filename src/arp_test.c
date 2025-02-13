@@ -43,24 +43,23 @@ static void print_arp_table(void) {
     } // clang-format on
 }
 
-static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
+static int send_packet(uint8_t* packet, uint16_t length) {
     uint8_t txbuffer[HEADER_SIZE + MAX_PAYLOAD_BYTE] = {
         0,
     };
     uint8_t rxbuffer[MAX_PAYLOAD_BYTE + FOOTER_SIZE] = {
         0,
     };
-    int i = 0;
-    int j = 0;
-    static union data_header data_transfer_header = {
-        0,
-    };
+    static uint8_t seq_toggle = 1;
+    union data_header data_transfer_header;
+
+    data_transfer_header.data_frame_head = 0;
+    uint32_t be_header;
 
     // header setting
-    memset(&data_transfer_header.tx_header_bits, 0, sizeof(data_transfer_header.tx_header_bits));
-
     data_transfer_header.tx_header_bits.dnc = DNC_COMMANDTYPE_DATA;
-    data_transfer_header.tx_header_bits.seq = 1;                   // TODO: check this if there are multiiple chunks
+    data_transfer_header.tx_header_bits.seq = seq_toggle; // Data Block Sequence
+    seq_toggle = !seq_toggle;
     data_transfer_header.tx_header_bits.norx = 0;                  // No Receive
     data_transfer_header.tx_header_bits.dv = 1;                    // Data Valid
     data_transfer_header.tx_header_bits.sv = 1;                    // start chunk
@@ -69,103 +68,62 @@ static int arp_request(uint8_t* arp_request_buffer, uint16_t length) {
     data_transfer_header.tx_header_bits.p = ((get_parity(data_transfer_header.data_frame_head) == 0) ? 1 : 0);
 
     // copy header
-    data_transfer_header.data_frame_head = htonl(data_transfer_header.data_frame_head);
-    memcpy(txbuffer, &data_transfer_header.data_frame_head, HEADER_SIZE);
+    be_header = htonl(data_transfer_header.data_frame_head);
+    memcpy(txbuffer, &be_header, HEADER_SIZE);
 
     // copy ARP data
-    memcpy(&txbuffer[HEADER_SIZE], arp_request_buffer, length);
+    memcpy(&txbuffer[HEADER_SIZE], packet, length);
 
     // transfer
-    if (SPI_E_SUCCESS != spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], sizeof(txbuffer))) {
+    if (SPI_E_SUCCESS != spi_transfer(rxbuffer, txbuffer, sizeof(txbuffer))) {
         return -ARP_E_REQUEST_FAILED;
     }
 
-    printf("txbuffer when Requesting: \n");
-    for (i = 0; i < 7; i++) {
-        for (j = 0; j < 10; j++) {
-            if (i * 10 + j >= MAX_PAYLOAD_BYTE + HEADER_SIZE) {
-                printf("...");
-                break;
-            }
-            printf("%02x ", txbuffer[i * 10 + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    printf("rxbuffer when Requesting: \n");
-    for (i = 0; i < 7; i++) {
-        for (j = 0; j < 10; j++) {
-            if (i * 10 + j >= MAX_PAYLOAD_BYTE + FOOTER_SIZE) {
-                printf("...");
-                break;
-            }
-            printf("%02x ", rxbuffer[i * 10 + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
+    // print buffer for debugging
+    printf_debug("txbuffer when Requesting: \n");
+    print_buffer(txbuffer, HEADER_SIZE + PACKET_SIZE_ARP);
+    printf_debug("rxbuffer when Requesting: \n");
+    print_buffer(rxbuffer, PACKET_SIZE_ARP + FOOTER_SIZE);
 
     return ARP_E_SUCCESS;
 }
 
-static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
+static int receive_packet(uint8_t* packet, uint16_t* length) {
     uint8_t txbuffer[HEADER_SIZE + MAX_PAYLOAD_BYTE] = {
         0,
     };
     uint8_t rxbuffer[MAX_PAYLOAD_BYTE + FOOTER_SIZE] = {
         0,
     };
-    static union data_header data_transfer_header = {
-        0,
-    };
+    static uint8_t seq_toggle = 1;
+    union data_header data_transfer_header;
     union data_footer data_transfer_rx_footer;
-    uint32_t bigendian_rx_footer = 0;
-    uint16_t expected_size = 32; // test packet (20bytes) + header/footer (4+4bytes) + justincase
-    int i = 0;
-    int j = 0;
+    uint32_t be_header;
+
+    data_transfer_header.data_frame_head = 0;
+    data_transfer_rx_footer.data_frame_foot = 0;
 
     // receive dummy header setting
     data_transfer_header.tx_header_bits.dnc = DNC_COMMANDTYPE_DATA;
-    data_transfer_header.tx_header_bits.norx = 0;
-    data_transfer_header.tx_header_bits.dv = 0; // receive mode
+    data_transfer_header.tx_header_bits.seq = seq_toggle; // Other values are all 0 since this is receive mode
+    seq_toggle = !seq_toggle;
     data_transfer_header.tx_header_bits.p = ((get_parity(data_transfer_header.data_frame_head) == 0) ? 1 : 0);
 
-    // copy footer (4 bytes)
-    bigendian_rx_footer = htonl(data_transfer_header.data_frame_head);
-    memcpy(txbuffer, &bigendian_rx_footer, HEADER_SIZE);
+    // copy header
+    be_header = htonl(data_transfer_header.data_frame_head);
+    memcpy(txbuffer, &be_header, HEADER_SIZE);
 
     // receive buffer
-    spi_transfer((uint8_t*)&rxbuffer[0], (uint8_t*)&txbuffer[0], sizeof(txbuffer));
+    spi_transfer(rxbuffer, txbuffer, sizeof(txbuffer));
 
-    printf("txbuffer when Receiving: \n");
-    for (i = 0; i < 7; i++) {
-        for (j = 0; j < 10; j++) {
-            if (i * 10 + j >= MAX_PAYLOAD_BYTE + HEADER_SIZE) {
-                printf("...");
-                break;
-            }
-            printf("%02x ", txbuffer[i * 10 + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    printf("rxbuffer when Receiving: \n");
-    for (i = 0; i < 7; i++) {
-        for (j = 0; j < 10; j++) {
-            if (i * 10 + j >= MAX_PAYLOAD_BYTE + FOOTER_SIZE) {
-                printf("...");
-                break;
-            }
-            printf("%02x ", rxbuffer[i * 10 + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
+    // print buffer for debugging
+    printf_debug("txbuffer when Receiving: \n");
+    print_buffer(txbuffer, HEADER_SIZE + PACKET_SIZE_ARP);
+    printf_debug("rxbuffer when Receiving: \n");
+    print_buffer(rxbuffer, PACKET_SIZE_ARP + FOOTER_SIZE);
 
     // Footer check
-    memcpy((uint8_t*)&data_transfer_rx_footer.data_frame_foot, &rxbuffer[expected_size - FOOTER_SIZE], FOOTER_SIZE);
+    memcpy((uint8_t*)&data_transfer_rx_footer.data_frame_foot, &rxbuffer[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
     data_transfer_rx_footer.data_frame_foot = ntohl(data_transfer_rx_footer.data_frame_foot);
 
     printf_debug("data_transfer_rx_footer: \n");
@@ -179,20 +137,20 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
     if (data_transfer_rx_footer.rx_footer_bits.dv && !data_transfer_rx_footer.rx_footer_bits.exst) {
 
         uint16_t actual_length = data_transfer_rx_footer.rx_footer_bits.ebo + 1;
-        memcpy(arp_reply_buffer, &rxbuffer[FOOTER_SIZE], actual_length);
+        memcpy(packet, rxbuffer, actual_length);
         *length = actual_length;
 
         // Ethernet packet check
-        printf("Received Ethernet packet:\n");
         printf("Destination MAC: ");
-        for (i = 0; i < 6; i++) {
-            printf("%02x:", arp_reply_buffer[i]);
-        }
-        printf("\nSource MAC: ");
-        for (i = 6; i < 12; i++) {
-            printf("%02x:", arp_reply_buffer[i]);
-        }
-        printf("\nEtherType: %02x%02x\n", arp_reply_buffer[12], arp_reply_buffer[13]);
+        printf("%02x:%02x:%02x:%02x:%02x:%02x\n", // clang-format off
+                packet[0], packet[1], packet[2],
+                packet[3], packet[4], packet[5]);
+        printf("Source MAC: ");
+        printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
+                packet[6], packet[7], packet[8],
+                packet[9], packet[10], packet[11]);
+        printf("EtherType: %02x%02x\n",
+                packet[12], packet[13]); // clang-format on
 
         return ARP_E_SUCCESS;
     }
@@ -200,55 +158,90 @@ static int arp_reply(uint8_t* arp_reply_buffer, uint16_t* length) {
     return -ARP_E_REPLY_FAILED;
 }
 
-int arp_test(int plca_mode) {
-    int ret = -ARP_E_REQUEST_FAILED;
-    uint16_t received_length = 0;
+uint16_t make_arp_packet(uint8_t* packet) {
+    const uint8_t my_mac_addr[ETH_ALEN] = {0xde, 0xad, 0xbe,
+                                           0xef, 0xca, 0xfe}; // TODO: change this to actual MAC address
+    const char* my_ip_addr = "172.16.11.201";                 // TODO: change this to actual IP address
+    const char* target_ip_addr = "172.16.11.203";             // TODO: change this to actual IP address
 
-    unsigned char buffer[PACKET_SIZE_ARP] = {
-        0,
-    }; // Ethernet (14) + ARP (28)
-    struct ethhdr* eth = (struct ethhdr*)buffer;
-    struct arphdr_ipv4* arp = (struct arphdr_ipv4*)(buffer + sizeof(struct ethhdr));
+    struct ethhdr* eth = (struct ethhdr*)packet;
+    struct arphdr_ipv4* arp = (struct arphdr_ipv4*)(eth + 1);
 
     // Fill Ethernet header
-    memset(eth->h_dest, 0xFF, ETH_ALEN);                         // Broadcast
-    memcpy(eth->h_source, "\xd8\x3a\xdd\x44\xab\x0f", ETH_ALEN); // Replace with your MAC
-    eth->h_proto = htons(ETH_P_ARP);                             // ARP Ethertype
+    memset(eth->h_dest, 0xFF, ETH_ALEN); // Broadcast
+    memcpy(eth->h_source, my_mac_addr, ETH_ALEN);
+    eth->h_proto = htons(ETH_P_ARP); // ARP Ethertype
 
     // Fill ARP header
-    arp->arp.ar_hrd = htons(1);                                           // Ethernet
-    arp->arp.ar_pro = htons(ETH_P_IP);                                    // IPv4
-    arp->arp.ar_hln = ETH_ALEN;                                           // MAC size
-    arp->arp.ar_pln = IP_LEN;                                             // IP size
-    arp->arp.ar_op = htons(ARPOP_REQUEST);                                // ARP Request
-    memcpy(arp->sender_mac, "\xde\xad\xbe\xef\xbe\xef", arp->arp.ar_hln); // Replace with your MAC
-    inet_pton(AF_INET, "172.16.11.201", arp->sender_ip);                  // Replace with your IP
-    memset(arp->target_mac, 0x00, arp->arp.ar_hln);                       // Unknown
-    inet_pton(AF_INET, "172.16.11.203", arp->target_ip);                  // Replace with target IP
+    arp->arp.ar_hrd = htons(1);            // Ethernet
+    arp->arp.ar_pro = htons(ETH_P_IP);     // IPv4
+    arp->arp.ar_hln = ETH_ALEN;            // MAC size
+    arp->arp.ar_pln = IP_LEN;              // IP size
+    arp->arp.ar_op = htons(ARPOP_REQUEST); // ARP Request
+    memcpy(arp->sender_mac, my_mac_addr, ETH_ALEN);
+    inet_pton(AF_INET, my_ip_addr, arp->sender_ip);
+    memset(arp->target_mac, 0x00, ETH_ALEN); // Unknown
+    inet_pton(AF_INET, target_ip_addr, arp->target_ip);
+
+    return PACKET_SIZE_ARP;
+}
+
+static int check_arp_packet(uint8_t* packet) {
+    struct ethhdr* eth = (struct ethhdr*)packet;
+    struct arphdr_ipv4* arp = (struct arphdr_ipv4*)(eth + 1);
+
+    // Check if packet is ARP
+    if (ntohs(eth->h_proto) != ETH_P_ARP) {
+        printf("Packet type is unknown. The packet type is 0x%04x\n", ntohs(eth->h_proto));
+        return -ARP_E_REPLY_FAILED;
+    }
+
+    // Check operation type
+    uint16_t op_type = ntohs(arp->arp.ar_op);
+    if (op_type != ARPOP_REPLY && op_type != ARPOP_REQUEST) {
+        printf("op type is unknown. op type is 0x%04x\n", op_type);
+        return -ARP_E_REPLY_FAILED;
+    }
+
+    // Handle ARP reply
+    if (op_type == ARPOP_REPLY) {
+        printf("Received ARP reply from %d.%d.%d.%d\n", arp->sender_ip[0], arp->sender_ip[1], arp->sender_ip[2],
+               arp->sender_ip[3]);
+        add_to_arp_table(arp->sender_ip, arp->sender_mac);
+        print_arp_table();
+    } else { // ARPOP_REQUEST
+        printf("Received ARP request from %d.%d.%d.%d\n", arp->sender_ip[0], arp->sender_ip[1], arp->sender_ip[2],
+               arp->sender_ip[3]);
+    }
+
+    return ARP_E_SUCCESS;
+}
+
+int arp_test(int plca_mode) {
+    int ret = -ARP_E_UNKNOWN_ERROR;
+    uint16_t received_length = 0;
+    uint16_t length = 0;
+    unsigned char buffer[MAX_PAYLOAD_BYTE] = {
+        0,
+    };
 
     if (plca_mode == PLCA_MODE_COORDINATOR) {
+        // Make ARP request buffer
+        length = make_arp_packet(buffer);
+
         // Send ARP request
-        ret = arp_request(buffer, sizeof(buffer));
+        ret = send_packet(buffer, length);
         if (ret != ARP_E_SUCCESS) {
             printf("ARP request failed, the error code is %d\n", ret);
         }
     } else if (plca_mode == PLCA_MODE_FOLLOWER) {
         // Receive ARP Reply
-        ret = arp_reply(buffer, &received_length);
+        ret = receive_packet(buffer, &received_length);
         if (ret != ARP_E_SUCCESS) {
             printf("ARP reply failed, the error code is %d\n", ret);
         }
 
-        if (ntohs(eth->h_proto) == ETH_P_ARP) { // Check if ARP
-            arp = (struct arphdr_ipv4*)(buffer + sizeof(struct ethhdr));
-            if (ntohs(arp->arp.ar_op) == ARPOP_REPLY) { // ARP Reply
-                printf("Received ARP reply from %d.%d.%d.%d\n", arp->sender_ip[0], arp->sender_ip[1], arp->sender_ip[2],
-                       arp->sender_ip[3]);
-                add_to_arp_table(arp->sender_ip, arp->sender_mac);
-                print_arp_table();
-                ret = ARP_E_SUCCESS;
-            }
-        }
+        ret = check_arp_packet(buffer);
 
     } else {
         printf("Invalid PLCA mode\n");

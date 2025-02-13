@@ -25,10 +25,11 @@ int spi_init(void);
 int spi_transfer(uint8_t* rxbuffer, uint8_t* txbuffer, uint16_t length);
 int spi_cleanup(void);
 
-bool init_register(int mode);
+bool set_register(int mode);
 uint32_t read_register(uint8_t MMS, uint16_t Address);
 uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data);
 
 uint8_t get_parity(uint32_t valueToCalculateParity);
+void print_buffer(uint8_t* buffer, uint16_t length);
 
 #endif /* SPI_H */

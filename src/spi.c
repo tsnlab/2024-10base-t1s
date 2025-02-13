@@ -53,3 +53,13 @@ uint8_t get_parity(uint32_t valueToCalculateParity) {
     valueToCalculateParity = ((valueToCalculateParity & 0x11111111) * 0x11111111);
     return ((valueToCalculateParity >> 28) & 1);
 }
+
+void print_buffer(uint8_t* buffer, uint16_t length) {
+    for (int i = 0; i < length; i++) {
+        printf_debug("%02x ", buffer[i]);
+        if (i % 16 == 15) {
+            printf_debug("\n");
+        }
+    }
+    printf_debug("\n");
+}
