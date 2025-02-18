@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <arpa/inet.h>
@@ -328,6 +329,13 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
             return -1;
         }
 
+        for (int id = 0; id < IP_ADDR_LEN; id++) {
+            if (rx_arp->target_proto[id] != my_ipv4[IP_ADDR_LEN - 1 - id]) {
+                return -1;
+            }
+        }
+
+
 #if 0
         if (memcmp(rx_arp->target_proto, my_ipv4, IP_ADDR_LEN)) {
             return -1;
@@ -405,24 +413,46 @@ static int process_send_packet(struct spi_rx_buffer* rx, int pkt_length) {
     return 0;
 }
 
-static inline void receive_task_as_client(int sts_flag) {
+void ns_to_string(long long ns, char *buffer) {
+    sprintf(buffer, "%lld", ns);
+}
+
+struct timespec send_time, receive_time;
+long long send_ns, receive_ns;
+
+static inline int receive_task_as_client(int sts_flag) {
 
     struct spi_rx_buffer rx;
     uint16_t bytes_rcv;
+    long long diff_ns;
+    uint8_t loop_flag = 1;
 
-    memset(&rx, 0, sizeof(rx));
-    bytes_rcv = 0;
-    if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
-        rx_stats.rxErrors++;
-        return;
+    while(loop_flag) {
+        memset(&rx, 0, sizeof(rx));
+        bytes_rcv = 0;
+        if (api_spi_receive_frame((uint8_t*)rx.data, &bytes_rcv)) {
+            clock_gettime(CLOCK_REALTIME, &receive_time);
+            receive_ns = receive_time.tv_sec * 1000000000LL + receive_time.tv_nsec;
+            diff_ns = receive_ns - send_ns;
+            if(diff_ns > 1000000000) {
+                rx_stats.rxErrors++;
+                loop_flag = 0;
+                return -1;
+            }
+        } else {
+            clock_gettime(CLOCK_REALTIME, &receive_time);
+            loop_flag = 0;
+        }
     }
     if (bytes_rcv > MAX_BUFFER_LENGTH) {
         rx_stats.rxErrors++;
-        return;
+        return -1;
     }
     rx_stats.rxPackets++;
     rx_stats.rxBytes += (bytes_rcv + PREAMBLE_LENGTH);
     rx.metadata.frame_length = bytes_rcv;
+
+    return 0;
 
     if (sts_flag == 0) {
         packet_parse((struct spi_rx_buffer*)&rx);
@@ -434,13 +464,15 @@ static void sender_as_client(int sts_flag, int pkt_length) {
     char src_ip[16];
     char dst_ip[16];
     int status;
+    long long diff_ns;
 
     memset(src_ip, 0, sizeof(src_ip));
     memset(dst_ip, 0, sizeof(dst_ip));
     sprintf(src_ip, "%d.%d.%d.%d", my_ipv4[0], my_ipv4[1], my_ipv4[2], my_ipv4[3]);
     sprintf(dst_ip, "%d.%d.%d.%d", dst_ipv4[0], dst_ipv4[1], dst_ipv4[2], dst_ipv4[3]);
 
-    create_arp_request_frame((unsigned char*)tx.data, my_mac, (const char*)src_ip, (const char*)dst_ip);
+    // create_arp_request_frame((unsigned char*)tx.data, my_mac, (const char*)src_ip, (const char*)dst_ip);
+    create_arp_request_frame((unsigned char*)tx.data, my_mac, (const char*)my_ipv4, (const char*)dst_ipv4);
 
     dump_buffer((unsigned char*)tx.data, pkt_length);
     printf("\n");
@@ -448,7 +480,9 @@ static void sender_as_client(int sts_flag, int pkt_length) {
     tx.metadata.frame_length = pkt_length;
 
     while (tx_thread_run) {
+        clock_gettime(CLOCK_REALTIME, &send_time);
         status = api_spi_transmit_frame(tx.data, tx.metadata.frame_length);
+        send_ns = send_time.tv_sec * 1000000000LL + send_time.tv_nsec;
         if (status) {
             tx_stats.txErrors++;
         } else {
@@ -456,10 +490,19 @@ static void sender_as_client(int sts_flag, int pkt_length) {
             tx_stats.txBytes += (tx.metadata.frame_length + FCS_LENGTH + PREAMBLE_LENGTH);
         }
         if (sts_flag == 0) {
-            sleep(1);
+//            sleep(1);
         }
 
-        receive_task_as_client(sts_flag);
+        if (receive_task_as_client(1)) {
+            printf("Fail to receive_task_as_client\n");
+        } else {
+            receive_ns = receive_time.tv_sec * 1000000000LL + receive_time.tv_nsec;
+            diff_ns = receive_ns - send_ns;
+
+            printf("%lld: %lld.%09lld -> %lld.%09lld = %lld ns\n", rx_stats.rxPackets, send_ns / 1000000000, send_ns % 1000000000,
+            receive_ns / 1000000000, receive_ns % 1000000000, diff_ns);
+            sleep(1);
+        }
     }
 }
 
@@ -511,7 +554,7 @@ static void test_transmitter(int sts_flag, int pkt_length, uint64_t dmac) {
         dst_mac[i] = (unsigned char)((dmac >> (i * 8)) & 0xff);
     }
 
-    create_udp_packet(my_mac, dst_mac, (const char*)src_ip, (const char*)dst_ip, 1234, 7, (uint16_t)pkt_length,
+    create_udp_packet(my_mac, dst_mac, (const char*)src_ip, (const char*)dst_ip, 1234, 1337, (uint16_t)pkt_length,
                       (unsigned char*)tx.data);
 
     dump_buffer((unsigned char*)tx.data, pkt_length);

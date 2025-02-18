@@ -91,11 +91,16 @@ void create_arp_request_frame(unsigned char* frame, unsigned char* smac, const c
     arp->opcode = 1;
 
     memcpy(arp->sender_hw, eth->smac, ETH_ALEN);
-    inet_pton(AF_INET, src_ip, arp->sender_proto);
+
+    for (int i = 0; i < 4; i++) {
+        arp->sender_proto[3-i] = src_ip[i];
+    }
 
     memset(arp->target_hw, 0, ETH_ALEN);
 
-    inet_pton(AF_INET, dst_ip, arp->target_proto);
+    for (int i = 0; i < 4; i++) {
+        arp->target_proto[3-i] = dst_ip[i];
+    }
 
     memset(frame + ETH_HLEN + ARP_HLEN, 0, 18);
 }
