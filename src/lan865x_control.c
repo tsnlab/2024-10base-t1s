@@ -499,11 +499,7 @@ void init_lan865x(unsigned int handle) {
     regval |= (1 << MMS0_OA_CONFIG0_FTSE_SHIFT);
 
     /* Set FTSS Frame Timestamp Select bit of OA_CONFIG0 */
-    if (FRAME_TIMESTAMP_SELECT) { /* TIMESTAMP_64BITS */
-        regval |= (1 << MMS0_OA_CONFIG0_FTSS_SHIFT);
-    } else { /* TIMESTAMP_32BITS */
-        regval &= ~(1UL << MMS0_OA_CONFIG0_FTSS_SHIFT);
-    }
+    regval |= (1 << MMS0_OA_CONFIG0_FTSS_SHIFT);
 #endif
     write_register(handle, MMS0, MMS0_OA_CONFIG0, regval);
 
@@ -705,33 +701,19 @@ int get_timestamp(unsigned int handle, int reg, struct timestamp_format* timesta
 
     reg_low = read_register(handle, MMS0, addr);
 
-    if (FRAME_TIMESTAMP_SELECT) { /* 64-BIT TIMESTAMPS */
-        timestamp->nano.nanoseconds = reg_low & NANOSECONDS_MASK;
-        timestamp->seconds = read_register(handle, MMS0, addr - 1);
-    } else {
-        timestamp->nanoseconds = reg_low & NANOSECONDS_MASK;
-        timestamp->seconds = (reg_low >> NANOSECONDS_WIDTH) & SECONDS_MASK;
-    }
+    timestamp->nano.nanoseconds = reg_low & NANOSECONDS_MASK;
+    timestamp->seconds = read_register(handle, MMS0, addr - 1);
 
     return RET_SUCCESS;
 }
 
 void print_timestamp_info(struct timestamp_format timestamp) {
-    if (FRAME_TIMESTAMP_SELECT) { /* 64-BIT TIMESTAMPS */
-        uint64_t* ts;
+    uint64_t* ts;
 
-        ts = (uint64_t*)&timestamp;
+    ts = (uint64_t*)&timestamp;
 
-        printf("Timestamp: 0x016lx\n", *ts);
-        printf("Timestamp: %d.%09d\n", timestamp.seconds, timestamp.nano.nanoseconds);
-    } else {
-        uint32_t* ts;
-
-        ts = (uint32_t*)&timestamp;
-
-        printf("Timestamp: 0x08lx\n", *ts);
-        printf("Timestamp: %d.%09d\n", timestamp.seconds, timestamp.nanoseconds);
-    }
+    printf("Timestamp: 0x%016lx\n", *ts);
+    printf("Timestamp: %d.%09d\n", timestamp.seconds, timestamp.nano.nanoseconds);
 }
 
 #endif

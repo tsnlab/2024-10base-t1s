@@ -39,11 +39,14 @@ enum {
 #if 1 /* 64-BIT TIMESTAMPS */
 
 struct timestamp_format {
-    struct {
-        uint32_t nanoseconds : 30;
-        uint32_t rsvd : 2;
-    } nano;
     uint32_t seconds;
+    union {
+        uint32_t nanoseconds;
+        struct {
+            uint32_t nanoseconds : 30;
+            uint32_t rsvd : 2;
+        } nano;
+    };
 };
 
 #else /* 32-BIT TIMESTAMPS */

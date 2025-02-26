@@ -336,6 +336,8 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
             /* Receive Timestamp Added */
             if (footer.footer_bits.rtsa) {
                 memcpy(timestamp, &rx_buf[0], sizeof(struct timestamp_format));
+                timestamp->seconds = ntohl(timestamp->seconds);
+                timestamp->nanoseconds = ntohl(timestamp->nanoseconds);
             }
             acc_bytes = 0;
             if (footer.footer_bits.ev) {
