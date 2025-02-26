@@ -253,6 +253,12 @@ enum {
 #define MMS10_SEVIM 0x023C
 #define MMS10_SEVSTS 0x023D
 
+/**
+ * The LAN8650/1 uses a 25.0 MHz timer clock source and requires that the timer increment by 40.0 ns for each clock
+ * period. This is programmed by writing the value 0x00000028 to the TSU Timer Increment (MAC_TI) register.
+ */
+#define TIMER_INCREMENT 0x28
+
 #define MAX_CONTROL_CMD_LEN (0x7F)
 #define MAX_PAYLOAD_BYTE (64U) /* TODO: This is configurable so need to change based on configuration */
 #define REG_SIZE (4)

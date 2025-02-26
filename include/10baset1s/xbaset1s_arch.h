@@ -36,7 +36,7 @@ enum {
 
 #define FRAME_TIMESTAMP_SELECT TIMESTAMP_64BITS
 
-#if FRAME_TIMESTAMP_SELECT /* 64-BIT TIMESTAMPS */
+#if 1 /* 64-BIT TIMESTAMPS */
 
 struct timestamp_format {
     struct {
