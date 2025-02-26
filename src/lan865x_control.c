@@ -490,6 +490,17 @@ void init_lan865x(unsigned int handle) {
 
     /* Set SYNC bit of OA_CONFIG0 */
     regval |= (1 << MMS0_OA_CONFIG0_SYNC_SHIFT);
+#ifdef FRAME_TIMESTAMP_ENABLE
+    /* Set FTSE Frame Timestamp Enable bit of OA_CONFIG0 */
+    regval |= (1 << MMS0_OA_CONFIG0_FTSE_SHIFT);
+    /* Set FTSS Frame Timestamp Select bit of OA_CONFIG0 */
+#if FRAME_TIMESTAMP_SELECT
+    regval |= (1 << MMS0_OA_CONFIG0_FTSS_SHIFT);
+#else
+    regval &= ~(1UL << MMS0_OA_CONFIG0_FTSS_SHIFT);
+#endif
+
+#endif
     write_register(handle, MMS0, MMS0_OA_CONFIG0, regval);
 
     /* Read OA_STATUS0 */
@@ -643,3 +654,70 @@ int set_node_config(unsigned int handle, int node_id, int node_cnt) {
         (uint32_t)((node_cnt & LAN865X_NODE_COUNT_MASK) << LAN865X_NODE_COUNT_SHIFT) + (node_id & LAN865X_NODE_ID_MASK);
     return write_register(handle, MMS4, MMS4_PLCA_CTRL1, reg_val); /* PLCA Control 1 Register */
 }
+
+#ifdef FRAME_TIMESTAMP_ENABLE
+int transmit_timestamp_capture_available(unsigned int handle, uint32_t mask) {
+    uint32_t reg_val;
+
+    for (int try_cnt = 0; try_cnt < TIMESTAMP_CAPTURE_AVAILABLE_CHECK_COUNT; try_cnt++) {
+        reg_val = read_register(handle, MMS0, MMS0_OA_STATUS0);
+        if (reg_val & mask) {
+            return RET_SUCCESS;
+        }
+    }
+    return RET_FAIL;
+}
+
+int get_timestamp(unsigned int handle, int reg, struct timestamp_format* timestamp) {
+    uint32_t reg_low;
+    uint16_t addr;
+
+    switch (reg & TRANSMIT_TIMESTAMP_CAPTURE_MASK) {
+    case TTSC_A:
+        if (transmit_timestamp_capture_available(handle, TRANSMIT_TIMESTAMP_CAPTURE_AVAILABLE_MASK_A)) {
+            printf("Not Available - Transmit Timestamp Capture\n");
+            return ERR_NOT_AVAILAVLE;
+        }
+        addr = MMS0_TTSCAL;
+        break;
+    case TTSC_B:
+        if (transmit_timestamp_capture_available(handle, TRANSMIT_TIMESTAMP_CAPTURE_AVAILABLE_MASK_B)) {
+            printf("Not Available - Transmit Timestamp Capture\n");
+            return ERR_NOT_AVAILAVLE;
+        }
+        addr = MMS0_TTSCBL;
+        break;
+    case TTSC_C:
+        if (transmit_timestamp_capture_available(handle, TRANSMIT_TIMESTAMP_CAPTURE_AVAILABLE_MASK_C)) {
+            printf("Not Available - Transmit Timestamp Capture\n");
+            return ERR_NOT_AVAILAVLE;
+        }
+        addr = MMS0_TTSCCL;
+        break;
+    default:
+        printf("%s - %d - Unknown parameter(%d)\n", __func__, __LINE__, reg);
+        return ERR_UNKNOWN_PARAMETER;
+    }
+
+    reg_low = read_register(handle, MMS0, addr);
+
+#if FRAME_TIMESTAMP_SELECT /* 64-BIT TIMESTAMPS */
+    timestamp->nano.nanoseconds = reg_low & NANOSECONDS_MASK;
+    timestamp->seconds = read_register(handle, MMS0, addr - 1);
+#else
+    timestamp->nanoseconds = reg_low & NANOSECONDS_MASK;
+    timestamp->seconds = (reg_low >> NANOSECONDS_WIDTH) & SECONDS_MASK;
+#endif
+
+    return RET_SUCCESS;
+}
+
+void print_timestamp_info(struct timestamp_format timestamp) {
+#if FRAME_TIMESTAMP_SELECT /* 64-BIT TIMESTAMPS */
+    printf("Timestamp: %d.%09d\n", timestamp.seconds, timestamp.nano.nanoseconds);
+#else
+    printf("Timestamp: %d.%09d\n", timestamp.seconds, timestamp.nanoseconds);
+#endif
+}
+
+#endif

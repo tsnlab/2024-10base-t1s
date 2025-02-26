@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "xbaset1s_arch.h"
+
 /**
  * Configures the LAN8650/1 for optimal performance in 10BASE-T1S networks
  *     - configure the PHY transceiver in the device
@@ -107,19 +109,62 @@ int read_all_registers_in_mms(unsigned int handle, uint8_t mms);
 int write_register_in_mms(unsigned int handle, uint8_t mms, int32_t addr, uint32_t data);
 
 /**
+ * Read timestamp captured in registerx
+ * @param handle>=0, as returned by a call to spi_init
+ * @param reg - Register
+ *        0x1, : Transmit Timestamp Capture Register A
+ *        0x2, : Transmit Timestamp Capture Register B
+ *        0x3, : Transmit Timestamp Capture Register C
+ * @param * timestamp Address of variable to store timestamp value
+ * @return RET_SUCCESS if OK, otherwise ERR_NOT_AVAILAVLE/ERR_UNKNOWN_PARAMETER.
+ */
+int get_timestamp(unsigned int handle, int reg, struct timestamp_format* timestamp);
+
+/**
+ * Print timestamp value
+ * @param timestamp Variable where timestamp value is stored
+ * @return Nothing
+ */
+void print_timestamp_info(struct timestamp_format timestamp);
+
+/**
  * Transmit a packet of length bytes
  * @param handle>=0, as returned by a call to spi_init
  * @param * packet, Starting address of packet to be transmitted
- * @param lengthi, packet length
+ * @param length, packet length
  * @return RET_SUCCESS if OK, otherwise error code.
  */
 int spi_transmit_frame(unsigned int handle, uint8_t* packet, uint16_t length);
 
 /**
+ * Transmit a packet of length bytes, place the timestamp into the desired Transmit Timestamp Capture register
+ * @param handle>=0, as returned by a call to spi_init
+ * @param * packet, Starting address of packet to be transmitted
+ * @param length, packet length
+ * @param reg,  desired Transmit Timestamp Capture register
+ *        0x1, : Transmit Timestamp Capture Register A
+ *        0x2, : Transmit Timestamp Capture Register B
+ *        0x3, : Transmit Timestamp Capture Register C
+ * @return RET_SUCCESS if OK, otherwise error code.
+ */
+int spi_transmit_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint16_t length, int reg);
+
+/**
  * Receive a packet
  * @param handle>=0, as returned by a call to spi_init
  * @param * packet, Buffer pointer to store received packet
- * @param * lengthi, Variable pointer to store the length of the received packet
+ * @param * length, Variable pointer to store the length of the received packet
  * @return RET_SUCCESS if OK, otherwise error code.
  */
+
 int spi_receive_frame(unsigned int handle, uint8_t* packet, uint16_t* length);
+/**
+ * Receive a packet,
+ * @param handle>=0, as returned by a call to spi_init
+ * @param * packet, Buffer pointer to store received packet
+ * @param * length, Variable pointer to store the length of the received packet
+ * @param * timestamp Address of variable to store ingress timestamp value
+ * @return RET_SUCCESS if OK, otherwise error code.
+ */
+int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint16_t* length,
+                                     struct timestamp_format* timestamp);

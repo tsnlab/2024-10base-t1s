@@ -195,6 +195,10 @@ int do_as_coordinator() {
     int ret;
     uint16_t length;
     uint16_t received_length;
+#ifdef FRAME_TIMESTAMP_ENABLE
+    struct timestamp_format timestamp;
+    int timestamp_id = TTSC_A;
+#endif
     unsigned char buffer[MAX_PACKET_SIZE] = {
         0,
     };
@@ -210,24 +214,46 @@ int do_as_coordinator() {
 
     length = make_arp_packet(buffer);
 
+#ifdef FRAME_TIMESTAMP_ENABLE
+    ret = spi_transmit_frame_with_timestamp((unsigned int)spi_handle, (uint8_t*)buffer, length, timestamp_id);
+#else
     ret = spi_transmit_frame((unsigned int)spi_handle, (uint8_t*)buffer, length);
+#endif
     while (ret != RET_SUCCESS) {
         printf("Fail to send ARP request, the error code is %d\n", ret);
         sleep(1);
         ret = spi_transmit_frame((unsigned int)spi_handle, (uint8_t*)buffer, length);
     }
+#ifdef FRAME_TIMESTAMP_ENABLE
+    if (get_timestamp((unsigned int)spi_handle, timestamp_id, &timestamp)) {
+        printf("Fail to get timestamp(%d)\n", timestamp_id);
+    } else {
+        print_timestamp_info(timestamp);
+    }
+#endif
     printf("Success to send ARP request\n");
 
+#ifdef FRAME_TIMESTAMP_ENABLE
+    ret = spi_receive_frame_with_timestamp((unsigned int)spi_handle, reply_packet, &received_length, &timestamp);
+#else
     ret = spi_receive_frame((unsigned int)spi_handle, reply_packet, &received_length);
+#endif
     while (ret != RET_SUCCESS) {
         printf("Fail to receive ARP reply, the error code is %d\n", ret);
         sleep(1);
+#ifdef FRAME_TIMESTAMP_ENABLE
+        ret = spi_receive_frame_with_timestamp((unsigned int)spi_handle, reply_packet, &received_length, &timestamp);
+#else
         ret = spi_receive_frame((unsigned int)spi_handle, reply_packet, &received_length);
+#endif
     }
 
     printf("Success to receive ARP reply\n");
     ret = check_arp_packet(reply_packet);
 
+#ifdef FRAME_TIMESTAMP_ENABLE
+    print_timestamp_info(timestamp);
+#endif
     return RET_SUCCESS;
 }
 
@@ -236,6 +262,10 @@ int do_as_follower() {
     int ret;
     uint16_t received_length;
     uint16_t length;
+#ifdef FRAME_TIMESTAMP_ENABLE
+    struct timestamp_format timestamp;
+    int timestamp_id = TTSC_A;
+#endif
     unsigned char buffer[MAX_PACKET_SIZE] = {
         0,
     };
@@ -249,24 +279,46 @@ int do_as_follower() {
         return -1;
     }
 
+#ifdef FRAME_TIMESTAMP_ENABLE
+    ret = spi_receive_frame_with_timestamp((unsigned int)spi_handle, reply_packet, &received_length, &timestamp);
+#else
     ret = spi_receive_frame((unsigned int)spi_handle, buffer, &received_length);
+#endif
     while (ret != RET_SUCCESS) {
         printf("Fail to receive ARP request, the error code is %d\n", ret);
         sleep(1);
+#ifdef FRAME_TIMESTAMP_ENABLE
+        ret = spi_receive_frame_with_timestamp((unsigned int)spi_handle, reply_packet, &received_length, &timestamp);
+#else
         ret = spi_receive_frame((unsigned int)spi_handle, buffer, &received_length);
+#endif
     }
 
+#ifdef FRAME_TIMESTAMP_ENABLE
+    print_timestamp_info(timestamp);
+#endif
     printf("Success to recieve ARP request");
     ret = check_arp_packet(buffer);
     if (ret == RET_SUCCESS) {
         create_arp_reply(buffer, reply_packet, my_mac, follower_ip);
         length = PACKET_SIZE_ARP;
+#ifdef FRAME_TIMESTAMP_ENABLE
+        ret = spi_transmit_frame_with_timestamp((unsigned int)spi_handle, reply_packet, length, timestamp_id);
+#else
         ret = spi_transmit_frame((unsigned int)spi_handle, reply_packet, length);
+#endif
         while (ret != RET_SUCCESS) {
             printf("Fail to send ARP reply, the error code is %d\n", ret);
             sleep(1);
+#ifdef FRAME_TIMESTAMP_ENABLE
+            ret = spi_transmit_frame_with_timestamp((unsigned int)spi_handle, reply_packet, length, timestamp_id);
+#else
             ret = spi_transmit_frame((unsigned int)spi_handle, reply_packet, length);
+#endif
         }
+#ifdef FRAME_TIMESTAMP_ENABLE
+        print_timestamp_info(timestamp);
+#endif
         printf("Success to send ARP reply\n");
     }
 
