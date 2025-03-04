@@ -197,7 +197,7 @@ int do_as_coordinator() {
     uint16_t received_length;
 #ifdef FRAME_TIMESTAMP_ENABLE
     struct timestamp_format timestamp;
-    int timestamp_id = TTSC_A;
+    int timestamp_id = TTSC_C;
 #endif
     unsigned char buffer[MAX_PACKET_SIZE] = {
         0,
@@ -228,6 +228,7 @@ int do_as_coordinator() {
     if (get_timestamp((unsigned int)spi_handle, timestamp_id, &timestamp)) {
         printf("Fail to get timestamp(%d)\n", timestamp_id);
     } else {
+        printf("Transmit Time-Stamp:\n");
         print_timestamp_info(timestamp);
     }
 #endif
@@ -248,6 +249,7 @@ int do_as_coordinator() {
 #endif
     }
 
+#if 0
     for(int id=0; id<received_length; id++) {
         if((id %16) == 0) {
             printf("\n");
@@ -255,11 +257,13 @@ int do_as_coordinator() {
         printf("0x%02x ", reply_packet[id]);
     }
     printf("\n");
+#endif
 
     printf("Success to receive ARP reply\n");
     ret = check_arp_packet(reply_packet);
 
 #ifdef FRAME_TIMESTAMP_ENABLE
+    printf("Receive Time-Stamp:\n");
     print_timestamp_info(timestamp);
 #endif
     return RET_SUCCESS;
@@ -272,7 +276,7 @@ int do_as_follower() {
     uint16_t length;
 #ifdef FRAME_TIMESTAMP_ENABLE
     struct timestamp_format timestamp;
-    int timestamp_id = TTSC_A;
+    int timestamp_id = TTSC_C;
 #endif
     unsigned char buffer[MAX_PACKET_SIZE] = {
         0,
@@ -303,8 +307,10 @@ int do_as_follower() {
     }
 
 #ifdef FRAME_TIMESTAMP_ENABLE
+    printf("Receive Time-Stamp:\n");
     print_timestamp_info(timestamp);
 
+#if 0
     for(int id=0; id<received_length; id++) {
         if((id %16) == 0) {
             printf("\n");
@@ -312,6 +318,7 @@ int do_as_follower() {
         printf("0x%02x ", buffer[id]);
     }
     printf("\n");
+#endif
 #endif
     printf("Success to recieve ARP request");
     ret = check_arp_packet(buffer);
@@ -333,7 +340,12 @@ int do_as_follower() {
 #endif
         }
 #ifdef FRAME_TIMESTAMP_ENABLE
-        print_timestamp_info(timestamp);
+        if (get_timestamp((unsigned int)spi_handle, timestamp_id, &timestamp)) {
+            printf("Fail to get timestamp(%d)\n", timestamp_id);
+        } else {
+            printf("Transmit Time-Stamp:\n");
+            print_timestamp_info(timestamp);
+        }
 #endif
         printf("Success to send ARP reply\n");
     }

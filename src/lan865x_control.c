@@ -674,24 +674,30 @@ int get_timestamp(unsigned int handle, int reg, struct timestamp_format* timesta
 
     switch (reg & TRANSMIT_TIMESTAMP_CAPTURE_MASK) {
     case TTSC_A:
+#if 1
         if (transmit_timestamp_capture_available(handle, TRANSMIT_TIMESTAMP_CAPTURE_AVAILABLE_MASK_A)) {
             printf("Not Available - Transmit Timestamp Capture\n");
-            return ERR_NOT_AVAILAVLE;
+//            return ERR_NOT_AVAILAVLE;
         }
+#endif
         addr = MMS0_TTSCAL;
         break;
     case TTSC_B:
+#if 1
         if (transmit_timestamp_capture_available(handle, TRANSMIT_TIMESTAMP_CAPTURE_AVAILABLE_MASK_B)) {
             printf("Not Available - Transmit Timestamp Capture\n");
-            return ERR_NOT_AVAILAVLE;
+//            return ERR_NOT_AVAILAVLE;
         }
+#endif
         addr = MMS0_TTSCBL;
         break;
     case TTSC_C:
+#if 1
         if (transmit_timestamp_capture_available(handle, TRANSMIT_TIMESTAMP_CAPTURE_AVAILABLE_MASK_C)) {
             printf("Not Available - Transmit Timestamp Capture\n");
-            return ERR_NOT_AVAILAVLE;
+//            return ERR_NOT_AVAILAVLE;
         }
+#endif
         addr = MMS0_TTSCCL;
         break;
     default:
@@ -708,11 +714,13 @@ int get_timestamp(unsigned int handle, int reg, struct timestamp_format* timesta
 }
 
 void print_timestamp_info(struct timestamp_format timestamp) {
+#if 0
     uint64_t* ts;
 
     ts = (uint64_t*)&timestamp;
 
     printf("Timestamp: 0x%016lx\n", *ts);
+#endif
     printf("Timestamp: %d.%09d\n", timestamp.seconds, timestamp.nano.nanoseconds);
 }
 

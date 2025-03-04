@@ -112,7 +112,7 @@ static int spi_transmit_segment_with_timestamp(unsigned int handle, uint8_t* pac
     tx_header.data_bits.dv = 1;           /* Data Valid */
     tx_header.data_bits.sv = sv & 0x1;    /* start chunk */
     tx_header.data_bits.ev = ev & 0x1;    /* end chunk (single chunk) */
-    tx_header.data_bits.tsc = tsc;        /* Time Stamp Capture */
+    tx_header.data_bits.tsc = tsc & 0x3;  /* Time Stamp Capture */
     tx_header.data_bits.ebo = length - 1; /* End Byte Offset */
     tx_header.data_bits.p = ((get_parity(tx_header.data_frame) == 0) ? 1 : 0);
 
@@ -319,6 +319,7 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
         memcpy((uint8_t*)&footer.data_frame, &rx_buf[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
         footer.data_frame = ntohl(footer.data_frame);
 
+#if 0
         printf("footer.data_frame: 0x%08x\n", footer.data_frame);
 
         for(uint32_t id=0; id<MAX_PAYLOAD_BYTE; id++) {
@@ -328,6 +329,7 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
             printf("0x%02x ", rx_buf[id]);
         }
         printf("\n");
+#endif
 
         /* Frame Drop */
         if (footer.footer_bits.fd) {
@@ -366,11 +368,14 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
                 /* Ethernet Frame Start + Not Ethernet Frame End*/
                 actual_length =
                     MAX_PAYLOAD_BYTE - footer.footer_bits.swo * START_WORD_OFFSET_UNIT - sizeof(struct timestamp_format);
+#if 0
                 printf("actual_length: %d\n", actual_length);
+#endif
                 memcpy(&packet[acc_bytes],
                        &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT + sizeof(struct timestamp_format)],
                        actual_length);
 
+#if 0
                 for(uint32_t id=0; id<actual_length; id++) {
                     if((id %16) == 0) {
                         printf("\n");
@@ -378,6 +383,7 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
                     printf("0x%02x ", packet[acc_bytes+id]);
                 }
                 printf("\n");
+#endif
 
                 acc_bytes += actual_length;
             } else {
@@ -400,9 +406,12 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
             if (footer.footer_bits.ev) {
                 /* Not Ethernet Frame Start + Ethernet Frame End*/
                 actual_length = footer.footer_bits.ebo + END_BYTE_OFFSET;
+#if 0
                 printf("actual_length: %d\n", actual_length);
+#endif
                 memcpy(&packet[acc_bytes], &rx_buf[0], actual_length);
 
+#if 0
                 for(uint32_t id=0; id<actual_length; id++) {
                     if((id %16) == 0) {
                         printf("\n");
@@ -410,6 +419,7 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
                     printf("0x%02x ", packet[acc_bytes+id]);
                 }
                 printf("\n");
+#endif
 
                 acc_bytes += actual_length;
                 *length = acc_bytes;
