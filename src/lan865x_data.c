@@ -321,6 +321,14 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
 
         printf("footer.data_frame: 0x%08x\n", footer.data_frame);
 
+        for(uint32_t id=0; id<MAX_PAYLOAD_BYTE; id++) {
+            if((id %16) == 0) {
+                printf("\n");
+            }
+            printf("0x%02x ", rx_buf[id]);
+        }
+        printf("\n");
+
         /* Frame Drop */
         if (footer.footer_bits.fd) {
             stop_flag = 1;
@@ -346,9 +354,9 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
                 if (footer.footer_bits.ev) {
                     /* Ethernet Frame Start + Ethernet Frame End*/
                     actual_length = (footer.footer_bits.ebo + END_BYTE_OFFSET) -
-                                    footer.footer_bits.swo * START_WORD_OFFSET_UNIT - sizeof(union data_footer);
+                                    footer.footer_bits.swo * START_WORD_OFFSET_UNIT - sizeof(struct timestamp_format);
                     memcpy(&packet[acc_bytes],
-                           &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT + sizeof(union data_footer)],
+                           &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT + sizeof(struct timestamp_format)],
                            actual_length);
                     acc_bytes += actual_length;
                     *length = acc_bytes;
@@ -357,10 +365,20 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
                 }
                 /* Ethernet Frame Start + Not Ethernet Frame End*/
                 actual_length =
-                    MAX_PAYLOAD_BYTE - footer.footer_bits.swo * START_WORD_OFFSET_UNIT - sizeof(union data_footer);
+                    MAX_PAYLOAD_BYTE - footer.footer_bits.swo * START_WORD_OFFSET_UNIT - sizeof(struct timestamp_format);
+                printf("actual_length: %d\n", actual_length);
                 memcpy(&packet[acc_bytes],
-                       &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT + sizeof(union data_footer)],
+                       &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT + sizeof(struct timestamp_format)],
                        actual_length);
+
+                for(uint32_t id=0; id<actual_length; id++) {
+                    if((id %16) == 0) {
+                        printf("\n");
+                    }
+                    printf("0x%02x ", packet[acc_bytes+id]);
+                }
+                printf("\n");
+
                 acc_bytes += actual_length;
             } else {
                 if (footer.footer_bits.ev) {
@@ -382,7 +400,17 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
             if (footer.footer_bits.ev) {
                 /* Not Ethernet Frame Start + Ethernet Frame End*/
                 actual_length = footer.footer_bits.ebo + END_BYTE_OFFSET;
+                printf("actual_length: %d\n", actual_length);
                 memcpy(&packet[acc_bytes], &rx_buf[0], actual_length);
+
+                for(uint32_t id=0; id<actual_length; id++) {
+                    if((id %16) == 0) {
+                        printf("\n");
+                    }
+                    printf("0x%02x ", packet[acc_bytes+id]);
+                }
+                printf("\n");
+
                 acc_bytes += actual_length;
                 *length = acc_bytes;
                 stop_flag = 1;

@@ -248,6 +248,14 @@ int do_as_coordinator() {
 #endif
     }
 
+    for(int id=0; id<received_length; id++) {
+        if((id %16) == 0) {
+            printf("\n");
+        }
+        printf("0x%02x ", reply_packet[id]);
+    }
+    printf("\n");
+
     printf("Success to receive ARP reply\n");
     ret = check_arp_packet(reply_packet);
 
@@ -280,7 +288,7 @@ int do_as_follower() {
     }
 
 #ifdef FRAME_TIMESTAMP_ENABLE
-    ret = spi_receive_frame_with_timestamp((unsigned int)spi_handle, reply_packet, &received_length, &timestamp);
+    ret = spi_receive_frame_with_timestamp((unsigned int)spi_handle, buffer, &received_length, &timestamp);
 #else
     ret = spi_receive_frame((unsigned int)spi_handle, buffer, &received_length);
 #endif
@@ -288,7 +296,7 @@ int do_as_follower() {
         printf("Fail to receive ARP request, the error code is %d\n", ret);
         sleep(1);
 #ifdef FRAME_TIMESTAMP_ENABLE
-        ret = spi_receive_frame_with_timestamp((unsigned int)spi_handle, reply_packet, &received_length, &timestamp);
+        ret = spi_receive_frame_with_timestamp((unsigned int)spi_handle, buffer, &received_length, &timestamp);
 #else
         ret = spi_receive_frame((unsigned int)spi_handle, buffer, &received_length);
 #endif
@@ -296,6 +304,14 @@ int do_as_follower() {
 
 #ifdef FRAME_TIMESTAMP_ENABLE
     print_timestamp_info(timestamp);
+
+    for(int id=0; id<received_length; id++) {
+        if((id %16) == 0) {
+            printf("\n");
+        }
+        printf("0x%02x ", buffer[id]);
+    }
+    printf("\n");
 #endif
     printf("Success to recieve ARP request");
     ret = check_arp_packet(buffer);
