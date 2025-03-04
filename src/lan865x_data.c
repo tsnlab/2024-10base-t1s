@@ -319,6 +319,8 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
         memcpy((uint8_t*)&footer.data_frame, &rx_buf[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
         footer.data_frame = ntohl(footer.data_frame);
 
+        printf("footer.data_frame: 0x%08x\n", footer.data_frame);
+
         /* Frame Drop */
         if (footer.footer_bits.fd) {
             stop_flag = 1;
