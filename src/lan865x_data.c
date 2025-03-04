@@ -342,20 +342,42 @@ int spi_receive_frame_with_timestamp(unsigned int handle, uint8_t* packet, uint1
                 timestamp->nanoseconds = ntohl(timestamp->nanoseconds);
             }
             acc_bytes = 0;
-            if (footer.footer_bits.ev) {
-                /* Ethernet Frame Start + Ethernet Frame End*/
+            if (footer.footer_bits.rtsa) {
+                if (footer.footer_bits.ev) {
+                    /* Ethernet Frame Start + Ethernet Frame End*/
+                    actual_length = (footer.footer_bits.ebo + END_BYTE_OFFSET) -
+                                    footer.footer_bits.swo * START_WORD_OFFSET_UNIT - sizeof(union data_footer);
+                    memcpy(&packet[acc_bytes],
+                           &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT + sizeof(union data_footer)],
+                           actual_length);
+                    acc_bytes += actual_length;
+                    *length = acc_bytes;
+                    stop_flag = 1;
+                    return RET_SUCCESS;
+                }
+                /* Ethernet Frame Start + Not Ethernet Frame End*/
                 actual_length =
-                    (footer.footer_bits.ebo + END_BYTE_OFFSET) - footer.footer_bits.swo * START_WORD_OFFSET_UNIT;
+                    MAX_PAYLOAD_BYTE - footer.footer_bits.swo * START_WORD_OFFSET_UNIT - sizeof(union data_footer);
+                memcpy(&packet[acc_bytes],
+                       &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT + sizeof(union data_footer)],
+                       actual_length);
+                acc_bytes += actual_length;
+            } else {
+                if (footer.footer_bits.ev) {
+                    /* Ethernet Frame Start + Ethernet Frame End*/
+                    actual_length =
+                        (footer.footer_bits.ebo + END_BYTE_OFFSET) - footer.footer_bits.swo * START_WORD_OFFSET_UNIT;
+                    memcpy(&packet[acc_bytes], &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT], actual_length);
+                    acc_bytes += actual_length;
+                    *length = acc_bytes;
+                    stop_flag = 1;
+                    return RET_SUCCESS;
+                }
+                /* Ethernet Frame Start + Not Ethernet Frame End*/
+                actual_length = MAX_PAYLOAD_BYTE - footer.footer_bits.swo * START_WORD_OFFSET_UNIT;
                 memcpy(&packet[acc_bytes], &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT], actual_length);
                 acc_bytes += actual_length;
-                *length = acc_bytes;
-                stop_flag = 1;
-                return RET_SUCCESS;
             }
-            /* Ethernet Frame Start + Not Ethernet Frame End*/
-            actual_length = MAX_PAYLOAD_BYTE - footer.footer_bits.swo * START_WORD_OFFSET_UNIT;
-            memcpy(&packet[acc_bytes], &rx_buf[footer.footer_bits.swo * START_WORD_OFFSET_UNIT], actual_length);
-            acc_bytes += actual_length;
         } else {
             if (footer.footer_bits.ev) {
                 /* Not Ethernet Frame Start + Ethernet Frame End*/
