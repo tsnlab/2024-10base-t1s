@@ -32,12 +32,28 @@
 /* MAC Specific Addr 1 Top Reg */
 #define LAN865X_REG_MAC_H_SADDR1 0x00010023
 
+/* PLCA Control 1 Register */
+#define LAN865X_REG_PLCA_CTRL1 0x0004ca02
+
+#define KNOB_MAX_COUNT 16
+#define NODE_ID_BITS_WIDTH 8
+#define NODE_ID_MASK 0xFF
+
 struct lan865x_priv {
 	struct work_struct multicast_work;
 	struct net_device *netdev;
 	struct spi_device *spi;
 	struct oa_tc6 *tc6;
 };
+
+static int lan865x_set_nodeid(struct lan865x_priv *priv, u32 node_id)
+{
+	u32 regval;
+
+	regval = (KNOB_MAX_COUNT << NODE_ID_BITS_WIDTH) |
+		 (node_id & NODE_ID_MASK);
+	return oa_tc6_write_register(priv->tc6, LAN865X_REG_PLCA_CTRL1, regval);
+}
 
 static int lan865x_set_hw_macaddr_low_bytes(struct oa_tc6 *tc6, const u8 *mac)
 {
@@ -329,6 +345,10 @@ static int lan865x_probe(struct spi_device *spi)
 	struct net_device *netdev;
 	struct lan865x_priv *priv;
 	int ret;
+	struct device *dev = &spi->dev;
+	struct gpio_descs *nodeid_gpios;
+	int gpio_values[4];
+	u32 node_id = 0;
 
 	netdev = alloc_etherdev(sizeof(struct lan865x_priv));
 	if (!netdev)
@@ -382,6 +402,28 @@ static int lan865x_probe(struct spi_device *spi)
 	ret = register_netdev(netdev);
 	if (ret) {
 		dev_err(&spi->dev, "Register netdev failed (ret = %d)", ret);
+		goto oa_tc6_exit;
+	}
+
+	nodeid_gpios = devm_gpiod_get_array(dev, "nodeid", GPIOD_IN);
+	if (IS_ERR(nodeid_gpios)) {
+		dev_err(dev, "GPIO get array: %ld\n", PTR_ERR(nodeid_gpios));
+		return PTR_ERR(nodeid_gpios);
+	}
+
+	for (int i = 0; i < nodeid_gpios->ndescs; i++) {
+		gpio_values[i] = gpiod_get_value(nodeid_gpios->desc[i]);
+		dev_info(dev, "GPIO %d value: %d\n",
+			 desc_to_gpio(nodeid_gpios->desc[i]), gpio_values[i]);
+	}
+
+	for (int i = 0; i < nodeid_gpios->ndescs; i++) {
+		node_id = (node_id << 1) +
+			  gpio_values[nodeid_gpios->ndescs - 1 - i];
+	}
+	ret = lan865x_set_nodeid(priv, node_id);
+	if (ret) {
+		dev_err(&spi->dev, "lan865x_set_nodeid failed (ret = %d)", ret);
 		goto oa_tc6_exit;
 	}
 

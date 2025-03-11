@@ -301,6 +301,12 @@
 		status = "okay";
 		spi-cpol;
 		spi-cpha;
+		nodeid-gpios = <
+			&gpio 21 GPIO_ACTIVE_HIGH   // N1
+			&gpio 20 GPIO_ACTIVE_HIGH   // N2
+			&gpio 16 GPIO_ACTIVE_HIGH   // N4
+			&gpio 12 GPIO_ACTIVE_HIGH   // N8
+		>;
 	};
 
 	spidev1: spidev@1{
