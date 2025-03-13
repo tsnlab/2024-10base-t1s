@@ -349,6 +349,7 @@ static int lan865x_probe(struct spi_device *spi)
 	struct gpio_descs *nodeid_gpios;
 	int gpio_values[4];
 	u32 node_id = 0;
+	u8 mac_addr[ETH_ALEN];
 
 	netdev = alloc_etherdev(sizeof(struct lan865x_priv));
 	if (!netdev)
@@ -384,6 +385,21 @@ static int lan865x_probe(struct spi_device *spi)
 		goto oa_tc6_exit;
 	}
 
+	nodeid_gpios = devm_gpiod_get_array(dev, "nodeid", GPIOD_IN);
+	if (IS_ERR(nodeid_gpios)) {
+		dev_err(dev, "GPIO get array: %ld\n", PTR_ERR(nodeid_gpios));
+		return PTR_ERR(nodeid_gpios);
+	}
+
+	for (int i = 0; i < nodeid_gpios->ndescs; i++) {
+		gpio_values[i] = gpiod_get_value(nodeid_gpios->desc[i]);
+	}
+
+	for (int i = 0; i < nodeid_gpios->ndescs; i++) {
+		node_id = (node_id << 1) +
+			  gpio_values[nodeid_gpios->ndescs - 1 - i];
+	}
+
 	/* Get the MAC address from the SPI device tree node */
 	if (device_get_ethdev_address(&spi->dev, netdev))
 		eth_hw_addr_random(netdev);
@@ -405,22 +421,12 @@ static int lan865x_probe(struct spi_device *spi)
 		goto oa_tc6_exit;
 	}
 
-	nodeid_gpios = devm_gpiod_get_array(dev, "nodeid", GPIOD_IN);
-	if (IS_ERR(nodeid_gpios)) {
-		dev_err(dev, "GPIO get array: %ld\n", PTR_ERR(nodeid_gpios));
-		return PTR_ERR(nodeid_gpios);
+	ret = device_get_mac_address(&spi->dev, mac_addr);
+	if (!ret) {
+		mac_addr[ETH_ALEN - 1] = node_id & NODE_ID_MASK;
+		eth_hw_addr_set(netdev, mac_addr);
 	}
 
-	for (int i = 0; i < nodeid_gpios->ndescs; i++) {
-		gpio_values[i] = gpiod_get_value(nodeid_gpios->desc[i]);
-		dev_info(dev, "GPIO %d value: %d\n",
-			 desc_to_gpio(nodeid_gpios->desc[i]), gpio_values[i]);
-	}
-
-	for (int i = 0; i < nodeid_gpios->ndescs; i++) {
-		node_id = (node_id << 1) +
-			  gpio_values[nodeid_gpios->ndescs - 1 - i];
-	}
 	ret = lan865x_set_nodeid(priv, node_id);
 	if (ret) {
 		dev_err(&spi->dev, "lan865x_set_nodeid failed (ret = %d)", ret);
