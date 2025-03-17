@@ -13,97 +13,95 @@
 
 /* OPEN Alliance TC6 registers */
 /* Standard Capabilities Register */
-#define OA_TC6_REG_STDCAP			0x0002
-#define STDCAP_DIRECT_PHY_REG_ACCESS		BIT(8)
+#define OA_TC6_REG_STDCAP 0x0002
+#define STDCAP_DIRECT_PHY_REG_ACCESS BIT(8)
 
 /* Reset Control and Status Register */
-#define OA_TC6_REG_RESET			0x0003
-#define RESET_SWRESET				BIT(0)	/* Software Reset */
+#define OA_TC6_REG_RESET 0x0003
+#define RESET_SWRESET BIT(0) /* Software Reset */
 
 /* Configuration Register #0 */
-#define OA_TC6_REG_CONFIG0			0x0004
-#define CONFIG0_SYNC				BIT(15)
-#define CONFIG0_ZARFE_ENABLE			BIT(12)
+#define OA_TC6_REG_CONFIG0 0x0004
+#define CONFIG0_SYNC BIT(15)
+#define CONFIG0_ZARFE_ENABLE BIT(12)
 
 /* Status Register #0 */
-#define OA_TC6_REG_STATUS0			0x0008
-#define STATUS0_RESETC				BIT(6)	/* Reset Complete */
-#define STATUS0_HEADER_ERROR			BIT(5)
-#define STATUS0_LOSS_OF_FRAME_ERROR		BIT(4)
-#define STATUS0_RX_BUFFER_OVERFLOW_ERROR	BIT(3)
-#define STATUS0_TX_PROTOCOL_ERROR		BIT(0)
+#define OA_TC6_REG_STATUS0 0x0008
+#define STATUS0_RESETC BIT(6) /* Reset Complete */
+#define STATUS0_HEADER_ERROR BIT(5)
+#define STATUS0_LOSS_OF_FRAME_ERROR BIT(4)
+#define STATUS0_RX_BUFFER_OVERFLOW_ERROR BIT(3)
+#define STATUS0_TX_PROTOCOL_ERROR BIT(0)
 
 /* Buffer Status Register */
-#define OA_TC6_REG_BUFFER_STATUS		0x000B
-#define BUFFER_STATUS_TX_CREDITS_AVAILABLE	GENMASK(15, 8)
-#define BUFFER_STATUS_RX_CHUNKS_AVAILABLE	GENMASK(7, 0)
+#define OA_TC6_REG_BUFFER_STATUS 0x000B
+#define BUFFER_STATUS_TX_CREDITS_AVAILABLE GENMASK(15, 8)
+#define BUFFER_STATUS_RX_CHUNKS_AVAILABLE GENMASK(7, 0)
 
 /* Interrupt Mask Register #0 */
-#define OA_TC6_REG_INT_MASK0			0x000C
-#define INT_MASK0_HEADER_ERR_MASK		BIT(5)
-#define INT_MASK0_LOSS_OF_FRAME_ERR_MASK	BIT(4)
-#define INT_MASK0_RX_BUFFER_OVERFLOW_ERR_MASK	BIT(3)
-#define INT_MASK0_TX_PROTOCOL_ERR_MASK		BIT(0)
+#define OA_TC6_REG_INT_MASK0 0x000C
+#define INT_MASK0_HEADER_ERR_MASK BIT(5)
+#define INT_MASK0_LOSS_OF_FRAME_ERR_MASK BIT(4)
+#define INT_MASK0_RX_BUFFER_OVERFLOW_ERR_MASK BIT(3)
+#define INT_MASK0_TX_PROTOCOL_ERR_MASK BIT(0)
 
 /* PHY Clause 22 registers base address and mask */
-#define OA_TC6_PHY_STD_REG_ADDR_BASE		0xFF00
-#define OA_TC6_PHY_STD_REG_ADDR_MASK		0x1F
+#define OA_TC6_PHY_STD_REG_ADDR_BASE 0xFF00
+#define OA_TC6_PHY_STD_REG_ADDR_MASK 0x1F
 
 /* Control command header */
-#define OA_TC6_CTRL_HEADER_DATA_NOT_CTRL	BIT(31)
-#define OA_TC6_CTRL_HEADER_WRITE_NOT_READ	BIT(29)
-#define OA_TC6_CTRL_HEADER_MEM_MAP_SELECTOR	GENMASK(27, 24)
-#define OA_TC6_CTRL_HEADER_ADDR			GENMASK(23, 8)
-#define OA_TC6_CTRL_HEADER_LENGTH		GENMASK(7, 1)
-#define OA_TC6_CTRL_HEADER_PARITY		BIT(0)
+#define OA_TC6_CTRL_HEADER_DATA_NOT_CTRL BIT(31)
+#define OA_TC6_CTRL_HEADER_WRITE_NOT_READ BIT(29)
+#define OA_TC6_CTRL_HEADER_MEM_MAP_SELECTOR GENMASK(27, 24)
+#define OA_TC6_CTRL_HEADER_ADDR GENMASK(23, 8)
+#define OA_TC6_CTRL_HEADER_LENGTH GENMASK(7, 1)
+#define OA_TC6_CTRL_HEADER_PARITY BIT(0)
 
 /* Data header */
-#define OA_TC6_DATA_HEADER_DATA_NOT_CTRL	BIT(31)
-#define OA_TC6_DATA_HEADER_DATA_VALID		BIT(21)
-#define OA_TC6_DATA_HEADER_START_VALID		BIT(20)
-#define OA_TC6_DATA_HEADER_START_WORD_OFFSET	GENMASK(19, 16)
-#define OA_TC6_DATA_HEADER_END_VALID		BIT(14)
-#define OA_TC6_DATA_HEADER_END_BYTE_OFFSET	GENMASK(13, 8)
-#define OA_TC6_DATA_HEADER_PARITY		BIT(0)
+#define OA_TC6_DATA_HEADER_DATA_NOT_CTRL BIT(31)
+#define OA_TC6_DATA_HEADER_DATA_VALID BIT(21)
+#define OA_TC6_DATA_HEADER_START_VALID BIT(20)
+#define OA_TC6_DATA_HEADER_START_WORD_OFFSET GENMASK(19, 16)
+#define OA_TC6_DATA_HEADER_END_VALID BIT(14)
+#define OA_TC6_DATA_HEADER_END_BYTE_OFFSET GENMASK(13, 8)
+#define OA_TC6_DATA_HEADER_PARITY BIT(0)
 
 /* Data footer */
-#define OA_TC6_DATA_FOOTER_EXTENDED_STS		BIT(31)
-#define OA_TC6_DATA_FOOTER_RXD_HEADER_BAD	BIT(30)
-#define OA_TC6_DATA_FOOTER_CONFIG_SYNC		BIT(29)
-#define OA_TC6_DATA_FOOTER_RX_CHUNKS		GENMASK(28, 24)
-#define OA_TC6_DATA_FOOTER_DATA_VALID		BIT(21)
-#define OA_TC6_DATA_FOOTER_START_VALID		BIT(20)
-#define OA_TC6_DATA_FOOTER_START_WORD_OFFSET	GENMASK(19, 16)
-#define OA_TC6_DATA_FOOTER_END_VALID		BIT(14)
-#define OA_TC6_DATA_FOOTER_END_BYTE_OFFSET	GENMASK(13, 8)
-#define OA_TC6_DATA_FOOTER_TX_CREDITS		GENMASK(5, 1)
+#define OA_TC6_DATA_FOOTER_EXTENDED_STS BIT(31)
+#define OA_TC6_DATA_FOOTER_RXD_HEADER_BAD BIT(30)
+#define OA_TC6_DATA_FOOTER_CONFIG_SYNC BIT(29)
+#define OA_TC6_DATA_FOOTER_RX_CHUNKS GENMASK(28, 24)
+#define OA_TC6_DATA_FOOTER_DATA_VALID BIT(21)
+#define OA_TC6_DATA_FOOTER_START_VALID BIT(20)
+#define OA_TC6_DATA_FOOTER_START_WORD_OFFSET GENMASK(19, 16)
+#define OA_TC6_DATA_FOOTER_END_VALID BIT(14)
+#define OA_TC6_DATA_FOOTER_END_BYTE_OFFSET GENMASK(13, 8)
+#define OA_TC6_DATA_FOOTER_TX_CREDITS GENMASK(5, 1)
 
 /* PHY – Clause 45 registers memory map selector (MMS) as per table 6 in the
  * OPEN Alliance specification.
  */
-#define OA_TC6_PHY_C45_PCS_MMS2			2	/* MMD 3 */
-#define OA_TC6_PHY_C45_PMA_PMD_MMS3		3	/* MMD 1 */
-#define OA_TC6_PHY_C45_VS_PLCA_MMS4		4	/* MMD 31 */
-#define OA_TC6_PHY_C45_AUTO_NEG_MMS5		5	/* MMD 7 */
-#define OA_TC6_PHY_C45_POWER_UNIT_MMS6		6	/* MMD 13 */
+#define OA_TC6_PHY_C45_PCS_MMS2 2 /* MMD 3 */
+#define OA_TC6_PHY_C45_PMA_PMD_MMS3 3 /* MMD 1 */
+#define OA_TC6_PHY_C45_VS_PLCA_MMS4 4 /* MMD 31 */
+#define OA_TC6_PHY_C45_AUTO_NEG_MMS5 5 /* MMD 7 */
+#define OA_TC6_PHY_C45_POWER_UNIT_MMS6 6 /* MMD 13 */
 
-#define OA_TC6_CTRL_HEADER_SIZE			4
-#define OA_TC6_CTRL_REG_VALUE_SIZE		4
-#define OA_TC6_CTRL_IGNORED_SIZE		4
-#define OA_TC6_CTRL_MAX_REGISTERS		128
-#define OA_TC6_CTRL_SPI_BUF_SIZE		(OA_TC6_CTRL_HEADER_SIZE +\
-						(OA_TC6_CTRL_MAX_REGISTERS *\
-						OA_TC6_CTRL_REG_VALUE_SIZE) +\
-						OA_TC6_CTRL_IGNORED_SIZE)
-#define OA_TC6_CHUNK_PAYLOAD_SIZE		64
-#define OA_TC6_DATA_HEADER_SIZE			4
-#define OA_TC6_CHUNK_SIZE			(OA_TC6_DATA_HEADER_SIZE +\
-						OA_TC6_CHUNK_PAYLOAD_SIZE)
-#define OA_TC6_MAX_TX_CHUNKS			48
-#define OA_TC6_SPI_DATA_BUF_SIZE		(OA_TC6_MAX_TX_CHUNKS *\
-						OA_TC6_CHUNK_SIZE)
-#define STATUS0_RESETC_POLL_DELAY		1000
-#define STATUS0_RESETC_POLL_TIMEOUT		1000000
+#define OA_TC6_CTRL_HEADER_SIZE 4
+#define OA_TC6_CTRL_REG_VALUE_SIZE 4
+#define OA_TC6_CTRL_IGNORED_SIZE 4
+#define OA_TC6_CTRL_MAX_REGISTERS 128
+#define OA_TC6_CTRL_SPI_BUF_SIZE                                    \
+	(OA_TC6_CTRL_HEADER_SIZE +                                  \
+	 (OA_TC6_CTRL_MAX_REGISTERS * OA_TC6_CTRL_REG_VALUE_SIZE) + \
+	 OA_TC6_CTRL_IGNORED_SIZE)
+#define OA_TC6_CHUNK_PAYLOAD_SIZE 64
+#define OA_TC6_DATA_HEADER_SIZE 4
+#define OA_TC6_CHUNK_SIZE (OA_TC6_DATA_HEADER_SIZE + OA_TC6_CHUNK_PAYLOAD_SIZE)
+#define OA_TC6_MAX_TX_CHUNKS 48
+#define OA_TC6_SPI_DATA_BUF_SIZE (OA_TC6_MAX_TX_CHUNKS * OA_TC6_CHUNK_SIZE)
+#define STATUS0_RESETC_POLL_DELAY 1000
+#define STATUS0_RESETC_POLL_TIMEOUT 1000000
 
 /* Internal structure for MAC-PHY drivers */
 struct oa_tc6 {
@@ -424,8 +422,10 @@ static int oa_tc6_mdiobus_read(struct mii_bus *bus, int addr, int regnum)
 	u32 regval;
 	bool ret;
 
-	ret = oa_tc6_read_register(tc6, OA_TC6_PHY_STD_REG_ADDR_BASE |
-				   (regnum & OA_TC6_PHY_STD_REG_ADDR_MASK),
+	ret = oa_tc6_read_register(tc6,
+				   OA_TC6_PHY_STD_REG_ADDR_BASE |
+					   (regnum &
+					    OA_TC6_PHY_STD_REG_ADDR_MASK),
 				   &regval);
 	if (ret)
 		return ret;
@@ -438,8 +438,10 @@ static int oa_tc6_mdiobus_write(struct mii_bus *bus, int addr, int regnum,
 {
 	struct oa_tc6 *tc6 = bus->priv;
 
-	return oa_tc6_write_register(tc6, OA_TC6_PHY_STD_REG_ADDR_BASE |
-				     (regnum & OA_TC6_PHY_STD_REG_ADDR_MASK),
+	return oa_tc6_write_register(tc6,
+				     OA_TC6_PHY_STD_REG_ADDR_BASE |
+					     (regnum &
+					      OA_TC6_PHY_STD_REG_ADDR_MASK),
 				     val);
 }
 
@@ -545,8 +547,9 @@ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
 
 	ret = oa_tc6_check_phy_reg_direct_access_capability(tc6);
 	if (ret) {
-		netdev_err(tc6->netdev,
-			   "Direct PHY register access is not supported by the MAC-PHY\n");
+		netdev_err(
+			tc6->netdev,
+			"Direct PHY register access is not supported by the MAC-PHY\n");
 		return ret;
 	}
 
@@ -628,10 +631,12 @@ static int oa_tc6_unmask_macphy_error_interrupts(struct oa_tc6 *tc6)
 	if (ret)
 		return ret;
 
-	regval &= ~(INT_MASK0_TX_PROTOCOL_ERR_MASK |
-		    INT_MASK0_RX_BUFFER_OVERFLOW_ERR_MASK |
-		    INT_MASK0_LOSS_OF_FRAME_ERR_MASK |
-		    INT_MASK0_HEADER_ERR_MASK);
+#if 0 /* 20250317 POOKY */
+	regval &=
+		~(INT_MASK0_TX_PROTOCOL_ERR_MASK |
+		  INT_MASK0_RX_BUFFER_OVERFLOW_ERR_MASK |
+		  INT_MASK0_LOSS_OF_FRAME_ERR_MASK | INT_MASK0_HEADER_ERR_MASK);
+#endif
 
 	return oa_tc6_write_register(tc6, OA_TC6_REG_INT_MASK0, regval);
 }
@@ -723,8 +728,8 @@ static int oa_tc6_process_rx_chunk_footer(struct oa_tc6 *tc6, u32 footer)
 	 * 3. receive chunks available
 	 */
 	tc6->tx_credits = FIELD_GET(OA_TC6_DATA_FOOTER_TX_CREDITS, footer);
-	tc6->rx_chunks_available = FIELD_GET(OA_TC6_DATA_FOOTER_RX_CHUNKS,
-					     footer);
+	tc6->rx_chunks_available =
+		FIELD_GET(OA_TC6_DATA_FOOTER_RX_CHUNKS, footer);
 
 	if (FIELD_GET(OA_TC6_DATA_FOOTER_EXTENDED_STS, footer)) {
 		int ret = oa_tc6_process_extended_status(tc6);
@@ -768,8 +773,8 @@ static void oa_tc6_update_rx_skb(struct oa_tc6 *tc6, u8 *payload, u8 length)
 
 static int oa_tc6_allocate_rx_skb(struct oa_tc6 *tc6)
 {
-	tc6->rx_skb = netdev_alloc_skb_ip_align(tc6->netdev, tc6->netdev->mtu +
-						ETH_HLEN + ETH_FCS_LEN);
+	tc6->rx_skb = netdev_alloc_skb_ip_align(
+		tc6->netdev, tc6->netdev->mtu + ETH_HLEN + ETH_FCS_LEN);
 	if (!tc6->rx_skb) {
 		tc6->netdev->stats.rx_dropped++;
 		return -ENOMEM;
@@ -823,10 +828,11 @@ static void oa_tc6_prcs_ongoing_rx_frame(struct oa_tc6 *tc6, u8 *payload,
 static int oa_tc6_prcs_rx_chunk_payload(struct oa_tc6 *tc6, u8 *data,
 					u32 footer)
 {
-	u8 start_byte_offset = FIELD_GET(OA_TC6_DATA_FOOTER_START_WORD_OFFSET,
-					 footer) * sizeof(u32);
-	u8 end_byte_offset = FIELD_GET(OA_TC6_DATA_FOOTER_END_BYTE_OFFSET,
-				       footer);
+	u8 start_byte_offset =
+		FIELD_GET(OA_TC6_DATA_FOOTER_START_WORD_OFFSET, footer) *
+		sizeof(u32);
+	u8 end_byte_offset =
+		FIELD_GET(OA_TC6_DATA_FOOTER_END_BYTE_OFFSET, footer);
 	bool start_valid = FIELD_GET(OA_TC6_DATA_FOOTER_START_VALID, footer);
 	bool end_valid = FIELD_GET(OA_TC6_DATA_FOOTER_END_VALID, footer);
 	u16 size;
@@ -841,16 +847,14 @@ static int oa_tc6_prcs_rx_chunk_payload(struct oa_tc6 *tc6, u8 *data,
 	/* Process the chunk with complete rx frame */
 	if (start_valid && end_valid && start_byte_offset < end_byte_offset) {
 		size = end_byte_offset + 1 - start_byte_offset;
-		return oa_tc6_prcs_complete_rx_frame(tc6,
-						     &data[start_byte_offset],
-						     size);
+		return oa_tc6_prcs_complete_rx_frame(
+			tc6, &data[start_byte_offset], size);
 	}
 
 	/* Process the chunk with only rx frame start */
 	if (start_valid && !end_valid) {
 		size = OA_TC6_CHUNK_PAYLOAD_SIZE - start_byte_offset;
-		return oa_tc6_prcs_rx_frame_start(tc6,
-						  &data[start_byte_offset],
+		return oa_tc6_prcs_rx_frame_start(tc6, &data[start_byte_offset],
 						  size);
 	}
 
@@ -874,8 +878,7 @@ static int oa_tc6_prcs_rx_chunk_payload(struct oa_tc6 *tc6, u8 *data,
 			oa_tc6_prcs_rx_frame_end(tc6, data, size);
 		}
 		size = OA_TC6_CHUNK_PAYLOAD_SIZE - start_byte_offset;
-		return oa_tc6_prcs_rx_frame_start(tc6,
-						  &data[start_byte_offset],
+		return oa_tc6_prcs_rx_frame_start(tc6, &data[start_byte_offset],
 						  size);
 	}
 
@@ -904,8 +907,8 @@ static int oa_tc6_process_spi_data_rx_buf(struct oa_tc6 *tc6, u16 length)
 	/* All the rx chunks in the receive SPI data buffer are examined here */
 	for (int i = 0; i < no_of_rx_chunks; i++) {
 		/* Last 4 bytes in each received chunk consist footer info */
-		footer = oa_tc6_get_rx_chunk_footer(tc6, i * OA_TC6_CHUNK_SIZE +
-						    OA_TC6_CHUNK_PAYLOAD_SIZE);
+		footer = oa_tc6_get_rx_chunk_footer(
+			tc6, i * OA_TC6_CHUNK_SIZE + OA_TC6_CHUNK_PAYLOAD_SIZE);
 
 		ret = oa_tc6_process_rx_chunk_footer(tc6, footer);
 		if (ret)
@@ -916,8 +919,8 @@ static int oa_tc6_process_spi_data_rx_buf(struct oa_tc6 *tc6, u16 length)
 		 * of the receive frame data.
 		 */
 		if (FIELD_GET(OA_TC6_DATA_FOOTER_DATA_VALID, footer)) {
-			u8 *payload = tc6->spi_data_rx_buf + i *
-				      OA_TC6_CHUNK_SIZE;
+			u8 *payload =
+				tc6->spi_data_rx_buf + i * OA_TC6_CHUNK_SIZE;
 
 			ret = oa_tc6_prcs_rx_chunk_payload(tc6, payload,
 							   footer);
@@ -932,13 +935,13 @@ static int oa_tc6_process_spi_data_rx_buf(struct oa_tc6 *tc6, u16 length)
 static __be32 oa_tc6_prepare_data_header(bool data_valid, bool start_valid,
 					 bool end_valid, u8 end_byte_offset)
 {
-	u32 header = FIELD_PREP(OA_TC6_DATA_HEADER_DATA_NOT_CTRL,
-				OA_TC6_DATA_HEADER) |
-		     FIELD_PREP(OA_TC6_DATA_HEADER_DATA_VALID, data_valid) |
-		     FIELD_PREP(OA_TC6_DATA_HEADER_START_VALID, start_valid) |
-		     FIELD_PREP(OA_TC6_DATA_HEADER_END_VALID, end_valid) |
-		     FIELD_PREP(OA_TC6_DATA_HEADER_END_BYTE_OFFSET,
-				end_byte_offset);
+	u32 header =
+		FIELD_PREP(OA_TC6_DATA_HEADER_DATA_NOT_CTRL,
+			   OA_TC6_DATA_HEADER) |
+		FIELD_PREP(OA_TC6_DATA_HEADER_DATA_VALID, data_valid) |
+		FIELD_PREP(OA_TC6_DATA_HEADER_START_VALID, start_valid) |
+		FIELD_PREP(OA_TC6_DATA_HEADER_END_VALID, end_valid) |
+		FIELD_PREP(OA_TC6_DATA_HEADER_END_BYTE_OFFSET, end_byte_offset);
 
 	header |= FIELD_PREP(OA_TC6_DATA_HEADER_PARITY,
 			     oa_tc6_get_parity(header));
@@ -1028,8 +1031,8 @@ static void oa_tc6_add_empty_chunks_to_spi_buf(struct oa_tc6 *tc6,
 					    OA_TC6_DATA_END_INVALID, 0);
 
 	while (needed_empty_chunks--) {
-		__be32 *tx_buf = tc6->spi_data_tx_buf +
-				 tc6->spi_data_tx_buf_offset;
+		__be32 *tx_buf =
+			tc6->spi_data_tx_buf + tc6->spi_data_tx_buf_offset;
 
 		*tx_buf = header;
 		tc6->spi_data_tx_buf_offset += OA_TC6_CHUNK_SIZE;
@@ -1082,8 +1085,8 @@ static int oa_tc6_try_spi_transfer(struct oa_tc6 *tc6)
 
 		ret = oa_tc6_spi_transfer(tc6, OA_TC6_DATA_HEADER, spi_len);
 		if (ret) {
-			netdev_err(tc6->netdev, "SPI data transfer failed: %d\n",
-				   ret);
+			netdev_err(tc6->netdev,
+				   "SPI data transfer failed: %d\n", ret);
 			return ret;
 		}
 
@@ -1114,10 +1117,11 @@ static int oa_tc6_spi_thread_handler(void *data)
 		/* This kthread will be waken up if there is a tx skb or mac-phy
 		 * interrupt to perform spi transfer with tx chunks.
 		 */
-		wait_event_interruptible(tc6->spi_wq, tc6->int_flag ||
-					 (tc6->waiting_tx_skb &&
-					 tc6->tx_credits) ||
-					 kthread_should_stop());
+		wait_event_interruptible(tc6->spi_wq,
+					 tc6->int_flag ||
+						 (tc6->waiting_tx_skb &&
+						  tc6->tx_credits) ||
+						 kthread_should_stop());
 
 		if (kthread_should_stop())
 			break;
@@ -1144,8 +1148,8 @@ static int oa_tc6_update_buffer_status_from_register(struct oa_tc6 *tc6)
 		return ret;
 
 	tc6->tx_credits = FIELD_GET(BUFFER_STATUS_TX_CREDITS_AVAILABLE, value);
-	tc6->rx_chunks_available = FIELD_GET(BUFFER_STATUS_RX_CHUNKS_AVAILABLE,
-					     value);
+	tc6->rx_chunks_available =
+		FIELD_GET(BUFFER_STATUS_RX_CHUNKS_AVAILABLE, value);
 
 	return 0;
 }
@@ -1224,6 +1228,222 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb)
 }
 EXPORT_SYMBOL_GPL(oa_tc6_start_xmit);
 
+/* PHY Vendor Specific Registers Collision Detector Control 0 Register */
+#define LAN8650_REG_MMS4_CDCTL0 0x00040087
+#define MMS4_CDCTL0_CDEN_SHIFT BIT(15) /* Collision Detect Enable */
+
+#define LAN8650_REG_MMS4_PLCA_CTRL0 0x0004CA01
+#define LAN8650_REG_MMS1_MAC_NCFGR 0x00010001
+#define LAN8650_REG_MMS1_MAC_NCR 0x00010000
+#define LAN8650_REG_MMS1_MAC_TI 0x00010077
+#define LAN8650_REG_MMS0_OA_CONFIG0 0x00000004
+#define MMS0_OA_CONFIG0_SYNC_SHIFT BIT(15)
+#define MMS0_OA_CONFIG0_FTSE_SHIFT BIT(7)
+#define MMS0_OA_CONFIG0_FTSS_SHIFT BIT(6)
+#define LAN8650_REG_MMS0_OA_CONFIG0 0x00000004
+#define LAN8650_REG_MMS0_OA_STATUS0 0x00000008
+#define MMS0_OA_STATUS0_RESETC_SHIFT BIT(6)
+
+#define LAN8650_REG_MMS4_INDIR_RD_ADDR 0x000400d8
+#define LAN8650_REG_MMS4_INDIR_RD_VAL 0x000400d9
+#define LAN8650_REG_MMS4_INDIR_RD_WIDTH 0x000400da
+#define LAN8650_MMS04_INDIR_WIDTH 0x2
+
+#define LAN8650_REG_MMS4_SLPCTL1 0x00040081
+#define LAN8650_REG_MMS4_TXMMSKH 0x00040043
+#define LAN8650_REG_MMS4_TXMMSKL 0x00040044
+#define LAN8650_REG_MMS4_TXMLOC 0x00040045
+#define LAN8650_REG_MMS4_RXMMSKH 0x00040053
+#define LAN8650_REG_MMS4_RXMMSKL 0x00040054
+#define LAN8650_REG_MMS4_RXMLOC 0x00040055
+#define LAN8650_REG_MMS4_TXMCTL 0x00040040
+#define LAN8650_REG_MMS4_RXMCTL 0x00040050
+
+#define LAN8650_REG_MMS4_A_00D0 0x000400d0
+#define LAN8650_REG_MMS4_A_00E0 0x000400e0
+#define LAN8650_REG_MMS4_A_0077 0x00040077
+#define LAN8650_REG_MMS4_A_0084 0x00040084
+#define LAN8650_REG_MMS4_A_008A 0x0004008a
+#define LAN8650_REG_MMS4_A_0091 0x00040091
+#define LAN8650_REG_MMS4_A_00E9 0x000400e9
+#define LAN8650_REG_MMS4_A_00F5 0x000400f5
+#define LAN8650_REG_MMS4_A_00F4 0x000400f4
+#define LAN8650_REG_MMS4_A_00F8 0x000400f8
+#define LAN8650_REG_MMS4_A_00F9 0x000400f9
+
+/* Value1: -5 to 15 */
+#define VALUE1_ADDR 0x04
+#define VALUE2_ADDR 0x08
+#define VALUE_MASK 0x1F
+#define VALUE_SIGN_MASK 0x10
+
+#define VALUE1_OFFSET1 9
+#define VALUE1_OFFSET2 14
+#define VALUE1_SHIFT1 10
+#define VALUE1_SHIFT2 4
+#define VALUE1_LOWEST_VAL 0x03
+
+#define VALUE2_OFFSET 40
+#define VALUE2_SHIFT 10
+
+#define VALUE_OFFSET_MASK 0x3F
+
+#define MAX_VALUE_5BITS 0x20
+
+#define MMS4_A_00D0_V 0x3F31
+#define MMS4_A_00E0_V 0xC000
+#define MMS4_A_00E9_V 0x9E50
+#define MMS4_A_00F5_V 0x1CF8
+#define MMS4_A_00F4_V 0xC020
+#define MMS4_A_00F8_V 0xB900
+#define MMS4_A_00F9_V 0x4E53
+#define MMS4_A_0081_V 0x0080
+#define MMS4_A_0091_V 0x9660
+#define MMS4_A_0077_V 0x0028
+#define MMS4_A_0043_V 0x00FF
+#define MMS4_A_0044_V 0xFFFF
+#define MMS4_A_0045_V 0x0000
+#define MMS4_A_0053_V 0x00FF
+#define MMS4_A_0054_V 0xFFFF
+#define MMS4_A_0055_V 0x0000
+#define MMS4_A_0040_V 0x0002
+#define MMS4_A_0050_V 0x0002
+
+#define MMS4_PLCA_CTRL0_INIT_VAL 0x00008000
+#define MMS1_MAC_NCFGR_INIT_VAL 0x000000C0
+#define MMS1_MAC_NCR_INIT_VAL 0x0000000C
+
+#define TIMER_INCREMENT 0x28
+
+u8 indirect_read(struct oa_tc6 *tc6, u8 addr, u8 mask)
+{
+	u32 regval;
+
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_INDIR_RD_ADDR, addr);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_INDIR_RD_WIDTH,
+			      LAN8650_MMS04_INDIR_WIDTH);
+
+	oa_tc6_read_register(tc6, LAN8650_REG_MMS4_INDIR_RD_VAL, &regval);
+
+	return (regval & mask);
+}
+
+static void set_macphy_register(struct oa_tc6 *tc6)
+{
+	u8 value1, value2;
+	char offset1, offset2;
+	u16 cfgparam1, cfgparam2;
+
+	value1 = indirect_read(tc6, VALUE1_ADDR, VALUE_MASK);
+	if ((value1 & VALUE_SIGN_MASK) != 0) {
+		offset1 = (int8_t)((u8)value1 - MAX_VALUE_5BITS);
+	} else {
+		offset1 = (int8_t)value1;
+	}
+
+	value2 = indirect_read(tc6, VALUE2_ADDR, VALUE_MASK);
+	if ((value2 & VALUE_SIGN_MASK) != 0) {
+		offset2 = (int8_t)((u8)value2 - MAX_VALUE_5BITS);
+	} else {
+		offset2 = (int8_t)value2;
+	}
+
+	cfgparam1 = (u16)(((VALUE1_OFFSET1 + offset1) & VALUE_OFFSET_MASK)
+			  << VALUE1_SHIFT1) |
+		    (u16)(((VALUE1_OFFSET2 + offset1) & VALUE_OFFSET_MASK)
+			  << VALUE1_SHIFT2) |
+		    VALUE1_LOWEST_VAL;
+	cfgparam2 = (u16)(((VALUE2_OFFSET + offset2) & VALUE_OFFSET_MASK)
+			  << VALUE2_SHIFT);
+
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_00D0, MMS4_A_00D0_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_00E0, MMS4_A_00E0_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_0084, cfgparam1);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_008A, cfgparam2);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_00E9, MMS4_A_00E9_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_00F5, MMS4_A_00F5_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_00F4, MMS4_A_00F4_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_00F8, MMS4_A_00F8_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_00F9, MMS4_A_00F9_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_SLPCTL1, MMS4_A_0081_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_0091, MMS4_A_0091_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_A_0077, MMS4_A_0077_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_TXMMSKH, MMS4_A_0043_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_TXMMSKL, MMS4_A_0044_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_TXMLOC, MMS4_A_0045_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_RXMMSKH, MMS4_A_0053_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_RXMMSKL, MMS4_A_0054_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_RXMLOC, MMS4_A_0055_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_TXMCTL, MMS4_A_0040_V);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_RXMCTL, MMS4_A_0050_V);
+}
+
+int init_lan865x(struct oa_tc6 *tc6)
+{
+	u32 regval;
+	int ret;
+
+	/* Read OA_STATUS0 */
+	ret = oa_tc6_read_register(tc6, OA_TC6_REG_STATUS0, &regval);
+	if (ret)
+		return ret;
+
+	/* Write 1 to RESETC bit of OA_STATUS0 */
+	regval |= STATUS0_RESETC;
+	ret = oa_tc6_write_register(tc6, OA_TC6_REG_STATUS0, regval);
+	if (ret)
+		return ret;
+
+	/* Read Collision Detector Control 0 Register */
+	ret = oa_tc6_read_register(tc6, LAN8650_REG_MMS4_CDCTL0, &regval);
+	if (ret)
+		return ret;
+
+	/* Collision detection is enabled (default) */
+	regval |= MMS4_CDCTL0_CDEN_SHIFT;
+	ret = oa_tc6_write_register(tc6, LAN8650_REG_MMS4_CDCTL0, regval);
+	if (ret)
+		return ret;
+
+	set_macphy_register(tc6);
+
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_PLCA_CTRL0,
+			      MMS4_PLCA_CTRL0_INIT_VAL); /* Enable PLCA */
+	oa_tc6_write_register(
+		tc6, LAN8650_REG_MMS1_MAC_NCFGR,
+		MMS1_MAC_NCFGR_INIT_VAL); /* Enable unicast, multicast */
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS1_MAC_NCR,
+			      MMS1_MAC_NCR_INIT_VAL); /* Enable MACPHY TX, RX */
+
+#ifdef FRAME_TIMESTAMP_ENABLE
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS1_MAC_TI,
+			      TIMER_INCREMENT); /* Enable MACPHY TX, RX */
+#endif
+
+	/* Read OA_CONFIG0 */
+	oa_tc6_read_register(tc6, LAN8650_REG_MMS0_OA_CONFIG0, &regval);
+
+	/* Set SYNC bit of OA_CONFIG0 */
+	regval |= MMS0_OA_CONFIG0_SYNC_SHIFT;
+#ifdef FRAME_TIMESTAMP_ENABLE
+	/* Set FTSE Frame Timestamp Enable bit of OA_CONFIG0 */
+	regval |= MMS0_OA_CONFIG0_FTSE_SHIFT;
+
+	/* Set FTSS Frame Timestamp Select bit of OA_CONFIG0 */
+	regval |= MMS0_OA_CONFIG0_FTSS_SHIFT;
+#endif
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS0_OA_CONFIG0, regval);
+
+	/* Read OA_STATUS0 */
+	oa_tc6_read_register(tc6, LAN8650_REG_MMS0_OA_STATUS0, &regval);
+
+	/* Clear RESETC bit of OA_STATUS0 */
+	regval &= ~(MMS0_OA_STATUS0_RESETC_SHIFT);
+	oa_tc6_write_register(tc6, LAN8650_REG_MMS0_OA_STATUS0, regval);
+
+	return 0;
+}
+
 /**
  * oa_tc6_init - allocates and initializes oa_tc6 structure.
  * @spi: device with which data will be exchanged.
@@ -1251,34 +1471,30 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
 	tc6->spi->rt = true;
 	spi_setup(tc6->spi);
 
-	tc6->spi_ctrl_tx_buf = devm_kzalloc(&tc6->spi->dev,
-					    OA_TC6_CTRL_SPI_BUF_SIZE,
-					    GFP_KERNEL);
+	tc6->spi_ctrl_tx_buf = devm_kzalloc(
+		&tc6->spi->dev, OA_TC6_CTRL_SPI_BUF_SIZE, GFP_KERNEL);
 	if (!tc6->spi_ctrl_tx_buf)
 		return NULL;
 
-	tc6->spi_ctrl_rx_buf = devm_kzalloc(&tc6->spi->dev,
-					    OA_TC6_CTRL_SPI_BUF_SIZE,
-					    GFP_KERNEL);
+	tc6->spi_ctrl_rx_buf = devm_kzalloc(
+		&tc6->spi->dev, OA_TC6_CTRL_SPI_BUF_SIZE, GFP_KERNEL);
 	if (!tc6->spi_ctrl_rx_buf)
 		return NULL;
 
-	tc6->spi_data_tx_buf = devm_kzalloc(&tc6->spi->dev,
-					    OA_TC6_SPI_DATA_BUF_SIZE,
-					    GFP_KERNEL);
+	tc6->spi_data_tx_buf = devm_kzalloc(
+		&tc6->spi->dev, OA_TC6_SPI_DATA_BUF_SIZE, GFP_KERNEL);
 	if (!tc6->spi_data_tx_buf)
 		return NULL;
 
-	tc6->spi_data_rx_buf = devm_kzalloc(&tc6->spi->dev,
-					    OA_TC6_SPI_DATA_BUF_SIZE,
-					    GFP_KERNEL);
+	tc6->spi_data_rx_buf = devm_kzalloc(
+		&tc6->spi->dev, OA_TC6_SPI_DATA_BUF_SIZE, GFP_KERNEL);
 	if (!tc6->spi_data_rx_buf)
 		return NULL;
 
 	ret = oa_tc6_sw_reset_macphy(tc6);
 	if (ret) {
-		dev_err(&tc6->spi->dev,
-			"MAC-PHY software reset failed: %d\n", ret);
+		dev_err(&tc6->spi->dev, "MAC-PHY software reset failed: %d\n",
+			ret);
 		return NULL;
 	}
 
@@ -1305,8 +1521,8 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
 
 	ret = oa_tc6_update_buffer_status_from_register(tc6);
 	if (ret) {
-		dev_err(&tc6->spi->dev,
-			"Failed to update buffer status: %d\n", ret);
+		dev_err(&tc6->spi->dev, "Failed to update buffer status: %d\n",
+			ret);
 		goto phy_exit;
 	}
 

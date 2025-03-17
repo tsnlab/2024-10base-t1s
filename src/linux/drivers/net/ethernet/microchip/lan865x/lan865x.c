@@ -425,6 +425,7 @@ static int lan865x_probe(struct spi_device *spi)
 	if (!ret) {
 		mac_addr[ETH_ALEN - 1] = node_id & NODE_ID_MASK;
 		eth_hw_addr_set(netdev, mac_addr);
+		lan865x_set_hw_macaddr(priv, mac_addr);
 	}
 
 	ret = lan865x_set_nodeid(priv, node_id);
