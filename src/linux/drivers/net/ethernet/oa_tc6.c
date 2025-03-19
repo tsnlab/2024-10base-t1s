@@ -1376,6 +1376,34 @@ static void set_macphy_register(struct oa_tc6 *tc6)
 	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_RXMLOC, MMS4_A_0055_V);
 	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_TXMCTL, MMS4_A_0040_V);
 	oa_tc6_write_register(tc6, LAN8650_REG_MMS4_RXMCTL, MMS4_A_0050_V);
+
+	/* (Optional) Write SQI Configuration into Registers */
+#if 0
+	u16 cfgparam3, cfgparam4, cfgparam5;
+
+	cfgparam3 = (u16)(((5 + offset1) & 0x3F) << 8) |
+		    (u16)((9 + offset1) & 0x3F);
+	cfgparam4 = (u16)(((9 + offset1) & 0x3F) << 8) |
+		    (u16)((14 + offset1) & 0x3F);
+	cfgparam5 = (u16)(((17 + offset1) & 0x3F) << 8) |
+		    (u16)((22 + offset1) & 0x3F);
+
+	oa_tc6_write_register(tc6, 0x000400AD, cfgparam3);
+	oa_tc6_write_register(tc6, 0x000400AE, cfgparam4);
+	oa_tc6_write_register(tc6, 0x000400AF, cfgparam5);
+	oa_tc6_write_register(tc6, 0x000400B0, 0x0103);
+	oa_tc6_write_register(tc6, 0x000400B1, 0x0910);
+	oa_tc6_write_register(tc6, 0x000400B2, 0x1D26);
+	oa_tc6_write_register(tc6, 0x000400B3, 0x002A);
+	oa_tc6_write_register(tc6, 0x000400B4, 0x0103);
+	oa_tc6_write_register(tc6, 0x000400B5, 0x070D);
+	oa_tc6_write_register(tc6, 0x000400B6, 0x1720);
+	oa_tc6_write_register(tc6, 0x000400B7, 0x0027);
+	oa_tc6_write_register(tc6, 0x000400B8, 0x0509);
+	oa_tc6_write_register(tc6, 0x000400B9, 0x0E13);
+	oa_tc6_write_register(tc6, 0x000400BA, 0x1C25);
+	oa_tc6_write_register(tc6, 0x000400BB, 0x002B);
+#endif
 }
 
 int init_lan865x(struct oa_tc6 *tc6)
