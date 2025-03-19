@@ -1512,6 +1512,12 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
 		return NULL;
 	}
 
+	ret = init_lan865x(tc6);
+	if (ret) {
+		dev_err(&tc6->spi->dev, "Failed to init_lan865x: %d\n", ret);
+		goto phy_exit;
+	}
+
 	ret = oa_tc6_enable_data_transfer(tc6);
 	if (ret) {
 		dev_err(&tc6->spi->dev, "Failed to enable data transfer: %d\n",
