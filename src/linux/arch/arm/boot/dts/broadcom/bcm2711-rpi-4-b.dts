@@ -302,10 +302,10 @@
 		spi-cpol;
 		spi-cpha;
 		nodeid-gpios = <
-			&gpio 21 GPIO_ACTIVE_HIGH   // N1
-			&gpio 20 GPIO_ACTIVE_HIGH   // N2
-			&gpio 16 GPIO_ACTIVE_HIGH   // N4
-			&gpio 12 GPIO_ACTIVE_HIGH   // N8
+			&fxl6408 4 GPIO_ACTIVE_HIGH   /* N1 */
+			&fxl6408 5 GPIO_ACTIVE_HIGH   /* N2 */
+			&fxl6408 6 GPIO_ACTIVE_HIGH   /* N4 */
+			&fxl6408 7 GPIO_ACTIVE_HIGH   /* N8 */
 		>;
 	};
 
@@ -414,7 +414,17 @@
 &i2c1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c1_pins>;
-	clock-frequency = <100000>;
+	clock-frequency = <400000>;
+	status = "okay";
+	/* FXL6408 GPIO Expanders */
+	fxl6408: gpio@43 {
+		compatible = "onsemi,fxl6408";
+		reg = <0x43>;                   /*  Slave Address */
+		gpio-controller;                /* GPIO Controller */
+		#gpio-cells = <2>;              
+		reset-gpios = <&gpio 22 GPIO_ACTIVE_LOW>;
+		onsemi,pullup-enable = <0x0F>;
+	};
 };
 
 &i2s {
