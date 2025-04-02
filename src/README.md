@@ -67,9 +67,11 @@ Please refer to the following url for how to build the kernel.
 
   Check if lan865x.ko is created in the drivers/net/ethernet/microchip/lan865x/ directory
 
-  sudo cp ./drivers/net/ethernet/microchip/lan865x/lan865x.ko /lib/modules/$(uname -r)/kernel/drivers/net/ethernet/microchip/lan865x/
+  Copy the lan865x.ko file in drivers/net/ethernet/microchip/lan865x/ to an appropriate directory on the Raspberry Pi 4 board using USB, etc.
+
+  sudo cp ./lan865x.ko /lib/modules/$(uname -r)/kernel/drivers/net/ethernet/microchip/lan865x/
 
   sudo depmod -a
 
-  sudo insmod ./drivers/net/ethernet/microchip/lan865x/lan865x.ko
+  sudo insmod ./lan865x.ko
 
