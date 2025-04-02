@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Makefile for the Microchip LAN865x Driver
+#
+
+obj-m += lan865x.o
+KDIR ?= /lib/modules/$(shell uname -r)/build
+INSTALL_MOD_DIR ?= drivers/net/ethernet/microchip
+
+all:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
+
+install:
+ifneq ($(CROSS_COMPILE),)
+	$(error "Error: Installation is only allowed for native compilation")
+else
+	sudo $(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_DIR=$(INSTALL_MOD_DIR) modules_install
+	sudo depmod -a
+endif
+
+clean:
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
