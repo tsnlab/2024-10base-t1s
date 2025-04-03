@@ -294,7 +294,7 @@
 		compatible = "microchip,lan8651", "microchip,lan8650";
 		reg = <0>;  /* CE0 */
 		interrupt-parent = <&gpio>;
-		interrupts = <25 IRQ_TYPE_EDGE_FALLING>;
+		interrupts = <23 IRQ_TYPE_EDGE_FALLING>;
 		reset-gpios = <&gpio 22 GPIO_ACTIVE_LOW>;
 		local-mac-address = [d0 d1 95 30 23 00];
 		spi-max-frequency = <15000000>;
