@@ -1151,6 +1151,18 @@ static int oa_tc6_spi_thread_handler(void *data)
 			if (ret)
 				return ret;
 		}
+
+        ret = oa_tc6_read_register(tc6, OA_TC6_REG_BUFFER_STATUS, &regval);
+        if (ret)
+            return ret;
+        while(regval & 0xFF) {
+            ret = oa_tc6_try_spi_transfer(tc6);
+            if (ret)
+                return ret;
+            ret = oa_tc6_read_register(tc6, OA_TC6_REG_BUFFER_STATUS, &regval);
+            if (ret)
+                return ret;
+        }
 	}
 
 	return 0;
