@@ -9,15 +9,16 @@
 
 #include <sys/ioctl.h>
 
-int do_ioctl(int mms, unsigned long addr_offset, unsigned long value, int operation) {
+uint32_t do_ioctl(int mms, unsigned long addr_offset, unsigned long value, int operation) {
     int fd;
     struct lan865x_reg reg;
+    uint32_t ret = 0;
 
     /* Open device file */
     fd = open("/dev/lan865x", O_RDWR);
     if (fd < 0) {
         perror("Failed to open device");
-        return -1;
+        return ret;
     }
 
     reg.addr = (uint32_t)((mms << 16) | (addr_offset & 0xFFFF));
@@ -28,10 +29,10 @@ int do_ioctl(int mms, unsigned long addr_offset, unsigned long value, int operat
         if (ioctl(fd, LAN865X_READ_REG, &reg) < 0) {
             perror("Fail to read register");
             close(fd);
-            return -1;
+            return ret;
         }
 
-        printf("MMS [0x%02x] register [0x%04x] value: 0x%04x\n", mms, reg.addr & 0xFFFF, reg.value);
+        ret = (uint32_t)(reg.value & 0xFFFF);
 
         break;
 
@@ -39,12 +40,56 @@ int do_ioctl(int mms, unsigned long addr_offset, unsigned long value, int operat
         if (ioctl(fd, LAN865X_WRITE_REG, &reg) < 0) {
             perror("Register write failure");
             close(fd);
-            return -1;
+            return ret;
         }
         break;
     }
 
     close(fd);
+    return ret;
+}
+
+uint32_t read_register(uint8_t mms, uint16_t address) {
+
+    unsigned long addr_offset = (unsigned long)address;
+
+    return do_ioctl(mms, addr_offset, 0, 0);
+}
+
+static void dump_reginfo(int mms, struct reginfo* reginfo) {
+
+    for (int i = 0; reginfo[i].address >= 0; i++) {
+        printf("address: 0x%04x - value: 0x%08x - %s\n", reginfo[i].address,
+               read_register(mms, (uint16_t)reginfo[i].address), reginfo[i].desc);
+    }
+}
+
+/* read all register values in memory map selector */
+static int read_register_in_mms(int mms) {
+    switch (mms) {
+    case MMS0: /* Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
+        dump_reginfo(mms, reg_open_alliance);
+        break;
+    case MMS1: /* MAC Registers */
+        dump_reginfo(mms, reg_mac);
+        break;
+    case MMS2: /* PHY PCS Registers */
+        dump_reginfo(mms, reg_phy_pcs);
+        break;
+    case MMS3: /* PHY PMA/PMD Registers */
+        dump_reginfo(mms, reg_phy_pma_pmd);
+        break;
+    case MMS4: /* PHY Vendor Specific Registers */
+        dump_reginfo(mms, reg_phy_vendor_specific);
+        break;
+    case MMS10: /* Miscellaneous Register Descriptions */
+        dump_reginfo(mms, reg_miscellaneous);
+        break;
+    default:
+        printf("%s - Unknown memory map selector(0x%02x)\n", __func__, mms);
+        return -1;
+    }
+
     return 0;
 }
 
@@ -98,5 +143,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    return do_ioctl(mms, addr_offset, value, operation);
+#if 1
+    return read_register_in_mms(mms);
+#else
+    if (operation == 0) {
+        printf("MMS [0x%02x] register [0x%04x] value: 0x%04x\n", mms, (int)(addr_offset & 0xFFFF),
+               do_ioctl(mms, addr_offset, value, operation));
+        return 0;
+    } else {
+        return do_ioctl(mms, addr_offset, value, operation);
+    }
+#endif
 }
