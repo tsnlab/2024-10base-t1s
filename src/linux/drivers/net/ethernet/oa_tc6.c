@@ -117,7 +117,7 @@ struct oa_tc6 {
 	void *spi_data_tx_buf;
 	void *spi_data_rx_buf;
 	struct sk_buff *ongoing_tx_skb;
-	struct sk_buff *waiting_tx_skb;
+	struct sk_buff *waiting_tx_skb[2];
 	struct sk_buff *rx_skb;
 	struct task_struct *spi_thread;
 	wait_queue_head_t spi_wq;
@@ -125,6 +125,8 @@ struct oa_tc6 {
 	u16 spi_data_tx_buf_offset;
 	u16 tx_credits;
 	u8 rx_chunks_available;
+	u8 fill_tx_skb_id;
+	u8 proc_tx_skb_id;
 	bool rx_buf_overflow;
 	bool int_flag;
 };
@@ -1009,8 +1011,10 @@ static u16 oa_tc6_prepare_spi_tx_buf_for_tx_skbs(struct oa_tc6 *tc6)
 	     used_tx_credits++) {
 		if (!tc6->ongoing_tx_skb) {
 			spin_lock_bh(&tc6->tx_skb_lock);
-			tc6->ongoing_tx_skb = tc6->waiting_tx_skb;
-			tc6->waiting_tx_skb = NULL;
+			tc6->ongoing_tx_skb =
+				tc6->waiting_tx_skb[tc6->proc_tx_skb_id];
+			tc6->waiting_tx_skb[tc6->proc_tx_skb_id] = NULL;
+			tc6->proc_tx_skb_id = (tc6->proc_tx_skb_id + 1) % 2;
 			spin_unlock_bh(&tc6->tx_skb_lock);
 		}
 		if (!tc6->ongoing_tx_skb)
@@ -1067,8 +1071,18 @@ static int oa_tc6_try_spi_transfer(struct oa_tc6 *tc6)
 
 		tc6->spi_data_tx_buf_offset = 0;
 
-		if (tc6->ongoing_tx_skb || tc6->waiting_tx_skb)
+		if (tc6->ongoing_tx_skb ||
+		    tc6->waiting_tx_skb[tc6->proc_tx_skb_id]) {
 			spi_len = oa_tc6_prepare_spi_tx_buf_for_tx_skbs(tc6);
+		} else {
+			if (tc6->waiting_tx_skb[(tc6->proc_tx_skb_id + 1) % 2]) {
+				spin_lock_bh(&tc6->tx_skb_lock);
+				tc6->fill_tx_skb_id = tc6->proc_tx_skb_id;
+				tc6->proc_tx_skb_id =
+					(tc6->proc_tx_skb_id + 1) % 2;
+				spin_unlock_bh(&tc6->tx_skb_lock);
+			}
+		}
 
 		spi_len = oa_tc6_prepare_spi_tx_buf_for_rx_chunks(tc6, spi_len);
 
@@ -1101,7 +1115,8 @@ static int oa_tc6_try_spi_transfer(struct oa_tc6 *tc6)
 			return ret;
 		}
 
-		if (!tc6->waiting_tx_skb && netif_queue_stopped(tc6->netdev))
+		if (!tc6->waiting_tx_skb[tc6->proc_tx_skb_id] &&
+		    netif_queue_stopped(tc6->netdev))
 			netif_wake_queue(tc6->netdev);
 	}
 
@@ -1119,7 +1134,8 @@ static int oa_tc6_spi_thread_handler(void *data)
 		 */
 		wait_event_interruptible(tc6->spi_wq,
 					 tc6->int_flag ||
-						 (tc6->waiting_tx_skb &&
+						 ((tc6->waiting_tx_skb[0] ||
+						   tc6->waiting_tx_skb[1]) &&
 						  tc6->tx_credits) ||
 						 kthread_should_stop());
 
@@ -1129,6 +1145,12 @@ static int oa_tc6_spi_thread_handler(void *data)
 		ret = oa_tc6_try_spi_transfer(tc6);
 		if (ret)
 			return ret;
+		while ((tc6->waiting_tx_skb[tc6->proc_tx_skb_id] != NULL) &&
+		       tc6->tx_credits) {
+			ret = oa_tc6_try_spi_transfer(tc6);
+			if (ret)
+				return ret;
+		}
 	}
 
 	return 0;
@@ -1206,7 +1228,7 @@ EXPORT_SYMBOL_GPL(oa_tc6_zero_align_receive_frame_enable);
  */
 netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb)
 {
-	if (tc6->waiting_tx_skb) {
+	if (tc6->waiting_tx_skb[tc6->fill_tx_skb_id]) {
 		netif_stop_queue(tc6->netdev);
 		return NETDEV_TX_BUSY;
 	}
@@ -1218,7 +1240,8 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb)
 	}
 
 	spin_lock_bh(&tc6->tx_skb_lock);
-	tc6->waiting_tx_skb = skb;
+	tc6->waiting_tx_skb[tc6->fill_tx_skb_id] = skb;
+	tc6->fill_tx_skb_id = (tc6->fill_tx_skb_id + 1) % 2;
 	spin_unlock_bh(&tc6->tx_skb_lock);
 
 	/* Wake spi kthread to perform spi transfer */
@@ -1514,6 +1537,9 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
 	if (!tc6->spi_data_tx_buf)
 		return NULL;
 
+	tc6->fill_tx_skb_id = 0;
+	tc6->proc_tx_skb_id = 0;
+
 	tc6->spi_data_rx_buf = devm_kzalloc(
 		&tc6->spi->dev, OA_TC6_SPI_DATA_BUF_SIZE, GFP_KERNEL);
 	if (!tc6->spi_data_rx_buf)
@@ -1608,7 +1634,8 @@ void oa_tc6_exit(struct oa_tc6 *tc6)
 	oa_tc6_phy_exit(tc6);
 	kthread_stop(tc6->spi_thread);
 	dev_kfree_skb_any(tc6->ongoing_tx_skb);
-	dev_kfree_skb_any(tc6->waiting_tx_skb);
+	dev_kfree_skb_any(tc6->waiting_tx_skb[0]);
+	dev_kfree_skb_any(tc6->waiting_tx_skb[1]);
 	dev_kfree_skb_any(tc6->rx_skb);
 }
 EXPORT_SYMBOL_GPL(oa_tc6_exit);
