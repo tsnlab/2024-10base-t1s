@@ -24,6 +24,7 @@ Key features include:
 
 ## License
 
+GPLv3
 
 ## Contact
 For questions or support, please open an issue or mail us to contact at tsnlab dot com.
