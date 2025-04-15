@@ -5,10 +5,15 @@
  * Author: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
  */
 
-#include <linux/module.h>
+#include <linux/device.h>
+#include <linux/fs.h>
 #include <linux/kernel.h>
-#include <linux/phy.h>
+#include <linux/miscdevice.h>
+#include <linux/module.h>
 #include <linux/oa_tc6.h>
+#include <linux/phy.h>
+
+#include "lan865x_ioctl.h"
 
 #define DRV_NAME "lan8650"
 
@@ -341,6 +346,25 @@ static const struct net_device_ops lan865x_netdev_ops = {
 	.ndo_set_mac_address = lan865x_set_mac_address,
 };
 
+static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg);
+static int lan865x_open(struct inode* inode, struct file* file);
+static int lan865x_release(struct inode* inode, struct file* file);
+static const struct file_operations lan865x_fops = {
+	.owner = THIS_MODULE,
+	.unlocked_ioctl = lan865x_ioctl,
+	.open = lan865x_open,
+	.release = lan865x_release,
+};
+
+static struct miscdevice lan865x_miscdev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "lan865x",
+	.fops = &lan865x_fops,
+	.mode = 0666,
+};
+
+static struct oa_tc6* g_tc6;
+
 static int lan865x_probe(struct spi_device *spi)
 {
 	struct net_device *netdev;
@@ -363,6 +387,7 @@ static int lan865x_probe(struct spi_device *spi)
 	INIT_WORK(&priv->multicast_work, lan865x_multicast_work_handler);
 
 	priv->tc6 = oa_tc6_init(spi, netdev);
+	g_tc6 = priv->tc6;
 	if (!priv->tc6) {
 		ret = -ENODEV;
 		goto free_netdev;
@@ -435,7 +460,7 @@ static int lan865x_probe(struct spi_device *spi)
 		goto oa_tc6_exit;
 	}
 
-	return 0;
+	return misc_register(&lan865x_miscdev);
 
 oa_tc6_exit:
 	oa_tc6_exit(priv->tc6);
@@ -452,6 +477,54 @@ static void lan865x_remove(struct spi_device *spi)
 	unregister_netdev(priv->netdev);
 	oa_tc6_exit(priv->tc6);
 	free_netdev(priv->netdev);
+	misc_deregister(&lan865x_miscdev);
+}
+
+static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg) {
+	struct lan865x_reg reg;
+	int ret = 0;
+
+	switch (cmd) {
+	case LAN865X_READ_REG:
+		if (copy_from_user(&reg, (void __user*)arg, sizeof(reg))) {
+			return -EFAULT;
+		}
+
+		ret = oa_tc6_read_register(g_tc6, reg.addr, &reg.value);
+
+		if (ret < 0) {
+			return ret;
+		}
+
+		if (copy_to_user((void __user*)arg, &reg, sizeof(reg))) {
+			return -EFAULT;
+		}
+		break;
+
+	case LAN865X_WRITE_REG:
+		if (copy_from_user(&reg, (void __user*)arg, sizeof(reg))) {
+			return -EFAULT;
+		}
+
+		ret = oa_tc6_write_register(g_tc6, reg.addr, reg.value);
+		break;
+
+	default:
+		return -ENOTTY;
+	}
+
+	return ret;
+}
+
+static int lan865x_open(struct inode* inode, struct file* file) {
+	struct spi_device* spi = container_of(file->private_data, struct spi_device, dev);
+	file->private_data = spi;
+	return 0;
+}
+
+static int lan865x_release(struct inode* inode, struct file* file) {
+	file->private_data = NULL;
+	return 0;
 }
 
 static const struct spi_device_id spidev_spi_ids[] = {
