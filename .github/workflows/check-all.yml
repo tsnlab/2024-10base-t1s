@@ -15,6 +15,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Install system packages
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            linux-headers-$(uname -r)
+
       - name: Prepare CMake, compile_commands.json
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -S .
