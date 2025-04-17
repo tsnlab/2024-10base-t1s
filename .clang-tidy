@@ -1,4 +1,4 @@
-Checks: '-*,misc-*,modernize-*,-modernize-macro-to-enum,performance-*,readability-*,bugprone-*,-bugprone-easily-swappable-parameters,llvm-include-order'
+Checks: '-*,misc-*,-misc-include-cleaner,modernize-*,-modernize-macro-to-enum,performance-*,readability-*,bugprone-*,-bugprone-easily-swappable-parameters,llvm-include-order'
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
     value: CamelCase
@@ -27,8 +27,10 @@ CheckOptions:
   - key: readability-identifier-length.IgnoredParameterNames
     value: '^[abijkpqr]$'
   - key: readability-identifier-length.IgnoredVariableNames
-    value: '^[A-Zijkpqr]$'
+    value: '^([A-Zijkpqr]|fd)$'
   - key: readability-identifier-naming.LocalVariableIgnoredRegexp
     value: '^[A-Zijkpqr]$'
   - key: readability-magic-numbers.IgnoredIntegerValues
-    value: '1;2;3;4;5'
+    value: '1;2;3;4;5;255;65535;4294967295;'
+  - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
+    value: true
