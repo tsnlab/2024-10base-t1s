@@ -449,3 +449,17 @@ struct reginfo reg_miscellaneous[] = {{"Queue Transmit Configuration", QTXCFG},
                                       {"Synchronization Event Interrupt Mask Status Register", SEVIM},
                                       {"Synchronization Event Status Register", SEVSTS},
                                       {"", -1}};
+
+#define ADDR_WIDTH 16
+#define ADDR_MASK 0xffff
+#define VALUE_MASK 0xffff
+
+#define HEX_BASE 16
+
+/* operation type */
+enum oper_type {
+    READ_OPERATION = 0,
+    WRITE_OPERATION,
+    MMS_OPERATION,
+    MAX_OPERATION,
+};
