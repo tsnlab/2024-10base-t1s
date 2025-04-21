@@ -3,4 +3,11 @@
 # Makefile for the Microchip LAN865x Driver
 #
 
-obj-$(CONFIG_LAN865X) += lan865x.o
+obj-m += lan865x.o
+KDIR ?= $(PWD)
+
+all:
+	make -C ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- $(KDIR) M=$(PWD) modules
+
+clean:
+	make -C ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- $(KDIR) M=$(PWD) clean

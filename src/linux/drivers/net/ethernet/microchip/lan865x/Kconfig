@@ -6,9 +6,8 @@
 if NET_VENDOR_MICROCHIP
 
 config LAN865X
-	tristate "LAN865x support"
-	depends on SPI
-	select OA_TC6
+	tristate "Microchip LAN865x Ethernet driver"
+	depends on SPI && OF
 	help
 	  Support for the Microchip LAN8650/1 Rev.B0/B1 MACPHY Ethernet chip. It
 	  uses OPEN Alliance 10BASE-T1x Serial Interface specification.
