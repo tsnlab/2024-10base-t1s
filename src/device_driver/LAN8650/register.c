@@ -523,17 +523,80 @@ uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data) {
     }
 }
 
+static bool mpw_hw_readreg(struct mpw_read_reg_cmd* p_regInfoInput, struct mpw_read_reg_data* p_readRegData) {
+    const uint8_t ignored_echoedbytes = HEADER_SIZE;
+    bool readstatus = false;
+    uint8_t txbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_SIZE + REG_SIZE] = {0};
+    uint8_t rxbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_SIZE + REG_SIZE] = {0};
+    uint16_t numberof_bytestosend = 0;
+    union ctrl_header commandheader;
+    union ctrl_header commandheader_echoed;
+    uint32_t converted_commandheader;
+
+    commandheader.ctrl_frame_head = 0;
+    commandheader_echoed.ctrl_frame_head = 0;
+    commandheader.ctrl_head_bits.dnc = DNC_COMMANDTYPE_CONTROL;
+    commandheader.ctrl_head_bits.hdrb = 0;
+    commandheader.ctrl_head_bits.wnr = REG_COMMAND_TYPE_READ; // Read from register
+    if (p_regInfoInput->length != 0) {
+        commandheader.ctrl_head_bits.aid = REG_ADDR_INCREMENT_ENABLE; // Read register continously from given address
+    } else {
+        commandheader.ctrl_head_bits.aid = REG_ADDR_INCREMENT_DISABLE; // Read from same register
+    }
+    commandheader.ctrl_head_bits.mms = (uint32_t)p_regInfoInput->memorymap;
+    commandheader.ctrl_head_bits.addr = (uint32_t)p_regInfoInput->address;
+    commandheader.ctrl_head_bits.len = (uint32_t)(p_regInfoInput->length & 0x7F);
+    commandheader.ctrl_head_bits.p = ((get_parity(commandheader.ctrl_frame_head) == 0) ? 1 : 0);
+
+    converted_commandheader = htonl(commandheader.ctrl_frame_head);
+    memcpy(txbuffer, &converted_commandheader, HEADER_SIZE);
+
+    numberof_bytestosend =
+        HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) +
+        ignored_echoedbytes; // Added extra 4 bytes because first 4 bytes during reception shall be ignored
+    spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
+
+    memcpy((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
+    commandheader_echoed.ctrl_frame_head = ntohl(commandheader_echoed.ctrl_frame_head);
+
+    if (commandheader_echoed.ctrl_head_bits.hdrb != 1) // if MACPHY received header with parity error then it will be 1
+    {
+        if (commandheader.ctrl_head_bits.len == 0) {
+            memcpy((uint8_t*)&p_readRegData->databuffer[0], &(rxbuffer[ignored_echoedbytes + HEADER_SIZE]), REG_SIZE);
+            p_readRegData->databuffer[0] = ntohl(p_readRegData->databuffer[0]);
+        } else {
+            for (int regCount = 0; regCount <= commandheader.ctrl_head_bits.len; regCount++) {
+                memcpy((uint8_t*)&p_readRegData->databuffer[regCount],
+                       &rxbuffer[ignored_echoedbytes + HEADER_SIZE + (REG_SIZE * regCount)], REG_SIZE);
+                p_readRegData->databuffer[regCount] = ntohl(p_readRegData->databuffer[regCount]);
+            }
+        }
+        readstatus = true;
+    } else {
+        // TODO: Error handling if MACPHY received with header parity error
+        // printf("Parity Error READMACPHYReg header value : 0x%08x\n", commandheader_echoed.ctrl_frame_head);
+    }
+
+    return readstatus;
+}
+
 uint32_t read_register(uint8_t mms, uint16_t address) {
     bool execution_status = false;
-    struct ctrl_cmd_reg readreg_infoinput;
-    struct ctrl_cmd_reg readreg_data;
-    readreg_infoinput.memorymap = mms;
-    readreg_infoinput.length = 0;
-    readreg_infoinput.address = address;
+    struct mpw_read_reg_cmd {
+        uint8_t cmd;
+        uint16_t address;
+    };
+    struct mpw_read_reg_cmd readreg_infoinput;
+    struct mpw_read_reg_data {
+        uint32_t data;
+    };
+    struct mpw_read_reg_data readreg_data;
+    readreg_infoinput.cmd = 0x02;
+    readreg_infoinput.address = 0x3000 | (address & 0xFFF);
 
-    execution_status = t1s_hw_readreg(&readreg_infoinput, &readreg_data);
+    execution_status = mpw_hw_readreg(&readreg_infoinput, &readreg_data);
     if (execution_status == true) {
-        return readreg_data.databuffer[0];
+        return readreg_data.data;
     } else {
         // printf("ERROR: Register Read failed at MMS %d, Address %4x\n", mms, address);
         return 0;
