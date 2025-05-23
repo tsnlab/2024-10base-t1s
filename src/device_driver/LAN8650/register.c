@@ -580,19 +580,17 @@ static bool mpw_hw_readreg(struct mpw_read_reg_cmd* p_regInfoInput, struct mpw_r
     return readstatus;
 }
 
+#define RX_FRAME_FIFO_BASE 0x1000
+#define TX_FRAME_FIFO_BASE 0x2000
+#define REG_READ_FIFO_BASE 0x3000
+#define REG_WRITE_FIFO_BASE 0xF000
+
 uint32_t read_register(uint8_t mms, uint16_t address) {
     bool execution_status = false;
-    struct mpw_read_reg_cmd {
-        uint8_t cmd;
-        uint16_t address;
-    };
     struct mpw_read_reg_cmd readreg_infoinput;
-    struct mpw_read_reg_data {
-        uint32_t data;
-    };
     struct mpw_read_reg_data readreg_data;
     readreg_infoinput.cmd = 0x02;
-    readreg_infoinput.address = 0x3000 | (address & 0xFFF);
+    readreg_infoinput.address = REG_READ_FIFO_BASE | (address & 0xFFF);
 
     execution_status = mpw_hw_readreg(&readreg_infoinput, &readreg_data);
     if (execution_status == true) {

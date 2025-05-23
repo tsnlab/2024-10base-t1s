@@ -42,7 +42,7 @@ struct ctrl_cmd_reg {
     uint32_t databuffer[MAX_CONTROL_CMD_LEN];
 };
 
-struct mpw_read_reg_data {
+struct mpw_read_reg_cmd {
     uint8_t cmd;
     uint16_t address;
 };
