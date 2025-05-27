@@ -7,6 +7,41 @@
 
 uint8_t g_maxpayloadsize;
 
+struct reginfo reg_general[] = {{"TSN version", REG_TSN_VERSION},   {"TSN Configuration", REG_TSN_CONFIG},
+                                {"TSN Control", REG_TSN_CONTROL},   {"@sys count", REG_SYS_COUNT_HIGH},
+                                {"TEMAC status", REG_TEMAC_STATUS}, {"", -1}};
+
+struct reginfo reg_rx[] = {{"rx packets", REG_RX_PACKETS},
+                           {"@rx bytes", REG_RX_BYTES_HIGH},
+                           {"rx drop packets", REG_RX_DROP_PACKETS},
+                           {"@rx drop bytes", REG_RX_DROP_BYTES_HIGH},
+                           {"rx input packet counter", REG_RX_INPUT_PACKET_COUNT},
+                           {"rx output packet counter", REG_RX_OUTPUT_PACKET_COUNT},
+                           {"rx buffer full drop packet count", REG_RX_BUFFER_FULL_DROP_PACKET_COUNT},
+                           {"RPPB FIFO status", REG_RPPB_FIFO_STATUS},
+                           {"RASB FIFO status", REG_RASB_FIFO_STATUS},
+                           {"MRIB debug", REG_MRIB_DEBUG},
+                           {"TEMAC rx statistics", REG_TEMAC_RX_STAT},
+                           {"", -1}};
+
+struct reginfo reg_tx[] = {{"tx packets", REG_TX_PACKETS},
+                           {"@tx bytes", REG_TX_BYTES_HIGH},
+                           {"tx drop packets", REG_TX_DROP_PACKETS},
+                           {"@tx drop bytes", REG_TX_DROP_BYTES_HIGH},
+                           {"tx timestamp count", REG_TX_TIMESTAMP_COUNT},
+                           {"@tx timestamp 1", REG_TX_TIMESTAMP1_HIGH},
+                           {"@tx timestamp 2", REG_TX_TIMESTAMP2_HIGH},
+                           {"@tx timestamp 3", REG_TX_TIMESTAMP3_HIGH},
+                           {"@tx timestamp 4", REG_TX_TIMESTAMP4_HIGH},
+                           {"tx input packet counter", REG_TX_INPUT_PACKET_COUNT},
+                           {"tx output packet counter", REG_TX_OUTPUT_PACKET_COUNT},
+                           {"tx buffer full drop packet count", REG_TX_BUFFER_FULL_DROP_PACKET_COUNT},
+                           {"TASB FIFO status", REG_TASB_FIFO_STATUS},
+                           {"TPPB FIFO status", REG_TPPB_FIFO_STATUS},
+                           {"MTIB debug", REG_MTIB_DEBUG},
+                           {"TEMAC tx statistics", REG_TEMAC_TX_STAT},
+                           {"", -1}};
+
 struct reginfo reg_open_alliance[] = {{"Identification Register", OA_ID},
                                       {"PHY Identification Register", OA_PHYID},
                                       {"Standard Capabilities", OA_STDCAP},
@@ -506,6 +541,38 @@ static bool t1s_hw_writereg(struct ctrl_cmd_reg* p_regData) {
     return writestatus;
 }
 
+#define RX_FRAME_FIFO_BASE 0x1000
+#define TX_FRAME_FIFO_BASE 0x2000
+#define REG_READ_FIFO_BASE 0x3000
+#define REG_WRITE_FIFO_BASE 0xF000
+
+#define SPI_CMD_WRITE 0x01
+#define SPI_CMD_READ 0x02
+
+#define SPI_READ_CMD_LENGTH 7
+#define SPI_WRITE_CMD_LENGTH 7
+#define SPI_READ_DATA_OFFSET 3
+
+static bool mpw_hw_writereg(struct mpw_ctrl_cmd_reg* p_regData) {
+    uint8_t numberof_bytestosend = 0;
+    bool writestatus = true;
+    bool execution_status = true;
+    uint8_t txbuffer[MAX_PAYLOAD_BYTE + HEADER_SIZE] = {0};
+    uint8_t rxbuffer[MAX_PAYLOAD_BYTE + HEADER_SIZE] = {0};
+
+    txbuffer[0] = p_regData->cmd;
+    txbuffer[1] = (uint8_t)((p_regData->address & 0xFF00) >> 8);
+    txbuffer[2] = (uint8_t)(p_regData->address & 0xFF);
+
+    memcpy(&txbuffer[3], &p_regData->databuffer[0], sizeof(uint32_t));
+
+    numberof_bytestosend = SPI_WRITE_CMD_LENGTH;
+
+    spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
+
+    return writestatus;
+}
+
 uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data) {
     struct ctrl_cmd_reg writereg_input;
     bool execution_status = false;
@@ -523,78 +590,55 @@ uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data) {
     }
 }
 
-static bool mpw_hw_readreg(struct mpw_read_reg_cmd* p_regInfoInput, struct mpw_read_reg_data* p_readRegData) {
-    const uint8_t ignored_echoedbytes = HEADER_SIZE;
-    bool readstatus = false;
+uint32_t write_register_mpw(uint8_t MMS, uint16_t address, uint32_t data) {
+    struct mpw_ctrl_cmd_reg writereg_input;
+    bool execution_status = false;
+
+    writereg_input.cmd = SPI_CMD_WRITE;
+    writereg_input.length = 0;
+    writereg_input.address = REG_WRITE_FIFO_BASE | (address & 0xFFF);
+    writereg_input.databuffer[0] = ntohl(data);
+
+    execution_status = mpw_hw_writereg(&writereg_input);
+    if (execution_status == true) {
+        return writereg_input.databuffer[0];
+    } else {
+        printf("ERROR: Register Write failed at MMS %d, Address %4x\n", MMS, address);
+        return 0;
+    }
+}
+
+static bool mpw_hw_readreg(struct mpw_ctrl_cmd_reg* p_regInfoInput, struct mpw_ctrl_cmd_reg* p_readRegData) {
     uint8_t txbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_SIZE + REG_SIZE] = {0};
     uint8_t rxbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_SIZE + REG_SIZE] = {0};
     uint16_t numberof_bytestosend = 0;
-    union ctrl_header commandheader;
-    union ctrl_header commandheader_echoed;
-    uint32_t converted_commandheader;
+    uint32_t reg_val;
 
-    commandheader.ctrl_frame_head = 0;
-    commandheader_echoed.ctrl_frame_head = 0;
-    commandheader.ctrl_head_bits.dnc = DNC_COMMANDTYPE_CONTROL;
-    commandheader.ctrl_head_bits.hdrb = 0;
-    commandheader.ctrl_head_bits.wnr = REG_COMMAND_TYPE_READ; // Read from register
-    if (p_regInfoInput->length != 0) {
-        commandheader.ctrl_head_bits.aid = REG_ADDR_INCREMENT_ENABLE; // Read register continously from given address
-    } else {
-        commandheader.ctrl_head_bits.aid = REG_ADDR_INCREMENT_DISABLE; // Read from same register
-    }
-    commandheader.ctrl_head_bits.mms = (uint32_t)p_regInfoInput->memorymap;
-    commandheader.ctrl_head_bits.addr = (uint32_t)p_regInfoInput->address;
-    commandheader.ctrl_head_bits.len = (uint32_t)(p_regInfoInput->length & 0x7F);
-    commandheader.ctrl_head_bits.p = ((get_parity(commandheader.ctrl_frame_head) == 0) ? 1 : 0);
+    txbuffer[0] = p_regInfoInput->cmd;                                /* Command */
+    txbuffer[1] = (uint8_t)((p_regInfoInput->address & 0xFF00) >> 8); /* Target Address[15:8] */
+    txbuffer[2] = (uint8_t)(p_regInfoInput->address & 0xFF);          /* Target Address[7:0] */
 
-    converted_commandheader = htonl(commandheader.ctrl_frame_head);
-    memcpy(txbuffer, &converted_commandheader, HEADER_SIZE);
-
-    numberof_bytestosend =
-        HEADER_SIZE + ((commandheader.ctrl_head_bits.len + 1) * REG_SIZE) +
-        ignored_echoedbytes; // Added extra 4 bytes because first 4 bytes during reception shall be ignored
+    numberof_bytestosend = SPI_READ_CMD_LENGTH; /* Command(1) + Target Address(2) + Register Value(4) */
     spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
 
-    memcpy((uint8_t*)&commandheader_echoed.ctrl_frame_head, &rxbuffer[ignored_echoedbytes], HEADER_SIZE);
-    commandheader_echoed.ctrl_frame_head = ntohl(commandheader_echoed.ctrl_frame_head);
+    memcpy((uint8_t*)&reg_val, &rxbuffer[SPI_READ_DATA_OFFSET], sizeof(uint32_t));
 
-    if (commandheader_echoed.ctrl_head_bits.hdrb != 1) // if MACPHY received header with parity error then it will be 1
-    {
-        if (commandheader.ctrl_head_bits.len == 0) {
-            memcpy((uint8_t*)&p_readRegData->databuffer[0], &(rxbuffer[ignored_echoedbytes + HEADER_SIZE]), REG_SIZE);
-            p_readRegData->databuffer[0] = ntohl(p_readRegData->databuffer[0]);
-        } else {
-            for (int regCount = 0; regCount <= commandheader.ctrl_head_bits.len; regCount++) {
-                memcpy((uint8_t*)&p_readRegData->databuffer[regCount],
-                       &rxbuffer[ignored_echoedbytes + HEADER_SIZE + (REG_SIZE * regCount)], REG_SIZE);
-                p_readRegData->databuffer[regCount] = ntohl(p_readRegData->databuffer[regCount]);
-            }
-        }
-        readstatus = true;
-    } else {
-        // TODO: Error handling if MACPHY received with header parity error
-        // printf("Parity Error READMACPHYReg header value : 0x%08x\n", commandheader_echoed.ctrl_frame_head);
-    }
+    p_readRegData->databuffer[0] = ntohl(reg_val);
 
-    return readstatus;
+    return true;
 }
-
-#define RX_FRAME_FIFO_BASE 0x1000
-#define TX_FRAME_FIFO_BASE 0x2000
-#define REG_READ_FIFO_BASE 0x3000
-#define REG_WRITE_FIFO_BASE 0xF000
 
 uint32_t read_register(uint8_t mms, uint16_t address) {
     bool execution_status = false;
-    struct mpw_read_reg_cmd readreg_infoinput;
-    struct mpw_read_reg_data readreg_data;
-    readreg_infoinput.cmd = 0x02;
+    struct mpw_ctrl_cmd_reg readreg_infoinput;
+    struct mpw_ctrl_cmd_reg readreg_data;
+    readreg_infoinput.cmd = SPI_CMD_READ;
+    readreg_infoinput.length = 0;
     readreg_infoinput.address = REG_READ_FIFO_BASE | (address & 0xFFF);
 
     execution_status = mpw_hw_readreg(&readreg_infoinput, &readreg_data);
     if (execution_status == true) {
-        return readreg_data.data;
+        return readreg_data.databuffer[0];
     } else {
         // printf("ERROR: Register Read failed at MMS %d, Address %4x\n", mms, address);
         return 0;
@@ -649,34 +693,50 @@ int clear_status(void) {
 static void dump_reginfo(uint8_t mms, struct reginfo* reginfo) {
 
     for (int i = 0; reginfo[i].address >= 0; i++) {
-        printf("address: 0x%04x - value: 0x%08x - %s\n", reginfo[i].address,
-               read_register(mms, (uint16_t)reginfo[i].address), reginfo[i].desc);
+        if (reginfo[i].desc[0] == '@') {
+            uint64_t ll = read_register(mms, reginfo[i].address);
+            ll = (ll << 32) | read_register(mms, reginfo[i].address + 4);
+            printf("address: 0x%04x - value: 0x%016x - %s\n", reginfo[i].address, ll, &(reginfo[i].desc[1]));
+        } else {
+            printf("address: 0x%04x - value: 0x%08x - %s\n", reginfo[i].address,
+                   read_register(mms, (uint16_t)reginfo[i].address), reginfo[i].desc);
+        }
     }
 }
 
 /* read all register values in memory map selector */
 static int read_register_in_mms(uint8_t mms) {
     switch (mms) {
-    case MMS0: /* Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
-        dump_reginfo(mms, reg_open_alliance);
+    case MMS0: /* General Registers */
+        dump_reginfo(mms, reg_general);
         break;
-    case MMS1: /* MAC Registers */
-        dump_reginfo(mms, reg_mac);
+    case MMS1: /* Rx Registers */
+        dump_reginfo(mms, reg_rx);
         break;
-    case MMS2: /* PHY PCS Registers */
-        dump_reginfo(mms, reg_phy_pcs);
-        break;
-    case MMS3: /* PHY PMA/PMD Registers */
-        dump_reginfo(mms, reg_phy_pma_pmd);
-        break;
-    case MMS4: /* PHY Vendor Specific Registers */
-        dump_reginfo(mms, reg_phy_vendor_specific);
-        break;
-    case MMS10: /* Miscellaneous Register Descriptions */
-        dump_reginfo(mms, reg_miscellaneous);
+    case MMS2: /* Tx  Registers */
+        dump_reginfo(mms, reg_tx);
         break;
     default:
         printf("%s - Unknown memory map selector(0x%02x)\n", __func__, mms);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int read_register_in_register_group(uint8_t reg_grp) {
+    switch (reg_grp) {
+    case MMS0: /* General Registers */
+        dump_reginfo(reg_grp, reg_general);
+        break;
+    case MMS1: /* Rx Registers */
+        dump_reginfo(reg_grp, reg_rx);
+        break;
+    case MMS2: /* Tx  Registers */
+        dump_reginfo(reg_grp, reg_tx);
+        break;
+    default:
+        printf("%s - Unknown Register Group(0x%02x)\n", __func__, reg_grp);
         return -1;
     }
 
@@ -698,6 +758,12 @@ static int set_register_value(uint8_t mms, struct reginfo* reginfo, int32_t addr
     return -1;
 }
 
+static int set_mpw_register_value(uint8_t mms, struct reginfo* reginfo, int32_t addr, uint32_t data) {
+
+    write_register_mpw(mms, (uint16_t)addr, data);
+    return 0;
+}
+
 /* read all register values in memory map selector */
 static int write_register_in_mms(uint8_t mms, int32_t addr, uint32_t data) {
     switch (mms) {
@@ -717,6 +783,10 @@ static int write_register_in_mms(uint8_t mms, int32_t addr, uint32_t data) {
         printf("%s - Unknown memory map selector(0x%02x)\n", __func__, mms);
         return -1;
     }
+}
+
+static int write_register_in_register_group(uint8_t reg_grp, int32_t addr, uint32_t data) {
+    return set_register_value(reg_grp, reg_general, addr, data);
 }
 
 static int configure_plca_to_mac_phy() {
@@ -814,8 +884,16 @@ int api_read_register_in_mms(int mms) {
     return read_register_in_mms((uint8_t)mms);
 }
 
+int api_read_register_in_register_group(int reg_grp) {
+    return read_register_in_register_group((uint8_t)reg_grp);
+}
+
 int api_write_register_in_mms(int mms, int addr, uint32_t data) {
     return write_register_in_mms((uint8_t)mms, (int32_t)addr, (uint32_t)data);
+}
+
+int api_write_register_in_register_group(int reg_grp, int addr, uint32_t data) {
+    return write_register_in_register_group((uint8_t)reg_grp, (int32_t)addr, (uint32_t)data);
 }
 
 uint64_t api_get_mac_address() {

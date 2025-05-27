@@ -28,24 +28,15 @@ menu_command_t main_command_tbl[] = {
      "      <target ip address> default value: 192.168.10.21\n"
      "             <statistics> default value: 0 (0: deactivate, 1:activate)\n"
      "         <Packet lengths> default value: 1514 (60 ~ 1514)\n"},
-    {"read", EXECUTION_ATTR, process_main_read, "   read -m <Memory Map Selector>\n",
-     "   Read all register values in Memory Map Selector\n"
-     "        <Memory Map Selector> default value: 0 ( 0: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
-     "                                                 1: MAC Registers\n"
-     "                                                 2: PHY PCS Registers\n"
-     "                                                 3: PHY PMA/PMD Registers\n"
-     "                                                 4: PHY Vendor Specific Registers\n"
-     "                                                10: Miscellaneous Register Descriptions)\n"},
-    {"write", EXECUTION_ATTR, process_main_write, "   write -m <Memory Map Selector> -a <Address> -d <Data>\n",
-     "   Write data value to register at address in Memory Map Selector\n"
-     "        <Memory Map Selector> default value: 0 ( 0: Open Alliance 10BASE-T1x MAC-PHY Standard Registers\n"
-     "                                                 1: MAC Registers\n"
-     "                                                 2: PHY PCS Registers\n"
-     "                                                 3: PHY PMA/PMD Registers\n"
-     "                                                 4: PHY Vendor Specific Registers\n"
-     "                                                10: Miscellaneous Register Descriptions)\n"
-     "                    <Address> default value: 0\n"
-     "                       <Data> default value: 0\n"},
+    {"read", EXECUTION_ATTR, process_main_read, "   read -g <Register Group>\n",
+     "   Read all register values in Register Group\n"
+     "        <Register Group> default value: 0 ( 0: General Registers\n"
+     "                                            1: Rx Registers\n"
+     "                                            2: Tx Registers\n"},
+    {"write", EXECUTION_ATTR, process_main_write, "   write -a <Address> -d <Data>\n",
+     "   Write data value to register at address\n"
+     "        <Address> default value: 0\n"
+     "        <Data> default value: 0\n"},
     {"config", EXECUTION_ATTR, process_main_config, "   config <element> <options parameters>\n",
      "   Configure elements with options parameters\n"
      "   You must configure node, mac, and plca in that order.\n"
@@ -326,7 +317,7 @@ out_spi:
     return 0;
 }
 
-int do_read(int mms) {
+int do_read(int reg_grp) {
     int spi_ret;
 
     spi_ret = api_spi_init();
@@ -334,7 +325,7 @@ int do_read(int mms) {
         printf("spi_init failed; the error code is %d\n", spi_ret);
         return -1;
     }
-    return api_read_register_in_mms(mms);
+    return api_read_register_in_register_group(reg_grp);
 }
 
 int do_write(int mms, int addr, int data) {
@@ -552,28 +543,25 @@ int process_main_test(int argc, const char* argv[], menu_command_t* menu_tbl) {
     return do_test(mode, ipv4, t_ipv4, sts_flag, pkt_length, mac);
 }
 
-#define MAIN_READ_OPTION_STRING "m:hv"
+#define MAIN_READ_OPTION_STRING "g:hv"
 int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl) {
-    int mms = 0;
+    int reg_grp = 0;
     int argflag;
 
     while ((argflag = getopt(argc, (char**)argv, MAIN_READ_OPTION_STRING)) != -1) {
         switch (argflag) {
-        case 'm':
-            if (str2int(optarg, &mms) != 0) {
+        case 'g':
+            if (str2int(optarg, &reg_grp) != 0) {
                 printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
-            switch (mms) {
-            case 0x00: /* Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
-            case 0x01: /* MAC Registers */
-            case 0x02: /* PHY PCS Registers */
-            case 0x03: /* PHY PMA/PMD Registers */
-            case 0x04: /* PHY Vendor Specific Registers */
-            case 0x0A: /* Miscellaneous Register Descriptions */
+            switch (reg_grp) {
+            case 0x00: /* General Registers */
+            case 0x01: /* Rx Registers */
+            case 0x02: /* Tx Registers */
                 break;
             default:
-                printf("mms %d is out of range.\n", mms);
+                printf("Register Group %d is out of range.\n", reg_grp);
                 return -1;
             }
             break;
@@ -592,10 +580,10 @@ int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl) {
         }
     }
 
-    return do_read(mms);
+    return do_read(reg_grp);
 }
 
-#define MAIN_WRITE_OPTION_STRING "m:a:d:hv"
+#define MAIN_WRITE_OPTION_STRING "a:d:hv"
 int process_main_write(int argc, const char* argv[], menu_command_t* menu_tbl) {
     int mms = 0;
     int addr = 0;
@@ -604,31 +592,12 @@ int process_main_write(int argc, const char* argv[], menu_command_t* menu_tbl) {
 
     while ((argflag = getopt(argc, (char**)argv, MAIN_WRITE_OPTION_STRING)) != -1) {
         switch (argflag) {
-        case 'm':
-            if (str2int(optarg, &mms) != 0) {
-                printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
-                return -1;
-            }
-            switch (mms) {
-            case 0x00: /* Open Alliance 10BASE-T1x MAC-PHY Standard Registers */
-            case 0x01: /* MAC Registers */
-            case 0x02: /* PHY PCS Registers */
-            case 0x03: /* PHY PMA/PMD Registers */
-            case 0x04: /* PHY Vendor Specific Registers */
-            case 0x0A: /* Miscellaneous Register Descriptions */
-                break;
-            default:
-                printf("mms %d is out of range.\n", mms);
-                return -1;
-            }
-            break;
-
         case 'a':
             if (str2int(optarg, &addr) != 0) {
                 printf("Invalid parameter given or out of range for '-%c'.\n", (char)argflag);
                 return -1;
             }
-            if ((addr < 0) || (addr > 0xFFFF)) {
+            if ((addr < 0) || (addr > 0xFFF)) {
                 printf("Address 0x%x is out of range.\n", addr);
                 return -1;
             }
