@@ -7,6 +7,1456 @@
 
 uint8_t g_maxpayloadsize;
 
+/* Register Class: General */
+#define TSN_SYSTEM_INFO_H 0x0278 /* Year [63:56] : Month [55:48] : Day [47:40] : Commit # [39:32] */
+#define TSN_SYSTEM_INFO_L 0x027C /* RESERVED [31:0] */
+
+#define TSN_MAC_ADDR_H 0x0280 /* RESERVED [63:48] : MAC Address [47:32] */
+#define TSN_MAC_ADDR_L 0x0284 /* MAC Address [31:0] */
+
+#define TSN_SYSCOUNT_H 0x2888 /* SYSTEM_COUNT [63:32] */
+#define TSN_SYSCOUNT_L 0x288C /* SYSTEM_COUNT [31:0] */
+
+#define TSN_SYSTEM_CONTROL_H 0x0290 /* RESERVED [63:32] */
+#define TSN_SYSTEM_CONTROL_L 0x0294 /* RESERVED [31:1] : TSN ENABLE */
+#define TSN_RX_CONTROL_H 0x0298 /* MAX_FRAME_LENGTH [63:48] : */ 
+                                /* RESERVED [47:45] : */
+                                /* MAX_FRAME_FIFO_DATA_COUNT [44:32] */
+#define TSN_RX_CONTROL_L 0x029C /* RESERVED [31:25] : */
+                                /* MAX_META_FIFO_DATA_COUNT [24:16] : */
+                                /* RESERVED [15:8] : CLEAR DROP BYTE COUNT : */
+                                /* CLEAR DROP FRAME COUNT : */
+                                /* CLEAR RX BYTE COUNT : */
+                                /* CLEAR RX FRAME COUNT : */
+                                /* CHECK-SUM ENABLE : */
+                                /* JUMBO DROP :  FCS OFFLOAD : */
+                                /* VLAN OFFLOAD */
+#define TSN_TX_CONTROL_H 0x02A0 /* RESERVED [63:32] */
+#define TSN_TX_CONTROL_L 0x02A4 /* ETHERNET_INTER_FRAME_GAP [31:16] : */
+                                /* RESERVED [15:10] : */
+                                /* HOST_FIFO_FULL_LIMIT [9:0] */
+#define PPS_PULSE_AT_H 0x02A8 /* PULSE_AT [63:32] */
+#define PPS_PULSE_AT_L 0x02AC /* PULSE_AT [31:0] */
+#define PPS_CYCLE_1S_H 0x02B0 /* CYCLE_1S [63:32] */
+#define PPS_CYCLE_1S_L 0x02B4 /* CYCLE_1S [31:0] */
+
+/* Register Class: Rx (Frame Decoder) */
+#define FD_RX_TSTAMP_H 0x0000 /* RX_TSTAMP [63:32] */
+#define FD_RX_TSTAMP_L 0x0004 /* RX_TSTAMP [31:0] */
+#define FD_RX_FRAME_STATUS1_H 0x0008 /* CHECK_SUM [63:32] */
+#define FD_RX_FRAME_STATUS1_L 0x000C /* VLAN_TAG [31:16] : FRAME_LENGTH [15:0]	*/
+#define FD_RX_FRAME_STATUS2_H 0x0010 /* RESERVED [63:32] */
+#define FD_RX_FRAME_STATUS2_L 0x0014 /* RESERVED [31:5] : VLAN OFFLOAD FLAG : */
+                                     /* FCS OFFLOAD FLAG : FCS ERROR FLAG : */
+                                     /* JUMBO ERROR FLAG : FIFO FULL FLAG */
+#define FD_TOTAL_RX_FRAME_CNT_H 0x0018 /* TOTAL_RX_FRAME_CNT [63:32] */
+#define FD_TOTAL_RX_FRAME_CNT_L 0x001C /* TOTAL_RX_FRAME_CNT [31:0] */
+#define FD_TOTAL_RX_BYTE_CNT_H 0x0020 /* TOTAL_RX_BYTE_CNT [63:32] */
+#define FD_TOTAL_RX_BYTE_CNT_L 0x0024 /* TOTAL_RX_BYTE_CNT [31:0] */
+#define FD_TOTAL_DROP_FRAME_CNT_H 0x0028 /* TOTAL_DROP_FRAME_CNT [63:32] */
+#define FD_TOTAL_DROP_FRAME_CNT_L 0x002C /* TOTAL_DROP_FRAME_CNT [31:0] */
+#define FD_TOTAL_DROP_BYTE_CNT_H 0x0030 /* TOTAL_DROP_BYTE_CNT [63:32] */
+#define FD_TOTAL_DROP_BYTE_CNT_L 0x0034 /* TOTAL_DROP_BYTE_CNT [31:0] */
+#define FD_FCS_DROP_FRAME_CNT_H 0x0038 /* FCS_DROP_FRAME_CNT [63:32] */
+#define FD_FCS_DROP_FRAME_CNT_L 0x003C /* FCS_DROP_FRAME_CNT [31:0] */
+#define FD_FCS_DROP_BYTE_CNT_H 0x0040 /* FCS_DROP_BYTE_CNT [63:32] */
+#define FD_FCS_DROP_BYTE_CNT_L 0x0044 /* FCS_DROP_BYTE_CNT [31:0] */
+#define FD_JUMBO_DROP_FRAME_CNT_H 0x0048 /* JUMBO_DROP_FRAME_CNT [63:32] */
+#define FD_JUMBO_DROP_FRAME_CNT_L 0x004C /* JUMBO_DROP_FRAME_CNT [31:0] */
+#define FD_JUMBO_DROP_BYTE_CNT_H 0x0050 /* JUMBO_DROP_BYTE_CNT [63:32] */
+#define FD_JUMBO_DROP_BYTE_CNT_L 0x0054 /* JUMBO_DROP_BYTE_CNT [31:0] */
+#define FD_FIFO_FULL_DROP_FRAME_CNT_H 0x0058 /* FIFO_FULL_DROP_FRAME_CNT [63:32] */
+#define FD_FIFO_FULL_DROP_FRAME_CNT_L 0x005C /* FIFO_FULL_DROP_FRAME_CNT [31:0] */
+#define FD_FIFO_FULL_DROP_BYTE_CNT_H 0x0060 /* FIFO_FULL_DROP_BYTE_CNT [63:32] */
+#define FD_FIFO_FULL_DROP_BYTE_CNT_L 0x0064 /* FIFO_FULL_DROP_BYTE_CNT [31:0] */
+
+/* Register Class: FIFO (META, FRAME) */
+#define TSN_RX_FIFO_STATUS_H 0x00A8 /* RESERVED [63:32] */
+#define TSN_RX_FIFO_STATUS_L 0x00AC /* RES [31:29] : */
+                                    /* FRAME_FIFO_DATA_CNT [28:16] : */
+                                    /* RESERVED [15:9] : */
+                                    /* META_FIFO_DATA_CNT [8:0] */
+
+/* Register Class: Tx (Frame Stacker) */
+#define FS_GENERAL_STATUS_H 0x00B0 /* RESERVED [63:58] : */
+                                   /* HOST_FIFO_RD_CNT [57:48] : */
+                                   /* RESERVED [47:42] : */
+                                   /* HOST_FIFO_WR_CNT [41:32] */
+#define FS_GENERAL_STATUS_L 0x00B4 /* RESERVED [31:4] : XDMA AXIS TREADY : */
+                                   /* HOST FIFO USER FULL */
+                                   /* HOST FIFO EMPTY : HOST FIFO FULL */
+#define FS_TOTAL_RX_FRAME_CNT_H 0x00B8 /* TOTAL_RX_FRAME_CNT [63:32] */
+#define FS_TOTAL_RX_FRAME_CNT_L 0x00BC /* TOTAL_RX_FRAME_CNT [31:0] */
+#define FS_TOTAL_RX_16BYTE_CNT_H 0x00C0 /* TOTAL_RX_16BYTE_CNT [63:32] */
+#define FS_TOTAL_RX_16BYTE_CNT_L 0x00C4 /* TOTAL_RX_16BYTE_CNT [31:0] */
+#define FS_TOTAL_BACK_PRESSURE_EVENT_CNT_H 0x00C8 /* TOTAL_BACK_PRESSURE_EVENT_CNT [63:32] */
+#define FS_TOTAL_BACK_PRESSURE_EVENT_CNT_L 0x00CC /* TOTAL_BACK_PRESSURE_EVENT_CNT [31:0] */
+
+#if 0 /* Register Map of 1-Queue TSN IP 20250529 */
+
+
+
+
+
+
+
+
+FP_FRAME_TICK_FROM_H
+FP_FRAME_TICK_FROM_L
+FP_FRAME_TICK_TO_H
+FP_FRAME_TICK_TO_L
+FP_FRAME_TICK_DELAY_FROM_H
+FP_FRAME_TICK_DELAY_FROM_L
+FP_FRAME_TICK_DELAY_TO_H
+FP_FRAME_TICK_DELAY_TO_L
+FP_FRAME_STATUS1_H
+FP_FRAME_STATUS1_L
+FP_FRAME_STATUS2_H
+FP_FRAME_STATUS2_L
+
+
+FSCH_TX_FRAME_STATUS_H
+FSCH_TX_FRAME_STATUS_L
+FSCH_TOTAL_NEW_ENTRY_CNT_H
+FSCH_TOTAL_NEW_ENTRY_CNT_L
+FSCH_TOTAL_VALID_ENTRY_CNT_H
+FSCH_TOTAL_VALID_ENTRY_CNT_L
+FSCH_TOTAL_DELAY_ENTRY_CNT_H
+FSCH_TOTAL_DELAY_ENTRY_CNT_L
+FSCH_TOTAL_DROP_ENTRY_CNT_H
+FSCH_TOTAL_DROP_ENTRY_CNT_L
+
+
+FBW_BUFFER_WRITE_STATUS1_H
+FBW_BUFFER_WRITE_STATUS1_L
+FBW_BUFFER_WRITE_STATUS2_H
+FBW_BUFFER_WRITE_STATUS2_L
+FBW_BUFFER_WRITE_STATUS3_H
+FBW_BUFFER_WRITE_STATUS3_L
+FBW_ADDR_FIFO_CNT_H
+FBW_ADDR_FIFO_CNT_L
+FBR_BUFFER_READ_STATUS1_H
+FBR_BUFFER_READ_STATUS1_L
+FBR_BUFFER_READ_STATUS2_H
+FBR_BUFFER_READ_STATUS2_L
+FBR_BUFFER_READ_STATUS3_H
+FBR_BUFFER_READ_STATUS3_L
+
+
+FTRSF_TX_FRAME_STATUS_H
+FTRSF_TX_FRAME_STATUS_L
+FTRSF_GENERAL_STATUS_H
+FTRSF_GENERAL_STATUS_L
+FTRSF_TOTAL_TX_FRAME_CNT_H
+FTRSF_TOTAL_TX_FRAME_CNT_L
+FTRSF_TOTAL_META_FIFO_FULL_CNT_H
+FTRSF_TOTAL_META_FIFO_FULL_CNT_L
+FTRSF_TOTAL_FRAME_FIFO_FULL_CNT_H
+FTRSF_TOTAL_FRAME_FIFO_FULL_CNT_L
+
+
+FT_TX_FRAME_STATUS1_H
+FT_TX_FRAME_STATUS1_L
+FT_TX_FRAME_STATUS2_H
+FT_TX_FRAME_STATUS2_L
+FT_TOTAL_TX_FRAME_CNT_H
+FT_TOTAL_TX_FRAME_CNT_L
+FT_TOTAL_TX_BYTE_CNT_H
+FT_TOTAL_TX_BYTE_CNT_L
+FT_TX_TSTAMP1_H
+FT_TX_TSTAMP1_L
+FT_TX_TSTAMP2_H
+FT_TX_TSTAMP2_L
+FT_TX_TSTAMP3_H
+FT_TX_TSTAMP3_L
+FT_TX_TSTAMP4_H
+FT_TX_TSTAMP4_L
+
+
+	Register Map of 1-Queue TSN IP
+	No.	Class	Addr. Offset	Register	31	30	29	28	27	26	25	24	23	22	21	20	19	18	17	16	15	14	13	12	11	10	9	8	7	6	5	4	3	2	1	0	Note
+			"0x0288
+~
+0x028C"	TSN_SYSCOUNT_H	SYSTEM_COUNT [63:32]																																82th 64-bit Register High  /  slv_reg162
+				Reset Value	0x0000_0000
+				TSN_SYSCOUNT_L	SYSTEM_COUNT [31:0]																																82th 64-bit Register Low   /  slv_reg163
+				Reset Value	0x0000_0000
+	4		"0x0290
+~
+0x0294"	TSN_SYSTEM_CONTROL_H	RESERVED [63:32]																																83th 64-bit Register High  /  slv_reg164
+				Reset Value	0x0000_0000
+				TSN_SYSTEM_CONTROL_L	RESERVED [31:1]																															TSN ENABLE	83th 64-bit Register Low   /  slv_reg165
+				Reset Value	0x0000_0000
+	5		"0x0298
+~
+0x029C"	TSN_RX_CONTROL_H	MAX_FRAME_LENGTH [63:48]																RESERVED [47:45]			MAX_FRAME_FIFO_DATA_COUNT [44:32]													84th 64-bit Register High  /  slv_reg166
+				Reset Value	0x0000_0000
+	6			TSN_RX_CONTROL_L	RESERVED [31:25]							"MAX_META_FIFO_
+DATA_COUNT [24:16]"									RESERVED [15:8]								CLEAR DROP BYTE COUNT	CLEAR DROP FRAME COUNT	CLEAR RX BYTE COUNT	CLEAR RX FRAME COUNT	CHECK-SUM ENABLE	JUMBO DROP	FCS OFFLOAD	VLAN OFFLOAD	84th 64-bit Register Low   /  slv_reg167
+				Reset Value	0x0000_0000
+	7		"0x02A0
+~
+0x02A4"	TSN_TX_CONTROL_H	RESERVED [63:32]																																85th 64-bit Register High  /  slv_reg168
+				Reset Value	0x0000_0000
+	8			TSN_TX_CONTROL_L	ETHERNET_INTER_FRAME_GAP [31:16]																RESERVED [15:10]						HOST_FIFO_FULL_LIMIT [9:0]										85th 64-bit Register Low   /  slv_reg169
+				Reset Value	0x0000_0000
+	9		"0x02A8
+~
+0x02AC"	PPS_PULSE_AT_H	PULSE_AT [63:32]																																86th 64-bit Register High  /  slv_reg170
+				Reset Value	0x0000_0000
+	10			PPS_PULSE_AT_L	PULSE_AT [31:0]																																86th 64-bit Register Low   /  slv_reg171
+				Reset Value	0x0000_0000
+	11		"0x02B0
+~
+0x02B4"	PPS_CYCLE_1S_H	CYCLE_1S [63:32]																																87th 64-bit Register High  /  slv_reg172
+				Reset Value	0x0000_0000
+	13			PPS_CYCLE_1S_L	CYCLE_1S [31:0]																																87th 64-bit Register Low   /  slv_reg173
+				Reset Value	0x0000_0000
+
+	1	"Rx
+
+(Frame
+Decoder)"	"0x0000
+~
+0x0004"	FD_RX_TSTAMP_H	RX_TSTAMP [63:32]																																1th 64-bit Register High  /  slv_reg0
+				Reset Value	0x0000_0000
+	2			FD_RX_TSTAMP_L	RX_TSTAMP [31:0]																																1th 64-bit Register Low   /  slv_reg1
+				Reset Value	0x0000_0000
+	3		"0x0008
+~
+0x000C"	FD_RX_FRAME_STATUS1_H	CHECK_SUM [63:32]																																2th 64-bit Register High  /  slv_reg2
+				Reset Value	0x0000_0000
+	4			FD_RX_FRAME_STATUS1_L	VLAN_TAG [31:16]																FRAME_LENGTH [15:0]																2th 64-bit Register Low   /  slv_reg3
+				Reset Value	0x0000_0000
+	5		"0x0010
+~
+0x0014"	FD_RX_FRAME_STATUS2_H	RESERVED [63:32]																																3th 64-bit Register High  /  slv_reg4
+				Reset Value	-
+	6			FD_RX_FRAME_STATUS2_L	RESERVED [31:5]																											VLAN OFFLOAD FLAG	FCS OFFLOAD FLAG	FCS ERROR FLAG	JUMBO ERROR FLAG	FIFO FULL FLAG	3th 64-bit Register Low   /  slv_reg5
+				Reset Value	-																											0	0	0	0	0
+	7		"0x0018
+~
+0x001C"	FD_TOTAL_RX_FRAME_CNT_H	TOTAL_RX_FRAME_CNT [63:32]																																4th 64-bit Register High  /  slv_reg6
+				Reset Value	0x0000_0000
+	8			FD_TOTAL_RX_FRAME_CNT_L	TOTAL_RX_FRAME_CNT [31:0]																																4th 64-bit Register Low   /  slv_reg7
+				Reset Value	0x0000_0000
+	9		"0x0020
+~
+0x0024"	FD_TOTAL_RX_BYTE_CNT_H	TOTAL_RX_BYTE_CNT [63:32]																																5th 64-bit Register High  /  slv_reg8
+				Reset Value	0x0000_0000
+	10			FD_TOTAL_RX_BYTE_CNT_L	TOTAL_RX_BYTE_CNT [31:0]																																5th 64-bit Register Low   /  slv_reg9
+				Reset Value	0x0000_0000
+	11		"0x0028
+~
+0x002C"	FD_TOTAL_DROP_FRAME_CNT_H	TOTAL_DROP_FRAME_CNT [63:32]																																6th 64-bit Register High  /  slv_reg10
+				Reset Value	0x0000_0000
+	12			FD_TOTAL_DROP_FRAME_CNT_L	TOTAL_DROP_FRAME_CNT [31:0]																																6th 64-bit Register Low   /  slv_reg11
+				Reset Value	0x0000_0000
+	13		"0x0030
+~
+0x0034"	FD_TOTAL_DROP_BYTE_CNT_H	TOTAL_DROP_BYTE_CNT [63:32]																																7th 64-bit Register High  /  slv_reg12
+				Reset Value	0x0000_0000
+	14			FD_TOTAL_DROP_BYTE_CNT_L	TOTAL_DROP_BYTE_CNT [31:0]																																7th 64-bit Register Low   /  slv_reg13
+				Reset Value	0x0000_0000
+	15		"0x0038
+~
+0x003C"	FD_FCS_DROP_FRAME_CNT_H	FCS_DROP_FRAME_CNT [63:32]																																8th 64-bit Register High  /  slv_reg14
+				Reset Value	0x0000_0000
+	16			FD_FCS_DROP_FRAME_CNT_L	FCS_DROP_FRAME_CNT [31:0]																																8th 64-bit Register Low   /  slv_reg15
+				Reset Value	0x0000_0000
+	17		"0x0040
+~
+0x0044"	FD_FCS_DROP_BYTE_CNT_H	FCS_DROP_BYTE_CNT [63:32]																																9th 64-bit Register High  /  slv_reg16
+				Reset Value	0x0000_0000
+	18			FD_FCS_DROP_BYTE_CNT_L	FCS_DROP_BYTE_CNT [31:0]																																9th 64-bit Register Low   /  slv_reg17
+				Reset Value	0x0000_0000
+	19		"0x0048
+~
+0x004C"	FD_JUMBO_DROP_FRAME_CNT_H	JUMBO_DROP_FRAME_CNT [63:32]																																10th 64-bit Register High  /  slv_reg18
+				Reset Value	0x0000_0000
+	20			FD_JUMBO_DROP_FRAME_CNT_L	JUMBO_DROP_FRAME_CNT [31:0]																																10th 64-bit Register Low   /  slv_reg19
+				Reset Value	0x0000_0000
+	21		"0x0050
+~
+0x0054"	FD_JUMBO_DROP_BYTE_CNT_H	JUMBO_DROP_BYTE_CNT [63:32]																																11th 64-bit Register High  /  slv_reg20
+				Reset Value	0x0000_0000
+	22			FD_JUMBO_DROP_BYTE_CNT_L	JUMBO_DROP_BYTE_CNT [31:0]																																11th 64-bit Register Low   /  slv_reg21
+				Reset Value	0x0000_0000
+	23		"0x0058
+~
+0x005C"	FD_FIFO_FULL_DROP_FRAME_CNT_H	FIFO_FULL_DROP_FRAME_CNT [63:32]																																12th 64-bit Register High  /  slv_reg22
+				Reset Value	0x0000_0000
+	24			FD_FIFO_FULL_DROP_FRAME_CNT_L	FIFO_FULL_DROP_FRAME_CNT [31:0]																																12th 64-bit Register Low   /  slv_reg23
+				Reset Value	0x0000_0000
+	25		"0x0060
+~
+0x0064"	FD_FIFO_FULL_DROP_BYTE_CNT_H	FIFO_FULL_DROP_BYTE_CNT [63:32]																																13th 64-bit Register High  /  slv_reg24
+				Reset Value	0x0000_0000
+	26			FD_FIFO_FULL_DROP_BYTE_CNT_L	FIFO_FULL_DROP_BYTE_CNT [31:0]																																13th 64-bit Register Low   /  slv_reg25
+				Reset Value	0x0000_0000
+	27		"0x0068
+~
+0x006C"																																		14th 64-bit Register High  /  slv_reg26
+				Reset Value
+	28																																				14th 64-bit Register Low   /  slv_reg27
+				Reset Value
+	29		"0x0070
+~
+0x0074"																																		15th 64-bit Register High  /  slv_reg28
+				Reset Value
+	30																																				15th 64-bit Register Low   /  slv_reg29
+				Reset Value
+	31		"0x0078
+~
+0x007C"																																		16th 64-bit Register High  /  slv_reg30
+				Reset Value
+	32																																				16th 64-bit Register Low   /  slv_reg31
+				Reset Value
+	33	"Rx
+
+(Metadata
+Generator)"	"0x0080
+~
+0x0084"																																		17th 64-bit Register High  /  slv_reg32
+				Reset Value
+	34																																				17th 64-bit Register Low   /  slv_reg33
+				Reset Value
+	35		"0x0088
+~
+0x008C"																																		18th 64-bit Register High  /  slv_reg34
+				Reset Value
+	36																																				18th 64-bit Register Low   /  slv_reg35
+				Reset Value
+	37	"Rx
+
+(Rx Frame
+Transmitter)"	"0x0090
+~
+0x0094"																																		19th 64-bit Register High  /  slv_reg36
+				Reset Value
+	38																																				19th 64-bit Register Low   /  slv_reg37
+				Reset Value
+	39		"0x0098
+~
+0x009C"																																		20th 64-bit Register High  /  slv_reg38
+				Reset Value
+	40																																				20th 64-bit Register Low   /  slv_reg39
+				Reset Value
+	41		"0x00A0
+~
+0x00A4"																																		21th 64-bit Register High  /  slv_reg40
+				Reset Value
+	42																																				21th 64-bit Register Low   /  slv_reg41
+				Reset Value
+	42	"FIFO
+
+(META,
+FRAME)"	"0x00A8
+~
+0x00AC"	TSN_RX_FIFO_STATUS_H	RESERVED [63:32]																																22th 64-bit Register High  /  slv_reg42
+				Reset Value	0x0000_0000
+	42			TSN_RX_FIFO_STATUS_L	RES [31:29]			FRAME_FIFO_DATA_CNT [28:16]													RESERVED [15:9]							META_FIFO_DATA_CNT [8:0]									22th 64-bit Register Low   /  slv_reg43
+				Reset Value	0x0000_0000
+
+
+
+	1	"Tx
+
+(Frame
+Stacker)"	"0x00B0
+~
+0x00B4"	FS_GENERAL_STATUS_H	RESERVED [63:58]						HOST_FIFO_RD_CNT [57:48]										RESERVED [47:42]						HOST_FIFO_WR_CNT [41:32]										23th 64-bit Register High  /  slv_reg44
+				Reset Value	0x0000_0000
+	1			FS_GENERAL_STATUS_L	RESERVED [31:4]																												XDMA AXIS TREADY	HOST FIFO USER FULL	HOST FIFO EMPTY	HOST FIFO FULL	23th 64-bit Register Low   /  slv_reg45
+				Reset Value	0x0000_0000
+	1		"0x00B8
+~
+0x00BC"	FS_TOTAL_RX_FRAME_CNT_H	TOTAL_RX_FRAME_CNT [63:32]																																24th 64-bit Register High  /  slv_reg46
+				Reset Value	0x0000_0000
+	2			FS_TOTAL_RX_FRAME_CNT_L	TOTAL_RX_FRAME_CNT [31:0]																																24th 64-bit Register Low   /  slv_reg47
+				Reset Value	0x0000_0000
+	3		"0x00C0
+~
+0x00C4"	FS_TOTAL_RX_16BYTE_CNT_H	TOTAL_RX_16BYTE_CNT [63:32]																																25th 64-bit Register High  /  slv_reg48
+				Reset Value	0x0000_0000
+	4			FS_TOTAL_RX_16BYTE_CNT_L	TOTAL_RX_16BYTE_CNT [31:0]																																25th 64-bit Register Low   /  slv_reg49
+				Reset Value	0x0000_0000
+	5		"0x00C8
+~
+0x00CC"	FS_TOTAL_BACK_PRESSURE_EVENT_CNT_H	TOTAL_BACK_PRESSURE_EVENT_CNT [63:32]																																26th 64-bit Register High  /  slv_reg50
+				Reset Value	0x0000_0000
+	6			FS_TOTAL_BACK_PRESSURE_EVENT_CNT_L	TOTAL_BACK_PRESSURE_EVENT_CNT [31:0]																																26th 64-bit Register Low   /  slv_reg51
+				Reset Value	0x0000_0000
+	9		"0x00D0
+~
+0x00D4"																																		27th 64-bit Register High  /  slv_reg52
+				Reset Value
+	10																																				27th 64-bit Register Low   /  slv_reg53
+				Reset Value
+	11		"0x00D8
+~
+0x00DC"																																		28th 64-bit Register High  /  slv_reg54
+				Reset Value
+	12																																				28th 64-bit Register Low   /  slv_reg55
+				Reset Value
+	13	"Tx
+
+(Frame
+Parser)"	"0x00E0
+~
+0x00E4"	FP_FRAME_TICK_FROM_H	TICK_FROM [63:32]																																29th 64-bit Register High  /  slv_reg56
+				Reset Value	0x0000_0000
+	14			FP_FRAME_TICK_FROM_L	TICK_FROM [31:0]																																29th 64-bit Register Low   /  slv_reg57
+				Reset Value	0x0000_0000
+	15		"0x00E8
+~
+0x00EC"	FP_FRAME_TICK_TO_H	TICK_TO [63:32]																																30th 64-bit Register High  /  slv_reg58
+				Reset Value	0x0000_0000
+	16			FP_FRAME_TICK_TO_L	TICK_TO [31:0]																																30th 64-bit Register Low   /  slv_reg59
+				Reset Value	0x0000_0000
+	17		"0x00F0
+~
+0x00F4"	FP_FRAME_TICK_DELAY_FROM_H	TICK_DELAY_FROM [63:32]																																31th 64-bit Register High  /  slv_reg60
+				Reset Value	0x0000_0000
+	18			FP_FRAME_TICK_DELAY_FROM_L	TICK_DELAY_FROM [31:0]																																31th 64-bit Register Low   /  slv_reg61
+				Reset Value	0x0000_0000
+	19		"0x00F8
+~
+0x00FC"	FP_FRAME_TICK_DELAY_TO_H	TICK_DELAY_TO [63:32]																																32th 64-bit Register High  /  slv_reg62
+				Reset Value	0x0000_0000
+	20			FP_FRAME_TICK_DELAY_TO_L	TICK_DELAY_TO [31:0]																																32th 64-bit Register Low   /  slv_reg63
+				Reset Value	0x0000_0000
+	21		"0x0100
+~
+0x0104"	FP_FRAME_STATUS1_H	RESERVED [63:56]								ALLOC_ADDR [55:48]								RESERVED [47:33]															FAIL_POLICY [32]	33th 64-bit Register High  /  slv_reg64
+				Reset Value	0x0000_0000
+	22			FP_FRAME_STATUS1_L	FRAME_LENGTH [31:16]																TIMESTAMP_ID [15:0]																33th 64-bit Register Low   /  slv_reg65
+				Reset Value	0x0000_0000
+	23		"0x0108
+~
+0x010C"	FP_FRAME_STATUS2_H	RESERVED [63:52]												META_AXIS_HSK_CNT [51:49]			META_ADDR_OFFSET [48]	RESERVED [47:39]									"FRAME_ADDR_
+OFFSET [38:32]"							34th 64-bit Register High  /  slv_reg66
+				Reset Value	0x0000_0000
+	24			FP_FRAME_STATUS2_L	FRAME_AXIS_HSK_CNT [31:16]																RX_FRAME_16BYTE_CNT [15:0]																34th 64-bit Register Low   /  slv_reg67
+				Reset Value	0x0000_0000
+	25		"0x0110
+~
+0x0114"																																		35th 64-bit Register High  /  slv_reg68
+				Reset Value	0x0000_0000
+	26																																				35th 64-bit Register Low   /  slv_reg69
+				Reset Value	0x0000_0000
+	41	"Tx
+
+(Frame
+Scheduler)"	"0x0118
+~
+0x011C"	FSCH_TX_FRAME_STATUS_H	RESERVED [63:48]																TX_FRAME_TSTAMP_ID [47:32]																36th 64-bit Register High  /  slv_reg70
+				Reset Value	0x0000_0000
+	42			FSCH_TX_FRAME_STATUS_L	TX_FRAME_LENGTH [15:0]																RESERVED [15:8]								TX_FRAME_ADDRESS [7:0]								36th 64-bit Register Low   /  slv_reg71
+				Reset Value	0x0000_0000
+	43		"0x0120
+~
+0x0124"	FSCH_TOTAL_NEW_ENTRY_CNT_H	TOTAL_NEW_ENTRY_CNT [63:32]																																37th 64-bit Register High  /  slv_reg72
+				Reset Value	0x0000_0000
+	44			FSCH_TOTAL_NEW_ENTRY_CNT_L	TOTAL_NEW_ENTRY_CNT [31:0]																																37th 64-bit Register Low   /  slv_reg73
+				Reset Value	0x0000_0000
+	45		"0x0128
+~
+0x012C"	FSCH_TOTAL_VALID_ENTRY_CNT_H	TOTAL_VALID_ENTRY_CNT [63:32]																																38th 64-bit Register High  /  slv_reg74
+				Reset Value	0x0000_0000
+	46			FSCH_TOTAL_VALID_ENTRY_CNT_L	TOTAL_VALID_ENTRY_CNT [31:0]																																38th 64-bit Register Low   /  slv_reg75
+				Reset Value	0x0000_0000
+	47		"0x0130
+~
+0x0134"	FSCH_TOTAL_DELAY_ENTRY_CNT_H	TOTAL_DELAY_ENTRY_CNT [63:32]																																39th 64-bit Register High  /  slv_reg76
+				Reset Value	0x0000_0000
+	48			FSCH_TOTAL_DELAY_ENTRY_CNT_L	TOTAL_DELAY_ENTRY_CNT [31:0]																																39th 64-bit Register Low   /  slv_reg77
+				Reset Value	0x0000_0000
+	49		"0x0138
+~
+0x013C"	FSCH_TOTAL_DROP_ENTRY_CNT_H	TOTAL_DROP_ENTRY_CNT [63:32]																																40th 64-bit Register High  /  slv_reg78
+				Reset Value	0x0000_0000
+	50			FSCH_TOTAL_DROP_ENTRY_CNT_L	TOTAL_DROP_ENTRY_CNT [31:0]																																40th 64-bit Register Low   /  slv_reg79
+				Reset Value	0x0000_0000
+	49		"0x0140
+~
+0x0144"																																		41th 64-bit Register High  /  slv_reg80
+				Reset Value
+	50																																				41th 64-bit Register Low   /  slv_reg81
+				Reset Value
+	27	"Tx
+
+(Frame
+Buffer)"	"0x0148
+~
+0x014C"	FBW_BUFFER_WRITE_STATUS1_H	RESERVED [63:40]																								ADDR_FIFO_DATA_CNT [39:32]								42th 64-bit Register High  /  slv_reg82
+				Reset Value	0x0000_0000
+	28			FBW_BUFFER_WRITE_STATUS1_L	RESERVED [31:11]																					BRAM_SEL [10:8]			ALLOC_ADDR [7:0]								42th 64-bit Register Low   /  slv_reg83
+				Reset Value	0x0000_0000
+	29		"0x0150
+~
+0x0154"	FBW_BUFFER_WRITE_STATUS2_H	RESERVED [63:59]					BRAM3_WR_ADDR_LAST [58:48]											RESERVED [47:43]					BRAM2_WR_ADDR_LAST [42:32]											43th 64-bit Register High  /  slv_reg84
+				Reset Value	0x0000_0000
+	30			FBW_BUFFER_WRITE_STATUS2_L	RESERVED [31:27]					BRAM1_WR_ADDR_LAST [26:16]											RESERVED [15:11]					BRAM0_WR_ADDR_LAST [10:0]											43th 64-bit Register Low   /  slv_reg85
+				Reset Value	0x0000_0000
+	31		"0x0158
+~
+0x015C"	FBW_BUFFER_WRITE_STATUS3_H	RESERVED [63:59]					BRAM7_WR_ADDR_LAST [58:48]											RESERVED [47:43]					BRAM6_WR_ADDR_LAST [42:32]											44th 64-bit Register High  /  slv_reg86
+				Reset Value	0x0000_0000
+	32			FBW_BUFFER_WRITE_STATUS3_L	RESERVED [31:27]					BRAM5_WR_ADDR_LAST [26:16]											RESERVED [15:11]					BRAM4_WR_ADDR_LAST [10:0]											44th 64-bit Register Low   /  slv_reg87
+				Reset Value	0x0000_0000
+			"0x0160
+~
+0x0164"	FBW_ADDR_FIFO_CNT_H	RESERVED [63:32]																																45th 64-bit Register High  /  slv_reg88
+				Reset Value	0x0000_0000
+				FBW_ADDR_FIFO_CNT_L	RESERVED [31:8]																								ADDR_FIFO_DATA_CNT [7:0]								45th 64-bit Register Low   /  slv_reg89
+				Reset Value	0x0000_0000
+	33		"0x0168
+~
+0x016C"	FBR_BUFFER_READ_STATUS1_H	RESERVED [63:40]																								DROP_FRAME_ADDR [39:32]								46th 64-bit Register High  /  slv_reg90
+				Reset Value	0x0000_0000
+	34			FBR_BUFFER_READ_STATUS1_L	SELECTED_FRAME_16BYTE_CNT [31:16]																RESERVED [15:11]					BRAM_SEL [2:0]			SELECTED_FRAME_ADDR [7:0]								46th 64-bit Register Low   /  slv_reg91
+				Reset Value	0x0000_0000
+	35		"0x0170
+~
+0x0174"	FBR_BUFFER_READ_STATUS2_H	RESERVED [63:59]					BRAM3_RD_ADDR_LAST [58:48]											RESERVED [47:43]					BRAM2_RD_ADDR_LAST [42:32]											47th 64-bit Register High  /  slv_reg92
+				Reset Value	0x0000_0000
+	36			FBR_BUFFER_READ_STATUS2_L	RESERVED [31:27]					BRAM1_RD_ADDR_LAST [26:16]											RESERVED [15:11]					BRAM0_RD_ADDR_LAST [10:0]											47th 64-bit Register Low   /  slv_reg93
+				Reset Value	0x0000_0000
+	37		"0x0178
+~
+0x017C"	FBR_BUFFER_READ_STATUS3_H	RESERVED [63:59]					BRAM7_RD_ADDR_LAST [58:48]											RESERVED [47:43]					BRAM6_RD_ADDR_LAST [42:32]											48th 64-bit Register High  /  slv_reg94
+				Reset Value	0x0000_0000
+	38			FBR_BUFFER_READ_STATUS3_L	RESERVED [31:27]					BRAM5_RD_ADDR_LAST [26:16]											RESERVED [15:11]					BRAM4_RD_ADDR_LAST [10:0]											48th 64-bit Register Low   /  slv_reg95
+				Reset Value	0x0000_0000
+	39		"0x0180
+~
+0x0184"																																		49th 64-bit Register High  /  slv_reg96
+				Reset Value	0x0000_0000
+	40																																				49th 64-bit Register Low   /  slv_reg97
+				Reset Value	0x0000_0000
+	49	"Tx
+
+(Frame
+Transfer
+FSM)"	"0x0188
+~
+0x018C"	FTRSF_TX_FRAME_STATUS_H	TX_METADATA [63:32]																																50th 64-bit Register High  /  slv_reg98
+				Reset Value	0x0000_0000
+	50			FTRSF_TX_FRAME_STATUS_L	TX_FRAME_LENGTH [15:0]																RESERVED [15:8]								TX_FRAME_ADDRESS [7:0]								50th 64-bit Register Low   /  slv_reg99
+				Reset Value	0x0000_0000
+	49		"0x0190
+~
+0x0194"	FTRSF_GENERAL_STATUS_H	RESERVED [63:35]																													TX_FRAME_FIFO_FULL [34]	TX_META_FIFO_FULL [33]	TX_STATUS [32]	51th 64-bit Register High  /  slv_reg100
+				Reset Value	0x0000_0000
+	50			FTRSF_GENERAL_STATUS_L	RESERVED [31:25]							"TX_FRAME_FIFO_
+DATA_COUNT [24:16]"									RESERVED [15:9]							TX_META_FIFO_DATA_COUNT [8:0]									51th 64-bit Register Low   /  slv_reg101
+				Reset Value	0x0000_0000
+	49		"0x0198
+~
+0x019C"	FTRSF_TOTAL_TX_FRAME_CNT_H	TOTAL_TX_FRAME_CNT [63:32]																																52th 64-bit Register High  /  slv_reg102
+				Reset Value	0x0000_0000
+	50			FTRSF_TOTAL_TX_FRAME_CNT_L	TOTAL_TX_FRAME_CNT [31:0]																																52th 64-bit Register Low   /  slv_reg103
+				Reset Value	0x0000_0000
+	49		"0x01A0
+~
+0x01A4"	FTRSF_TOTAL_META_FIFO_FULL_CNT_H	TOTAL_META_FIFO_FULL_CNT [63:32]																																53th 64-bit Register High  /  slv_reg104
+				Reset Value	0x0000_0000
+	50			FTRSF_TOTAL_META_FIFO_FULL_CNT_L	TOTAL_META_FIFO_FULL_CNT [31:0]																																53th 64-bit Register Low   /  slv_reg105
+				Reset Value	0x0000_0000
+	49		"0x01A8
+~
+0x01AC"	FTRSF_TOTAL_FRAME_FIFO_FULL_CNT_H	TOTAL_FRAME_FIFO_FULL_CNT [63:32]																																54th 64-bit Register High  /  slv_reg106
+				Reset Value	0x0000_0000
+	50			FTRSF_TOTAL_FRAME_FIFO_FULL_CNT_L	TOTAL_FRAME_FIFO_FULL_CNT [31:0]																																54th 64-bit Register Low   /  slv_reg107
+				Reset Value	0x0000_0000
+	49		"0x01B0
+~
+0x01B4"																																		55th 64-bit Register High  /  slv_reg108
+				Reset Value
+	50																																				55th 64-bit Register Low   /  slv_reg109
+				Reset Value
+	49	"Tx
+
+(Frame
+Transmitter
+FSM)"	"0x01B8
+~
+0x01BC"	FT_TX_FRAME_STATUS1_H	TX_METADATA [63:32]																																56th 64-bit Register High  /  slv_reg110
+				Reset Value	0x0000_0000
+	50			FT_TX_FRAME_STATUS1_L	TX_FRAME_16BYTE_LENGTH [31:16]																TX_FRAME_LENGTH [15:0]																56th 64-bit Register Low   /  slv_reg111
+				Reset Value	0x0000_0000
+	49		"0x01C0
+~
+0x01C4"	FT_TX_FRAME_STATUS2_H	RESERVED [63:48]																TX_FRAME_TSTAMP_ID [47:32]																57th 64-bit Register High  /  slv_reg112
+				Reset Value	0x0000_0000
+	50			FT_TX_FRAME_STATUS2_L	TX_16BYTE_CNT [31:16]																TX_BYTE_CNT [15:0]																57th 64-bit Register Low   /  slv_reg113
+				Reset Value	0x0000_0000
+	49		"0x01C8
+~
+0x01CC"	FT_TOTAL_TX_FRAME_CNT_H	TOTAL_TX_FRAME_CNT [63:32]																																58th 64-bit Register High  /  slv_reg114
+				Reset Value	0x0000_0000
+	50			FT_TOTAL_TX_FRAME_CNT_L	TOTAL_TX_FRAME_CNT [31:0]																																58th 64-bit Register Low   /  slv_reg115
+				Reset Value	0x0000_0000
+	49		"0x01D0
+~
+0x01D4"	FT_TOTAL_TX_BYTE_CNT_H	TOTAL_TX_BYTE_CNT [63:32]																																59th 64-bit Register High  /  slv_reg116
+				Reset Value	0x0000_0000
+	50			FT_TOTAL_TX_BYTE_CNT_L	TOTAL_TX_BYTE_CNT [31:0]																																59th 64-bit Register Low   /  slv_reg117
+				Reset Value	0x0000_0000
+	49		"0x01D8
+~
+0x01DC"	FT_TX_TSTAMP1_H	TX_TIMESTAMP_1 [63:32]																																60th 64-bit Register High  /  slv_reg118
+				Reset Value	0x0000_0000
+	50			FT_TX_TSTAMP1_L	TX_TIMESTAMP_1 [31:0]																																60th 64-bit Register Low   /  slv_reg119
+				Reset Value	0x0000_0000
+	49		"0x01E0
+~
+0x01E4"	FT_TX_TSTAMP2_H	TX_TIMESTAMP_2 [63:32]																																61th 64-bit Register High  /  slv_reg120
+				Reset Value	0x0000_0000
+	50			FT_TX_TSTAMP2_L	TX_TIMESTAMP_2 [31:0]																																61th 64-bit Register Low   /  slv_reg121
+				Reset Value	0x0000_0000
+	49		"0x01E8
+~
+0x01EC"	FT_TX_TSTAMP3_H	TX_TIMESTAMP_3 [63:32]																																62th 64-bit Register High  /  slv_reg122
+				Reset Value	0x0000_0000
+	50			FT_TX_TSTAMP3_L	TX_TIMESTAMP_3 [31:0]																																62th 64-bit Register Low   /  slv_reg123
+				Reset Value	0x0000_0000
+	49		"0x01F0
+~
+0x01F4"	FT_TX_TSTAMP4_H	TX_TIMESTAMP_4 [63:32]																																63th 64-bit Register High  /  slv_reg124
+				Reset Value	0x0000_0000
+	50			FT_TX_TSTAMP4_L	TX_TIMESTAMP_4 [31:0]																																63th 64-bit Register Low   /  slv_reg125
+				Reset Value	0x0000_0000
+	49		"0x01F8
+~
+0x01FC"																																		64th 64-bit Register High  /  slv_reg126
+				Reset Value
+	50																																				64th 64-bit Register Low   /  slv_reg127
+				Reset Value
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif
+
 struct reginfo reg_general[] = {{"TSN version", REG_TSN_VERSION},   
 #if 0
                                 {"TSN Configuration", REG_TSN_CONFIG},
@@ -548,7 +1998,8 @@ static bool t1s_hw_writereg(struct ctrl_cmd_reg* p_regData) {
 #define RX_FRAME_FIFO_BASE 0x1000
 #define TX_FRAME_FIFO_BASE 0x2000
 #define REG_READ_FIFO_BASE 0x3000
-#define REG_WRITE_FIFO_BASE 0xF000
+#define REG_WRITE_FIFO_BASE 0x4000
+#define METADATA_FIFO_BASE 0xF000
 
 #define SPI_CMD_WRITE 0x01
 #define SPI_CMD_READ 0x02
