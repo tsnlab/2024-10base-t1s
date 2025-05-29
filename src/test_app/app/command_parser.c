@@ -336,7 +336,7 @@ int do_write(int mms, int addr, int data) {
         printf("spi_init failed; the error code is %d\n", spi_ret);
         return -1;
     }
-    return api_write_register_in_mms(mms, addr, data);
+    return api_write_register_in_register_group(mms, addr, data);
 }
 
 int do_config_plca() {
