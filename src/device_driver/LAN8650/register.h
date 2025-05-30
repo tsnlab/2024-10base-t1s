@@ -18,6 +18,219 @@ enum {
 #define DUMPREG_TX 0x4
 #define DUMPREG_ALL 0x7
 
+/* Register Class: General */
+#define TSN_SYSTEM_INFO_H 0x0278 /* Year [63:56] : Month [55:48] : Day [47:40] : Commit # [39:32] */
+#define TSN_SYSTEM_INFO_L 0x027C /* RESERVED [31:0] */
+
+#define TSN_MAC_ADDR_H 0x0280 /* RESERVED [63:48] : MAC Address [47:32] */
+#define TSN_MAC_ADDR_L 0x0284 /* MAC Address [31:0] */
+
+#define TSN_SYSCOUNT_H 0x2888 /* SYSTEM_COUNT [63:32] */
+#define TSN_SYSCOUNT_L 0x288C /* SYSTEM_COUNT [31:0] */
+
+#define TSN_SYSTEM_CONTROL_H 0x0290 /* RESERVED [63:32] */
+#define TSN_SYSTEM_CONTROL_L 0x0294 /* RESERVED [31:1] : TSN ENABLE */
+#define TSN_RX_CONTROL_H 0x0298 /* MAX_FRAME_LENGTH [63:48] : */
+                                /* RESERVED [47:45] : */
+                                /* MAX_FRAME_FIFO_DATA_COUNT [44:32] */
+#define TSN_RX_CONTROL_L 0x029C /* RESERVED [31:25] : */
+                                /* MAX_META_FIFO_DATA_COUNT [24:16] : */
+                                /* RESERVED [15:8] : CLEAR DROP BYTE COUNT : */
+                                /* CLEAR DROP FRAME COUNT : */
+                                /* CLEAR RX BYTE COUNT : */
+                                /* CLEAR RX FRAME COUNT : */
+                                /* CHECK-SUM ENABLE : */
+                                /* JUMBO DROP :  FCS OFFLOAD : */
+                                /* VLAN OFFLOAD */
+#define TSN_TX_CONTROL_H 0x02A0 /* RESERVED [63:32] */
+#define TSN_TX_CONTROL_L 0x02A4 /* ETHERNET_INTER_FRAME_GAP [31:16] : */
+                                /* RESERVED [15:10] : */
+                                /* HOST_FIFO_FULL_LIMIT [9:0] */
+#define PPS_PULSE_AT_H 0x02A8 /* PULSE_AT [63:32] */
+#define PPS_PULSE_AT_L 0x02AC /* PULSE_AT [31:0] */
+#define PPS_CYCLE_1S_H 0x02B0 /* CYCLE_1S [63:32] */
+#define PPS_CYCLE_1S_L 0x02B4 /* CYCLE_1S [31:0] */
+
+/* Register Class: Rx (Frame Decoder) */
+#define FD_RX_TSTAMP_H 0x0000 /* RX_TSTAMP [63:32] */
+#define FD_RX_TSTAMP_L 0x0004 /* RX_TSTAMP [31:0] */
+#define FD_RX_FRAME_STATUS1_H 0x0008 /* CHECK_SUM [63:32] */
+#define FD_RX_FRAME_STATUS1_L 0x000C /* VLAN_TAG [31:16] : FRAME_LENGTH [15:0]  */
+#define FD_RX_FRAME_STATUS2_H 0x0010 /* RESERVED [63:32] */
+#define FD_RX_FRAME_STATUS2_L 0x0014 /* RESERVED [31:5] : VLAN OFFLOAD FLAG : */
+                                     /* FCS OFFLOAD FLAG : FCS ERROR FLAG : */
+                                     /* JUMBO ERROR FLAG : FIFO FULL FLAG */
+#define FD_TOTAL_RX_FRAME_CNT_H 0x0018 /* TOTAL_RX_FRAME_CNT [63:32] */
+#define FD_TOTAL_RX_FRAME_CNT_L 0x001C /* TOTAL_RX_FRAME_CNT [31:0] */
+#define FD_TOTAL_RX_BYTE_CNT_H 0x0020 /* TOTAL_RX_BYTE_CNT [63:32] */
+#define FD_TOTAL_RX_BYTE_CNT_L 0x0024 /* TOTAL_RX_BYTE_CNT [31:0] */
+#define FD_TOTAL_DROP_FRAME_CNT_H 0x0028 /* TOTAL_DROP_FRAME_CNT [63:32] */
+#define FD_TOTAL_DROP_FRAME_CNT_L 0x002C /* TOTAL_DROP_FRAME_CNT [31:0] */
+#define FD_TOTAL_DROP_BYTE_CNT_H 0x0030 /* TOTAL_DROP_BYTE_CNT [63:32] */
+#define FD_TOTAL_DROP_BYTE_CNT_L 0x0034 /* TOTAL_DROP_BYTE_CNT [31:0] */
+#define FD_FCS_DROP_FRAME_CNT_H 0x0038 /* FCS_DROP_FRAME_CNT [63:32] */
+#define FD_FCS_DROP_FRAME_CNT_L 0x003C /* FCS_DROP_FRAME_CNT [31:0] */
+#define FD_FCS_DROP_BYTE_CNT_H 0x0040 /* FCS_DROP_BYTE_CNT [63:32] */
+#define FD_FCS_DROP_BYTE_CNT_L 0x0044 /* FCS_DROP_BYTE_CNT [31:0] */
+#define FD_JUMBO_DROP_FRAME_CNT_H 0x0048 /* JUMBO_DROP_FRAME_CNT [63:32] */
+#define FD_JUMBO_DROP_FRAME_CNT_L 0x004C /* JUMBO_DROP_FRAME_CNT [31:0] */
+#define FD_JUMBO_DROP_BYTE_CNT_H 0x0050 /* JUMBO_DROP_BYTE_CNT [63:32] */
+#define FD_JUMBO_DROP_BYTE_CNT_L 0x0054 /* JUMBO_DROP_BYTE_CNT [31:0] */
+#define FD_FIFO_FULL_DROP_FRAME_CNT_H 0x0058 /* FIFO_FULL_DROP_FRAME_CNT [63:32] */
+#define FD_FIFO_FULL_DROP_FRAME_CNT_L 0x005C /* FIFO_FULL_DROP_FRAME_CNT [31:0] */
+#define FD_FIFO_FULL_DROP_BYTE_CNT_H 0x0060 /* FIFO_FULL_DROP_BYTE_CNT [63:32] */
+#define FD_FIFO_FULL_DROP_BYTE_CNT_L 0x0064 /* FIFO_FULL_DROP_BYTE_CNT [31:0] */
+
+/* Register Class: FIFO (META, FRAME) */
+#define TSN_RX_FIFO_STATUS_H 0x00A8 /* RESERVED [63:32] */
+#define TSN_RX_FIFO_STATUS_L 0x00AC /* RES [31:29] : */
+                                    /* FRAME_FIFO_DATA_CNT [28:16] : */
+                                    /* RESERVED [15:9] : */
+                                    /* META_FIFO_DATA_CNT [8:0] */
+
+
+/* Register Class: Tx (Frame Stacker) */
+#define FS_GENERAL_STATUS_H 0x00B0 /* RESERVED [63:58] : */
+                                   /* HOST_FIFO_RD_CNT [57:48] : */
+                                   /* RESERVED [47:42] : */
+                                   /* HOST_FIFO_WR_CNT [41:32] */
+#define FS_GENERAL_STATUS_L 0x00B4 /* RESERVED [31:4] : XDMA AXIS TREADY : */
+                                   /* HOST FIFO USER FULL */
+                                   /* HOST FIFO EMPTY : HOST FIFO FULL */
+#define FS_TOTAL_RX_FRAME_CNT_H 0x00B8 /* TOTAL_RX_FRAME_CNT [63:32] */
+#define FS_TOTAL_RX_FRAME_CNT_L 0x00BC /* TOTAL_RX_FRAME_CNT [31:0] */
+#define FS_TOTAL_RX_16BYTE_CNT_H 0x00C0 /* TOTAL_RX_16BYTE_CNT [63:32] */
+#define FS_TOTAL_RX_16BYTE_CNT_L 0x00C4 /* TOTAL_RX_16BYTE_CNT [31:0] */
+#define FS_TOTAL_BACK_PRESSURE_EVENT_CNT_H 0x00C8 /* TOTAL_BACK_PRESSURE_EVENT_CNT [63:32] */
+#define FS_TOTAL_BACK_PRESSURE_EVENT_CNT_L 0x00CC /* TOTAL_BACK_PRESSURE_EVENT_CNT [31:0] */
+
+
+/* Register Class: Tx (Frame Parser) */
+#define FP_FRAME_TICK_FROM_H 0x00E0 /* TICK_FROM [63:32] */
+#define FP_FRAME_TICK_FROM_L 0x00E4 /* TICK_FROM [31:0] */
+#define FP_FRAME_TICK_TO_H 0x00E8 /* TICK_TO [63:32] */
+#define FP_FRAME_TICK_TO_L 0x00EC /* TICK_TO [31:0] */
+#define FP_FRAME_TICK_DELAY_FROM_H 0x00F0 /* TICK_DELAY_FROM [63:32] */
+#define FP_FRAME_TICK_DELAY_FROM_L 0x00F4 /* TICK_DELAY_FROM [31:0] */
+#define FP_FRAME_TICK_DELAY_TO_H 0x00F8 /* TICK_DELAY_TO [63:32] */
+#define FP_FRAME_TICK_DELAY_TO_L 0x00FC /* TICK_DELAY_TO [31:0] */
+#define FP_FRAME_STATUS1_H 0x0100 /* RESERVED [63:56] : ALLOC_ADDR [55:48] : */
+                                  /* RESERVED [47:33] : FAIL_POLICY [32] */
+#define FP_FRAME_STATUS1_L 0x0104 /* FRAME_LENGTH [31:16] : TIMESTAMP_ID [15:0] */
+#define FP_FRAME_STATUS2_H 0x0108 /* RESERVED [63:52] : */
+                                  /* META_AXIS_HSK_CNT [51:49] : */
+                                  /* META_ADDR_OFFSET [48] : */
+                                  /* RESERVED [47:39] : */
+                                  /* FRAME_ADDR_OFFSET [38:32] */
+#define FP_FRAME_STATUS2_L 0x010C /* FRAME_AXIS_HSK_CNT [31:16] : */
+                                  /* RX_FRAME_16BYTE_CNT [15:0] */
+
+
+/* Register Class: Tx (Frame Scheduler) */
+#define FSCH_TX_FRAME_STATUS_H 0x0118 /* RESERVED [63:48] : */
+                                      /* TX_FRAME_TSTAMP_ID [47:32] */
+#define FSCH_TX_FRAME_STATUS_L 0x011C /* TX_FRAME_LENGTH [15:0] : */
+                                      /* RESERVED [15:8] : */
+                                      /* TX_FRAME_ADDRESS [7:0] */
+#define FSCH_TOTAL_NEW_ENTRY_CNT_H 0x0120 /* TOTAL_NEW_ENTRY_CNT [63:32] */
+#define FSCH_TOTAL_NEW_ENTRY_CNT_L 0x0124 /* TOTAL_NEW_ENTRY_CNT [31:0] */
+#define FSCH_TOTAL_VALID_ENTRY_CNT_H 0x0128 /* TOTAL_VALID_ENTRY_CNT [63:32] */
+#define FSCH_TOTAL_VALID_ENTRY_CNT_L 0x012C /* TOTAL_VALID_ENTRY_CNT [31:0] */
+#define FSCH_TOTAL_DELAY_ENTRY_CNT_H 0x0130 /* TOTAL_DELAY_ENTRY_CNT [63:32] */
+#define FSCH_TOTAL_DELAY_ENTRY_CNT_L 0x0134 /* TOTAL_DELAY_ENTRY_CNT [31:0] */
+#define FSCH_TOTAL_DROP_ENTRY_CNT_H 0x0138 /* TOTAL_DROP_ENTRY_CNT [63:32] */
+#define FSCH_TOTAL_DROP_ENTRY_CNT_L 0x013C /* TOTAL_DROP_ENTRY_CNT [31:0] */
+
+
+/* Register Class: Tx (Frame Buffer) */
+#define FBW_BUFFER_WRITE_STATUS1_H 0x0148 /* RESERVED [63:40] : */
+                                          /* ADDR_FIFO_DATA_CNT [39:32] */
+#define FBW_BUFFER_WRITE_STATUS1_L 0x014C /* RESERVED [31:11] : */
+                                          /* BRAM_SEL [10:8] : ALLOC_ADDR [7:0] */
+#define FBW_BUFFER_WRITE_STATUS2_H 0x0150 /* RESERVED [63:59] : */
+                                          /* BRAM3_WR_ADDR_LAST [58:48] : */
+                                          /* RESERVED [47:43] : */
+                                          /* BRAM2_WR_ADDR_LAST [42:32] */
+#define FBW_BUFFER_WRITE_STATUS2_L 0x0154 /* RESERVED [31:27] : */
+                                          /* BRAM1_WR_ADDR_LAST [26:16] : */
+                                          /* RESERVED [15:11] : */
+                                          /* BRAM0_WR_ADDR_LAST [10:0] */
+#define FBW_BUFFER_WRITE_STATUS3_H 0x0158 /* RESERVED [63:59] : */
+                                          /* BRAM7_WR_ADDR_LAST [58:48] : */
+                                          /* RESERVED [47:43] : */
+                                          /* BRAM6_WR_ADDR_LAST [42:32] */
+#define FBW_BUFFER_WRITE_STATUS3_L 0x015C /* RESERVED [31:27] : */
+                                          /* BRAM5_WR_ADDR_LAST [26:16] */
+                                          /* RESERVED [15:11] */
+                                          /* BRAM4_WR_ADDR_LAST [10:0] */
+#define FBW_ADDR_FIFO_CNT_H 0x0160 /* RESERVED [63:32] */
+#define FBW_ADDR_FIFO_CNT_L 0x0164 /* RESERVED [31:8] : */
+                                   /* ADDR_FIFO_DATA_CNT [7:0] */
+#define FBR_BUFFER_READ_STATUS1_H 0x0168 /* RESERVED [63:40] : */
+                                         /* DROP_FRAME_ADDR [39:32] */
+#define FBR_BUFFER_READ_STATUS1_L 0x016C /* SELECTED_FRAME_16BYTE_CNT [31:16] : */
+                                         /* RESERVED [15:11] : */
+                                         /* BRAM_SEL [2:0] : */
+                                         /* SELECTED_FRAME_ADDR [7:0] */
+#define FBR_BUFFER_READ_STATUS2_H 0x0170 /* RESERVED [63:59] : */
+                                         /* BRAM3_RD_ADDR_LAST [58:48] : */
+                                         /* RESERVED [47:43] : */
+                                         /* BRAM2_RD_ADDR_LAST [42:32] */
+#define FBR_BUFFER_READ_STATUS2_L 0x0174 /* RESERVED [31:27] : */
+                                         /* BRAM1_RD_ADDR_LAST [26:16] : */
+                                         /* RESERVED [15:11] : */
+                                         /* BRAM0_RD_ADDR_LAST [10:0] */
+#define FBR_BUFFER_READ_STATUS3_H 0x0178 /* RESERVED [63:59] : */
+                                         /* BRAM7_RD_ADDR_LAST [58:48] : */
+                                         /* RESERVED [47:43] : */
+                                         /* BRAM6_RD_ADDR_LAST [42:32] */
+#define FBR_BUFFER_READ_STATUS3_L 0x017C /* RESERVED [31:27] : */
+                                         /* BRAM5_RD_ADDR_LAST [26:16] : */
+                                         /* RESERVED [15:11] : */
+                                         /* BRAM4_RD_ADDR_LAST [10:0] */
+
+/* Register Class: Tx (Frame Transfer FSM) */
+#define FTRSF_TX_FRAME_STATUS_H 0x0188 /* TX_METADATA [63:32] */
+#define FTRSF_TX_FRAME_STATUS_L 0x018C /* TX_FRAME_LENGTH [15:0] : */
+                                       /* RESERVED [15:8] : */
+                                       /* TX_FRAME_ADDRESS [7:0] */
+#define FTRSF_GENERAL_STATUS_H 0x0190 /* RESERVED [63:35] : */
+                                      /* TX_FRAME_FIFO_FULL [34] : */
+                                      /* TX_META_FIFO_FULL [33] : */
+                                      /* TX_STATUS [32] */
+#define FTRSF_GENERAL_STATUS_L 0x0194 /* RESERVED [31:25] : */
+                                      /* TX_FRAME_FIFO_DATA_COUNT [24:16] : */
+                                      /* RESERVED [15:9] : */
+                                      /* TX_META_FIFO_DATA_COUNT [8:0] */
+#define FTRSF_TOTAL_TX_FRAME_CNT_H 0x0198 /* TOTAL_TX_FRAME_CNT [63:32] */
+#define FTRSF_TOTAL_TX_FRAME_CNT_L 0x019C /* TOTAL_TX_FRAME_CNT [31:0] */
+#define FTRSF_TOTAL_META_FIFO_FULL_CNT_H 0x01A0 /* TOTAL_META_FIFO_FULL_CNT [63:32] */
+#define FTRSF_TOTAL_META_FIFO_FULL_CNT_L 0x01A4 /* TOTAL_META_FIFO_FULL_CNT [31:0] */
+#define FTRSF_TOTAL_FRAME_FIFO_FULL_CNT_H 0x01A8 /* TOTAL_FRAME_FIFO_FULL_CNT [63:32] */
+#define FTRSF_TOTAL_FRAME_FIFO_FULL_CNT_L 0x01AC /* TOTAL_FRAME_FIFO_FULL_CNT [31:0] */
+
+/* Register Class: Tx (Frame Transmitter FSM) */
+#define FT_TX_FRAME_STATUS1_H 0x01B8 /* TX_METADATA [63:32] */
+#define FT_TX_FRAME_STATUS1_L 0x01BC /* TX_FRAME_16BYTE_LENGTH [31:16] : */
+                                     /* TX_FRAME_LENGTH [15:0] */
+#define FT_TX_FRAME_STATUS2_H 0x01C0 /* RESERVED [63:48] : */
+                                     /* TX_FRAME_TSTAMP_ID [47:32] */
+#define FT_TX_FRAME_STATUS2_L 0x01C4 /* TX_16BYTE_CNT [31:16] : */
+                                     /* TX_BYTE_CNT [15:0] */
+#define FT_TOTAL_TX_FRAME_CNT_H 0x01C8 /* TOTAL_TX_FRAME_CNT [63:32] */
+#define FT_TOTAL_TX_FRAME_CNT_L 0x01CC /* TOTAL_TX_FRAME_CNT [31:0] */
+#define FT_TOTAL_TX_BYTE_CNT_H 0x01D0 /* TOTAL_TX_BYTE_CNT [63:32] */
+#define FT_TOTAL_TX_BYTE_CNT_L 0x01D4 /* TOTAL_TX_BYTE_CNT [31:0] */
+#define FT_TX_TSTAMP1_H 0x01D8 /* TX_TIMESTAMP_1 [63:32] */
+#define FT_TX_TSTAMP1_L 0x01DC /* TX_TIMESTAMP_1 [31:0] */
+#define FT_TX_TSTAMP2_H 0x01E0 /* TX_TIMESTAMP_2 [63:32] */
+#define FT_TX_TSTAMP2_L 0x01E4 /* TX_TIMESTAMP_2 [31:0] */
+#define FT_TX_TSTAMP3_H 0x01E8 /* TX_TIMESTAMP_3 [63:32] */
+#define FT_TX_TSTAMP3_L 0x01EC /* TX_TIMESTAMP_3 [31:0] */
+#define FT_TX_TSTAMP4_H 0x01F0 /* TX_TIMESTAMP_4 [63:32] */
+#define FT_TX_TSTAMP4_L 0x01F4 /* TX_TIMESTAMP_4 [31:0] */
+
+
 #define REG_TSN_VERSION 0x0000
 #define REG_TSN_CONFIG 0x0004
 #define REG_TSN_CONTROL 0x0008
