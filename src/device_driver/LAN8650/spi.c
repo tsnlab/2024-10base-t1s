@@ -3,8 +3,8 @@
 #include "arch.h"
 #include "arp_test.h"
 
-// #define SPI_COMM_SPEED (15000000) // 15MHz speed
-#define SPI_COMM_SPEED (32000) // 15MHz speed
+#define SPI_COMM_SPEED (15000000) // 15MHz speed
+// #define SPI_COMM_SPEED (32000) // 32KHz speed
 #define SPI_CHANNEL (0)           // Channel 0
 #define SPI_FLAGS (0)             // No special setup
 

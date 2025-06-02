@@ -31,8 +31,14 @@ menu_command_t main_command_tbl[] = {
     {"read", EXECUTION_ATTR, process_main_read, "   read -g <Register Group>\n",
      "   Read all register values in Register Group\n"
      "        <Register Group> default value: 0 ( 0: General Registers\n"
-     "                                            1: Rx Registers\n"
-     "                                            2: Tx Registers\n"},
+     "                                            1: Frame Decoder Registers\n"
+     "                                            2: META, FRAME Registers\n"
+     "                                            3: Frame Stacker Registers\n"
+     "                                            4: Frame Parser Registers\n"
+     "                                            5: Frame Scheduler Registers\n"
+     "                                            6: Frame Buffer Registers\n"
+     "                                            7: Frame Transfer FSM Registers\n"
+     "                                            8: Frame Transmitter FSM Registers\n"},
     {"write", EXECUTION_ATTR, process_main_write, "   write -a <Address> -d <Data>\n",
      "   Write data value to register at address\n"
      "        <Address> default value: 0\n"
@@ -556,9 +562,15 @@ int process_main_read(int argc, const char* argv[], menu_command_t* menu_tbl) {
                 return -1;
             }
             switch (reg_grp) {
-            case 0x00: /* General Registers */
-            case 0x01: /* Rx Registers */
-            case 0x02: /* Tx Registers */
+            case 0: /* General Registers */
+            case 1: /* Frame Decoder Registers */
+            case 2: /* META, FRAME Registers */
+            case 3: /* Frame Stacker Registers */
+            case 4: /* Frame Parser Registers */
+            case 5: /* Frame Scheduler Registers */
+            case 6: /* Frame Buffer Registers */
+            case 7: /* Frame Transfer FSM Registers */
+            case 8: /* Frame Transmitter FSM Registers */
                 break;
             default:
                 printf("Register Group %d is out of range.\n", reg_grp);

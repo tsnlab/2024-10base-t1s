@@ -18,6 +18,19 @@ enum {
 #define DUMPREG_TX 0x4
 #define DUMPREG_ALL 0x7
 
+/* Register Groups */
+enum {
+    RG_GENERAL = 0x00,  /* General Registers */
+    RG_FRAME_DECODER = 0x01,  /* Frame Decoder Registers */
+    RG_META_FRAME = 0x02,  /* META, FRAME Registers */
+    RG_FRAME_STACKER = 0x03,  /* Frame Stacker Registers */
+    RG_FRAME_PARSER = 0x04,  /* Frame Parser Registers */
+    RG_FRAME_SCHEDULER = 0x05,  /* Frame Scheduler Registers */
+    RG_FRAME_BUFFER = 0x06,  /* Frame Buffer Registers */
+    RG_FRAME_TRANSFER_FSM = 0x07,  /* Frame Transfer FSM Registers */
+    RG_FRAME_TRANSMITTER_FSM = 0x08,  /* Frame Transmitter FSM Registers */
+};
+
 /* Register Class: General */
 #define TSN_SYSTEM_INFO_H 0x0278 /* Year [63:56] : Month [55:48] : Day [47:40] : Commit # [39:32] */
 #define TSN_SYSTEM_INFO_L 0x027C /* RESERVED [31:0] */

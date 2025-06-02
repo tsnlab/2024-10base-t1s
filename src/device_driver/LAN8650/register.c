@@ -758,20 +758,20 @@ static bool mpw_hw_readreg(struct mpw_ctrl_cmd_reg* p_regInfoInput, struct mpw_c
     txbuffer[1] = (uint8_t)((p_regInfoInput->address & 0xFF00) >> 8); /* Target Address[15:8] */
     txbuffer[2] = (uint8_t)(p_regInfoInput->address & 0xFF);          /* Target Address[7:0] */
 
-    numberof_bytestosend = 10; // SPI_READ_CMD_LENGTH; /* Command(1) + Target Address(2) + Register Value(4) */
+    numberof_bytestosend = SPI_READ_CMD_LENGTH; /* Command(1) + Target Address(2) + Register Value(4) */
 
     printf("%s\n", __func__);
-    for(int id=0; id< 10; id++) {
+    for(int id=0; id< SPI_READ_CMD_LENGTH; id++) {
         printf("txbuffer[%2d]: 0x%02x\n", id, txbuffer[id] & 0xff);
     }
 
-    for(int id=0; id<10; id++) {
+    for(int id=0; id<SPI_READ_CMD_LENGTH; id++) {
         printf("rxbuffer[%2d]: 0x%02x\n", id, rxbuffer[id] & 0xff);
     }
 
     spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
 
-    for(int id=0; id<10; id++) {
+    for(int id=0; id<SPI_READ_CMD_LENGTH; id++) {
         printf("rxbuffer[%2d]: 0x%02x\n", id, rxbuffer[id] & 0xff);
     }
 
@@ -847,16 +847,16 @@ int clear_status(void) {
     }
 }
 
-static void dump_reginfo(uint8_t mms, struct reginfo* reginfo) {
+static void dump_reginfo(uint8_t reg_grp, struct reginfo* reginfo) {
 
     for (int i = 0; reginfo[i].address >= 0; i++) {
         if (reginfo[i].desc[0] == '@') {
-            uint64_t ll = read_register(mms, reginfo[i].address);
-            ll = (ll << 32) | read_register(mms, reginfo[i].address + 4);
+            uint64_t ll = read_register(reg_grp, reginfo[i].address);
+            ll = (ll << 32) | read_register(reg_grp, reginfo[i].address + 4);
             printf("address: 0x%04x - value: 0x%016x - %s\n", reginfo[i].address, ll, &(reginfo[i].desc[1]));
         } else {
             printf("address: 0x%04x - value: 0x%08x - %s\n", reginfo[i].address,
-                   read_register(mms, (uint16_t)reginfo[i].address), reginfo[i].desc);
+                   read_register(reg_grp, (uint16_t)reginfo[i].address), reginfo[i].desc);
         }
     }
 }
@@ -883,14 +883,33 @@ static int read_register_in_mms(uint8_t mms) {
 
 static int read_register_in_register_group(uint8_t reg_grp) {
     switch (reg_grp) {
-    case MMS0: /* General Registers */
-        dump_reginfo(reg_grp, reg_general);
+    case RG_GENERAL: /* General Registers */
+        // dump_reginfo(reg_grp, reg_general);
+        dump_reginfo(reg_grp, reg_mpw_general);
         break;
-    case MMS1: /* Rx Registers */
-        dump_reginfo(reg_grp, reg_rx);
+    case RG_FRAME_DECODER: /* Frame Decoder Registers */
+        dump_reginfo(reg_grp, reg_frm_decoder);
         break;
-    case MMS2: /* Tx  Registers */
-        dump_reginfo(reg_grp, reg_tx);
+    case RG_META_FRAME: /* META, FRAME Registers */
+        dump_reginfo(reg_grp, reg_fifo_meta_frame);
+        break;
+    case RG_FRAME_STACKER: /* Frame Stacker Registers */
+        dump_reginfo(reg_grp, reg_frame_stacker);
+        break;
+    case RG_FRAME_PARSER: /* Frame Parser Registers */
+        dump_reginfo(reg_grp, reg_frame_parser);
+        break;
+    case RG_FRAME_SCHEDULER: /* Frame Scheduler Registers */
+        dump_reginfo(reg_grp, reg_frame_scheduler);
+        break;
+    case RG_FRAME_BUFFER: /* Frame Buffer Registers */
+        dump_reginfo(reg_grp, reg_tx_frame_buffer);
+        break;
+    case RG_FRAME_TRANSFER_FSM: /* Frame Transfer FSM Registers */
+        dump_reginfo(reg_grp, reg_tx_frame_transfer_fsm);
+        break;
+    case RG_FRAME_TRANSMITTER_FSM: /* Frame Transmitter FSM Registers */
+        dump_reginfo(reg_grp, reg_tx_frame_transmitter_fsm);
         break;
     default:
         printf("%s - Unknown Register Group(0x%02x)\n", __func__, reg_grp);
