@@ -42,17 +42,38 @@ struct ctrl_cmd_reg {
     uint32_t databuffer[MAX_CONTROL_CMD_LEN];
 };
 
-struct mpw_ctrl_cmd_reg {
+#define SPI_MPW_CMD_MAX_REG_NUM 2
+#define MPW_MAX_PAYLOAD_BYTE (1536) // TODO: This is configurable so need to change based on configuration
+#define MPW_MAX_BUFFER_SIZE (MPW_MAX_PAYLOAD_BYTE + 32) // TODO: This is configurable so need to change based on configuration
+
+struct mpw_cmd_header {
     uint8_t cmd;
-    uint8_t length;
     uint16_t address;
-    uint32_t databuffer[MAX_CONTROL_CMD_LEN];
-};
+} __attribute__((packed, scalar_storage_order("big-endian")));
 
 struct mpw_read_reg_cmd {
     uint8_t cmd;
     uint16_t address;
+} __attribute__((packed, scalar_storage_order("big-endian")));
+
+struct mpw_ctrl_cmd_reg {
+    struct mpw_cmd_header hdr;
+    uint32_t databuffer[SPI_MPW_CMD_MAX_REG_NUM];
 };
+
+struct mpw_meta_data {
+    uint32_t timestamp_h;
+    uint32_t timestamp_l;
+    uint16_t frame_length;
+    uint16_t reserved;
+};
+
+struct mpw_ctrl_cmd_meta {
+    struct mpw_cmd_header hdr;
+    struct mpw_meta_data meta;
+};
+
+#define MPW_RX_META_LENGTH 10
 
 struct mpw_read_reg_data {
     uint32_t data;

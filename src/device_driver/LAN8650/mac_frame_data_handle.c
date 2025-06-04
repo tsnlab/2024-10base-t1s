@@ -168,117 +168,84 @@ void print_footer(union data_footer* footer) {
     printf("Raw value: 0x%08x\n", footer->data_frame_foot);
 }
 
-int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
-    uint8_t rxbuffer[MAX_PAYLOAD_BYTE + FOOTER_SIZE] = {
-        0,
-    };
-    union data_footer footer;
-    int result;
-    uint32_t regval;
-    uint32_t acc_bytes = 0;
-    uint8_t stop_flag = 0;
-    uint16_t actual_length;
+void fill_mpw_header(uint8_t *txbuffer, uint8_t cmd, uint16_t address);
 
-    while (stop_flag == 0) {
-
-        /* Buffer Status Register Bits 7:0 – RBA[7:0] Receive Blocks Available */
-        regval = read_register(MMS0, OA_BUFSTS);
-        if ((regval & 0xFF) == 0) {
-            stop_flag = 1;
-            /* There is no Ethernet frame data available for reading. */
-            return -1;
-        }
-
-        result = spi_receive_frame(rxbuffer);
-
-        if (result != SPI_E_SUCCESS) {
-            stop_flag = 1;
-            return -1;
-        }
-
-        // Footer check
-        // memset(&footer, 0, sizeof(footer));
-        memcpy((uint8_t*)&footer.data_frame_foot, &rxbuffer[MAX_PAYLOAD_BYTE], FOOTER_SIZE);
-        footer.data_frame_foot = ntohl(footer.data_frame_foot);
-
-        //  print_footer(&footer);
-
-        /* Frame Drop */
-        if (footer.rx_footer_bits.fd) {
-            stop_flag = 1;
-            return -1;
-        }
-
-        /* Check if data is valid */
-        /* There is no start of an Ethernet frame in the frame that came in at the time when the frame was started to be
-         * received.*/
-        if ((!footer.rx_footer_bits.dv) || ((acc_bytes == 0) && (!footer.rx_footer_bits.sv))) {
-            continue;
-        }
-
-        if (footer.rx_footer_bits.sv) {
-            acc_bytes = 0;
-            if (footer.rx_footer_bits.ev) {
-                /* Ethernet Frame Start + Ethernet Frame End*/
-                actual_length = (footer.rx_footer_bits.ebo + 1) - footer.rx_footer_bits.swo * 4;
-                memcpy(&packet[acc_bytes], &rxbuffer[footer.rx_footer_bits.swo * 4], actual_length);
-                acc_bytes += actual_length;
-                *length = acc_bytes;
-                stop_flag = 1;
-                // printf("*length: %d\n", *length);
-                return 0;
-
-            } else {
-                /* Ethernet Frame Start + Not Ethernet Frame End*/
-                actual_length = MAX_PAYLOAD_BYTE - footer.rx_footer_bits.swo * 4;
-                memcpy(&packet[acc_bytes], &rxbuffer[footer.rx_footer_bits.swo * 4], actual_length);
-                acc_bytes += actual_length;
-            }
-        } else {
-            if (footer.rx_footer_bits.ev) {
-                /* Not Ethernet Frame Start + Ethernet Frame End*/
-                actual_length = footer.rx_footer_bits.ebo + 1;
-                memcpy(&packet[acc_bytes], &rxbuffer[0], actual_length);
-                acc_bytes += actual_length;
-                *length = acc_bytes;
-                stop_flag = 1;
-                // printf("*length: %d\n", *length);
-                return 0;
-            } else {
-                /* Not Ethernet Frame Start + Not Ethernet Frame End*/
-                actual_length = MAX_PAYLOAD_BYTE;
-                memcpy(&packet[acc_bytes], &rxbuffer[0], actual_length);
-                acc_bytes += actual_length;
-            }
-        }
-    }
-
-    // print buffer for debugging
-    // debug_spi_transfer_result(rxbuffer, "rxbuffer");
+int spi_mpw_read_metata(struct mpw_meta_data * p_meta) {
+    struct mpw_cmd_header input;
+    uint8_t txbuffer[sizeof(struct mpw_ctrl_cmd_meta)] = {0};
+    uint8_t rxbuffer[sizeof(struct mpw_ctrl_cmd_meta)] = {0};
+    uint16_t numberof_bytestosend = 0;
+    uint32_t timestamp;
+    uint16_t frame_length;
 
 #if 0
-    // receive data validation
-    if (footer.rx_footer_bits.dv && !footer.rx_footer_bits.exst) {
+    input.cmd = SPI_CMD_READ;
+    input.address = METADATA_FIFO_BASE;
 
-        uint16_t actual_length = footer.rx_footer_bits.ebo + 1;
-        memcpy(packet, rxbuffer, actual_length);
-        *length = actual_length;
-
-        // Ethernet packet check
-        printf("Destination MAC: ");
-        printf("%02x:%02x:%02x:%02x:%02x:%02x\n", // clang-format off
-                packet[0], packet[1], packet[2],
-                packet[3], packet[4], packet[5]);
-        printf("Source MAC: ");
-        printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
-                packet[6], packet[7], packet[8],
-                packet[9], packet[10], packet[11]);
-        printf("EtherType: %02x%02x\n",
-                packet[12], packet[13]); // clang-format on
-
-        return 0;
-    }
+    fill_mpw_header(txbuffer, input.cmd, input.address);
+#else
+    fill_mpw_header(txbuffer, SPI_CMD_READ, METADATA_FIFO_BASE);
 #endif
 
-    return -1;
+    numberof_bytestosend = SPI_READ_META_DATA_CMD_LENGTH; /* Command(1) + Target Address(2) + Timestamp(8) + Frame Length(2) */
+
+    printf("%s\n", __func__);
+    for(int id=0; id< SPI_READ_META_DATA_CMD_LENGTH; id++) {
+        printf("txbuffer[%2d]: 0x%02x\n", id, txbuffer[id] & 0xff);
+    }
+
+    for(int id=0; id<SPI_READ_META_DATA_CMD_LENGTH; id++) {
+        printf("rxbuffer[%2d]: 0x%02x\n", id, rxbuffer[id] & 0xff);
+    }
+
+    spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
+
+    for(int id=0; id<SPI_READ_META_DATA_CMD_LENGTH; id++) {
+        printf("rxbuffer[%2d]: 0x%02x\n", id, rxbuffer[id] & 0xff);
+    }
+
+    memcpy((uint8_t*)&timestamp, &rxbuffer[SPI_MPW_HEADER_SIZE], sizeof(uint32_t));
+    p_meta->timestamp_h = ntohl(timestamp);
+    memcpy((uint8_t*)&timestamp, &rxbuffer[SPI_MPW_HEADER_SIZE + sizeof(uint32_t)], sizeof(uint32_t));
+    p_meta->timestamp_l = ntohl(timestamp);;
+    memcpy((uint8_t*)&frame_length, &rxbuffer[SPI_MPW_HEADER_SIZE + 2 * sizeof(uint32_t)], sizeof(uint16_t));
+    p_meta->frame_length = ntohs(frame_length);
+
+    return 0;
+}
+
+int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
+    uint8_t txbuffer[MPW_MAX_BUFFER_SIZE] = {
+        0,
+    };
+    uint8_t rxbuffer[MPW_MAX_BUFFER_SIZE] = {
+        0,
+    };
+//    int result;
+//    uint32_t regval;
+//    uint32_t acc_bytes = 0;
+//    uint16_t actual_length;
+    uint16_t numberof_bytestosend = 0;
+    struct mpw_meta_data meta;
+
+    spi_mpw_read_metata(&meta);
+
+    if((meta.frame_length == 0) || (meta.frame_length > MPW_MAX_PAYLOAD_BYTE)) {
+        /* There is no Ethernet frame data available for reading. */
+        return -1;
+    }
+
+    fill_mpw_header(txbuffer, SPI_CMD_READ, RX_FRAME_FIFO_BASE);
+
+    numberof_bytestosend = SPI_MPW_HEADER_SIZE + meta.frame_length; 
+
+    spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
+
+    memcpy(packet, (uint8_t *)&meta, MPW_RX_META_LENGTH);
+
+    memcpy((uint8_t *)&packet[MPW_RX_META_LENGTH], (uint8_t *)&rxbuffer[SPI_MPW_HEADER_SIZE], meta.frame_length);
+
+    *length = meta.frame_length;
+
+    return 0;
 }

@@ -672,33 +672,25 @@ static bool t1s_hw_writereg(struct ctrl_cmd_reg* p_regData) {
     return writestatus;
 }
 
-#define RX_FRAME_FIFO_BASE 0x1000
-#define TX_FRAME_FIFO_BASE 0x2000
-#define REG_READ_FIFO_BASE 0x3000
-#define REG_WRITE_FIFO_BASE 0x4000
-#define METADATA_FIFO_BASE 0xF000
+void fill_mpw_header(uint8_t *txbuffer, uint8_t cmd, uint16_t address) {
 
-#define SPI_CMD_WRITE 0x01
-#define SPI_CMD_READ 0x02
+    uint16_t *addr_ptr;
 
-#define SPI_READ_CMD_LENGTH 7
-#define SPI_WRITE_CMD_LENGTH 7
-#define SPI_READ_DATA_OFFSET 3
+    addr_ptr = (uint16_t *)&txbuffer[1];
 
-static bool mpw_hw_writereg(struct mpw_ctrl_cmd_reg* p_regData) {
-    uint8_t numberof_bytestosend = 0;
+    txbuffer[0] = cmd;
+    *addr_ptr = htons(address);
+}
+
+static bool mpw_hw_writereg(struct mpw_ctrl_cmd_reg* p_input) {
+    uint8_t numberof_bytestosend = SPI_WRITE_CMD_LENGTH;
     bool writestatus = true;
-    bool execution_status = true;
-    uint8_t txbuffer[MAX_PAYLOAD_BYTE + HEADER_SIZE] = {0};
-    uint8_t rxbuffer[MAX_PAYLOAD_BYTE + HEADER_SIZE] = {0};
+    uint8_t txbuffer[SPI_MPW_CMD_REG_SIZE] = {0};
+    uint8_t rxbuffer[SPI_MPW_CMD_REG_SIZE] = {0};
 
-    txbuffer[0] = p_regData->cmd;
-    txbuffer[1] = (uint8_t)((p_regData->address & 0xFF00) >> 8);
-    txbuffer[2] = (uint8_t)(p_regData->address & 0xFF);
+    fill_mpw_header(txbuffer, p_input->hdr.cmd, p_input->hdr.address);
 
-    memcpy(&txbuffer[3], &p_regData->databuffer[0], sizeof(uint32_t));
-
-    numberof_bytestosend = SPI_WRITE_CMD_LENGTH;
+    memcpy(&txbuffer[SPI_MPW_HEADER_SIZE], &p_input->databuffer[0], sizeof(uint32_t));
 
     printf("%s\n", __func__);
     for(int id = 0; id < SPI_WRITE_CMD_LENGTH; id++) {
@@ -727,36 +719,33 @@ uint32_t write_register(uint8_t MMS, uint16_t Address, uint32_t data) {
     }
 }
 
-uint32_t write_register_mpw(uint8_t MMS, uint16_t address, uint32_t data) {
-    struct mpw_ctrl_cmd_reg writereg_input;
+uint32_t write_register_mpw(uint8_t reg_grp, uint16_t address, uint32_t data) {
     bool execution_status = false;
 
-    printf("%s - MMS: %d, address: 0x%04x, data: 0x%08x\n", __func__, MMS, address, data);
+    struct mpw_ctrl_cmd_reg writereg_input;
 
-    writereg_input.cmd = SPI_CMD_WRITE;
-    writereg_input.length = 0;
-    // writereg_input.address = REG_WRITE_FIFO_BASE | (address & 0xFFF);
-    writereg_input.address = RX_FRAME_FIFO_BASE| (address & 0xFFF);
-    writereg_input.databuffer[0] = ntohl(data);
+    writereg_input.hdr.cmd = SPI_CMD_WRITE;
+    writereg_input.hdr.address = REG_WRITE_FIFO_BASE | (address & 0xFFF);
+    writereg_input.databuffer[0] = htonl(data);
+
+    printf("%s - Register Group: %d, address: 0x%04x, data: 0x%08x\n", __func__, reg_grp, address, data);
 
     execution_status = mpw_hw_writereg(&writereg_input);
     if (execution_status == true) {
         return writereg_input.databuffer[0];
     } else {
-        printf("ERROR: Register Write failed at MMS %d, Address %4x\n", MMS, address);
+        printf("ERROR: Register Write failed at Register Group %d, Address %4x\n", reg_grp, address);
         return 0;
     }
 }
 
-static bool mpw_hw_readreg(struct mpw_ctrl_cmd_reg* p_regInfoInput, struct mpw_ctrl_cmd_reg* p_readRegData) {
-    uint8_t txbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_SIZE + REG_SIZE] = {0};
-    uint8_t rxbuffer[MAX_REG_DATA_ONECONTROLCMD + HEADER_SIZE + REG_SIZE] = {0};
+static bool mpw_hw_readreg(struct mpw_ctrl_cmd_reg * p_input, struct mpw_ctrl_cmd_reg * p_output) {
+    uint8_t txbuffer[SPI_MPW_CMD_REG_SIZE] = {0};
+    uint8_t rxbuffer[SPI_MPW_CMD_REG_SIZE] = {0};
     uint16_t numberof_bytestosend = 0;
     uint32_t reg_val;
 
-    txbuffer[0] = p_regInfoInput->cmd;                                /* Command */
-    txbuffer[1] = (uint8_t)((p_regInfoInput->address & 0xFF00) >> 8); /* Target Address[15:8] */
-    txbuffer[2] = (uint8_t)(p_regInfoInput->address & 0xFF);          /* Target Address[7:0] */
+    fill_mpw_header(txbuffer, p_input->hdr.cmd, p_input->hdr.address);
 
     numberof_bytestosend = SPI_READ_CMD_LENGTH; /* Command(1) + Target Address(2) + Register Value(4) */
 
@@ -777,25 +766,24 @@ static bool mpw_hw_readreg(struct mpw_ctrl_cmd_reg* p_regInfoInput, struct mpw_c
 
     return true;
 
-    memcpy((uint8_t*)&reg_val, &rxbuffer[SPI_READ_DATA_OFFSET], sizeof(uint32_t));
+    memcpy((uint8_t*)&reg_val, &rxbuffer[SPI_MPW_HEADER_SIZE], sizeof(uint32_t));
 
-    p_readRegData->databuffer[0] = ntohl(reg_val);
+    p_output->databuffer[0] = ntohl(reg_val);
 
     return true;
 }
 
 uint32_t read_register(uint8_t mms, uint16_t address) {
     bool execution_status = false;
-    struct mpw_ctrl_cmd_reg readreg_infoinput;
-    struct mpw_ctrl_cmd_reg readreg_data;
-    readreg_infoinput.cmd = SPI_CMD_READ;
-    readreg_infoinput.length = 0;
-    // readreg_infoinput.address = REG_READ_FIFO_BASE | (address & 0xFFF);
-    readreg_infoinput.address = RX_FRAME_FIFO_BASE | (address & 0xFFF);
+    struct mpw_ctrl_cmd_reg readreg_input;
+    struct mpw_ctrl_cmd_reg readreg_output;
 
-    execution_status = mpw_hw_readreg(&readreg_infoinput, &readreg_data);
+    readreg_input.hdr.cmd = SPI_CMD_READ;
+    readreg_input.hdr.address = REG_READ_FIFO_BASE | (address & 0xFFF);
+
+    execution_status = mpw_hw_readreg(&readreg_input, &readreg_output);
     if (execution_status == true) {
-        return readreg_data.databuffer[0];
+        return readreg_output.databuffer[0];
     } else {
         // printf("ERROR: Register Read failed at MMS %d, Address %4x\n", mms, address);
         return 0;
@@ -884,8 +872,8 @@ static int read_register_in_mms(uint8_t mms) {
 static int read_register_in_register_group(uint8_t reg_grp) {
     switch (reg_grp) {
     case RG_GENERAL: /* General Registers */
-        // dump_reginfo(reg_grp, reg_general);
-        dump_reginfo(reg_grp, reg_mpw_general);
+        dump_reginfo(reg_grp, reg_general);
+        // dump_reginfo(reg_grp, reg_mpw_general);
         break;
     case RG_FRAME_DECODER: /* Frame Decoder Registers */
         dump_reginfo(reg_grp, reg_frm_decoder);
@@ -934,9 +922,9 @@ static int set_register_value(uint8_t mms, struct reginfo* reginfo, int32_t addr
     return -1;
 }
 
-static int set_mpw_register_value(uint8_t mms, struct reginfo* reginfo, int32_t addr, uint32_t data) {
+static int set_mpw_register_value(uint8_t reg_grp, struct reginfo* reginfo, int32_t addr, uint32_t data) {
 
-    write_register_mpw(mms, (uint16_t)addr, data);
+    write_register_mpw(reg_grp, (uint16_t)addr, data);
     return 0;
 }
 

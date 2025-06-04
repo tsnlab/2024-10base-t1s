@@ -2,6 +2,7 @@
 #define DEVICE_DRIVER_LAN8650_REGISTER_H
 
 #include <stdint.h>
+#include "arch.h"
 
 /* MMS(Memory Map Selector) */
 enum {
@@ -243,6 +244,26 @@ enum {
 #define FT_TX_TSTAMP4_H 0x01F0 /* TX_TIMESTAMP_4 [63:32] */
 #define FT_TX_TSTAMP4_L 0x01F4 /* TX_TIMESTAMP_4 [31:0] */
 
+
+#define RX_FRAME_FIFO_BASE 0x1000
+#define TX_FRAME_FIFO_BASE 0x2000
+#define REG_READ_FIFO_BASE 0x3000
+#define REG_WRITE_FIFO_BASE 0x4000
+#define METADATA_FIFO_BASE 0xF000
+
+#define SPI_CMD_WRITE 0x01
+#define SPI_CMD_READ 0x02
+
+#define SPI_MPW_HEADER 3
+
+#define SPI_READ_CMD_LENGTH 7
+#define SPI_WRITE_CMD_LENGTH 7
+#define SPI_READ_DATA_OFFSET 3
+
+#define SPI_READ_META_DATA_CMD_LENGTH 13
+
+#define SPI_MPW_HEADER_SIZE (sizeof(struct mpw_cmd_header))
+#define SPI_MPW_CMD_REG_SIZE (sizeof(struct mpw_ctrl_cmd_reg))
 
 #define REG_TSN_VERSION 0x0000
 #define REG_TSN_CONFIG 0x0004
