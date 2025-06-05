@@ -59,39 +59,31 @@ int api_spi_transmit_frame(uint8_t* packet, uint16_t length) {
     int result;
     uint32_t regval;
 
+    uint8_t txbuffer[MPW_MAX_BUFFER_SIZE] = {
+        0,
+    };
+    uint8_t rxbuffer[MPW_MAX_BUFFER_SIZE] = {
+        0,
+    };
+    uint16_t numberof_bytestosend = 0;
+
     //    printf(">>> %s - length: %d\n", __func__, length);
 
     /* Buffer Status Register Bits 15:8 – TXC[7:0] Transmit Credits Available */
-    regval = read_register(MMS0, OA_BUFSTS);
-    regval = (regval >> 8) & 0xFF;
+    regval = read_register(RG_FRAME_BUFFER, FBW_BUFFER_WRITE_STATUS1_H);
 
-    if (length > (regval * 64)) {
-        /* There are not enough Transmit Creditsi */
-        //       printf("<<< %s - length: %d, Transmit Credits: %d\n", __func__, length, regval);
+    if ((regval & 0xFF) == 0) {
+        /* There is no empty buffer */
         return -1;
     }
 
-    while (remainder > 0) {
-        if (remainder <= MAX_PAYLOAD_BYTE) {
-            end_valid = 1;
-            send_bytes = remainder;
+    fill_mpw_header(txbuffer, SPI_CMD_WRITE, TX_FRAME_FIFO_BASE);
 
-        } else {
-            end_valid = 0;
-            send_bytes = MAX_PAYLOAD_BYTE;
-        }
+    memcpy(&txbuffer[SPI_MPW_HEADER_SIZE], packet, length);
 
-        result = spi_transmit_frame((uint8_t*)&packet[acc_byte], send_bytes, start_valid, end_valid);
-        if (result) {
-            // printf("%s - Fail to transmit frame(packet[%d], send_bytes: %d)\n", __func__, acc_byte, send_bytes);
-            return -1;
-        }
-        acc_byte += send_bytes;
-        remainder -= send_bytes;
-        start_valid = 0;
-    }
+    numberof_bytestosend = SPI_MPW_HEADER_SIZE + length;
 
-    // printf("<<< %s - length: %d\n", __func__, length);
+    spi_transfer(rxbuffer, txbuffer, numberof_bytestosend);
 
     return 0;
 }
@@ -221,10 +213,6 @@ int api_spi_receive_frame(uint8_t* packet, uint16_t* length) {
     uint8_t rxbuffer[MPW_MAX_BUFFER_SIZE] = {
         0,
     };
-//    int result;
-//    uint32_t regval;
-//    uint32_t acc_bytes = 0;
-//    uint16_t actual_length;
     uint16_t numberof_bytestosend = 0;
     struct mpw_meta_data meta;
 

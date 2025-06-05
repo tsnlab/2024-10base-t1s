@@ -5,13 +5,28 @@
 #define MAX_PACKET_LEN 1536
 
 struct rx_metadata {
+    uint32_t timestamp_h;
+    uint32_t timestamp_l;
     uint16_t frame_length;
     uint16_t reserved;
 } __attribute__((packed, scalar_storage_order("big-endian")));
 
+struct tick_count {
+        uint32_t tick:29;
+        uint32_t priority:3;
+} __attribute__((packed, scalar_storage_order("big-endian")));
+
 struct tx_metadata {
-    uint16_t frame_length;
-    uint16_t reserved;
+        struct tick_count from;
+        struct tick_count to;
+        struct tick_count delay_from;
+        struct tick_count delay_to;
+        uint16_t frame_length;
+        uint16_t timestamp_id;
+        uint8_t fail_policy;
+        uint8_t reserved0[3];
+        uint32_t reserved1;
+        uint32_t reserved2;
 } __attribute__((packed, scalar_storage_order("big-endian")));
 
 struct spi_rx_buffer {
