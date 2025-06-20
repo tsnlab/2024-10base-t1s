@@ -35,15 +35,15 @@ timestamp_t lan865x_read_tx_timestamp(struct oa_tc6* tc6, int tx_id) {
     u64 timestamp = 0;
 
     switch (tx_id) {
-    case 1:
+    case LAN865X_TIMESTAMP_ID_A:
         oa_tc6_read_register(tc6, MMS0_TTSCAH, &ts_h);
         oa_tc6_read_register(tc6, MMS0_TTSCAL, &ts_l);
         break;
-    case 2:
+    case LAN865X_TIMESTAMP_ID_B:
         oa_tc6_read_register(tc6, MMS0_TTSCBH, &ts_h);
         oa_tc6_read_register(tc6, MMS0_TTSCBL, &ts_l);
         break;
-    case 3:
+    case LAN865X_TIMESTAMP_ID_C:
         oa_tc6_read_register(tc6, MMS0_TTSCCH, &ts_h);
         oa_tc6_read_register(tc6, MMS0_TTSCCL, &ts_l);
         break;
@@ -57,7 +57,7 @@ timestamp_t lan865x_read_tx_timestamp(struct oa_tc6* tc6, int tx_id) {
 
 void lan865x_update_tx_packets(struct oa_tc6* tc6) {
     struct net_device* netdev = tc6->netdev;
-    struct lan865x_priv* priv = netdev_priv(netdev);
+    struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
     u32 tx_count = 0, total_tx_count = 0;
 
     /* This register gets cleared after read */
@@ -72,7 +72,7 @@ void lan865x_update_tx_packets(struct oa_tc6* tc6) {
 
 u64 lan865x_get_tx_packets(struct oa_tc6* tc6) {
     struct net_device* netdev = tc6->netdev;
-    struct lan865x_priv* priv = netdev_priv(netdev);
+    struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
 
     lan865x_update_tx_packets(tc6);
 
@@ -81,7 +81,7 @@ u64 lan865x_get_tx_packets(struct oa_tc6* tc6) {
 
 u64 lan865x_get_tx_drop_packets(struct oa_tc6* tc6) {
     struct net_device* netdev = tc6->netdev;
-    struct lan865x_priv* priv = netdev_priv(netdev);
+    struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
 
     lan865x_update_tx_packets(tc6);
 

@@ -11,7 +11,7 @@
 #define lan865x_debug(...) pr_debug(__VA_ARGS__)
 #else
 #define lan865x_debug(...) \
-    {}
+    { ; }
 #endif // __LAN865X_DEBUG__
 
 #define FRAME_TIMESTAMP_ENABLE
@@ -23,6 +23,14 @@
 #define MMS1_MAC_TN 0x1075
 #define MMS1_MAC_TA 0x1076
 #define MMS1_MAC_TI 0x1077
+
+enum lan865x_timestamp_id {
+    LAN865X_TIMESTAMP_ID_NONE = 0,
+    LAN865X_TIMESTAMP_ID_A = 1,
+    LAN865X_TIMESTAMP_ID_B = 2,
+    LAN865X_TIMESTAMP_ID_C = 3,
+    LAN865X_TIMESTAMP_ID_MAX,
+};
 
 #define MMS0_TTSCAH 0x10
 #define MMS0_TTSCAL 0x11
