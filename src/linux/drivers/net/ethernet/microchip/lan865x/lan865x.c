@@ -5,14 +5,17 @@
  * Author: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
  */
 
+#include <linux/bitfield.h>
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/net_tstamp.h>
 #include <linux/oa_tc6.h>
 #include <linux/phy.h>
 
+#include "lan865x_arch.h"
 #include "lan865x_ioctl.h"
 
 #define DRV_NAME "lan8650"
@@ -49,13 +52,6 @@
 
 #define MAC_ADDR_LENGTH 6
 #define NUM_OF_BITS_IN_BYTE 8
-
-struct lan865x_priv {
-    struct work_struct multicast_work;
-    struct net_device* netdev;
-    struct spi_device* spi;
-    struct oa_tc6* tc6;
-};
 
 static int lan865x_set_nodeid(struct lan865x_priv* priv, u32 node_id) {
     u32 regval;
