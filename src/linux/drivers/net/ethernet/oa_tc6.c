@@ -828,7 +828,6 @@ u8 lan865x_get_time_stamp_capture(struct oa_tc6* tc6, struct sk_buff* tmp_skb, b
     struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
 	struct hwtstamp_config hwts_config = priv->tstamp_config;
 
-	//pr_err("%s: skb_shinfo(tmp_skb)->tx_flags = 0x%X\n", __func__, skb_shinfo(tmp_skb)->tx_flags);
 	if (skb_shinfo(tmp_skb)->tx_flags & SKBTX_HW_TSTAMP) {
 		if (hwts_config.tx_type != HWTSTAMP_TX_ON) {
 			time_stamp_capture = TSN_TIMESTAMP_ID_NONE;
@@ -836,23 +835,11 @@ u8 lan865x_get_time_stamp_capture(struct oa_tc6* tc6, struct sk_buff* tmp_skb, b
 		} else if (is_gptp) {
 			time_stamp_capture = TSN_TIMESTAMP_ID_GPTP;
 			priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP] = skb_get(tmp_skb);
-			pr_err("%s: gptp skb_shinfo(skb) = %p\n", __func__, 
-					skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP]));
 			skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP])->tx_flags |= SKBTX_IN_PROGRESS;
-			//priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP] = skb_get(tc6->ongoing_tx_skb);
-			//skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP])->tx_flags |= SKBTX_IN_PROGRESS;
-			pr_err("%s: gptp skb->tx_flags = 0x%X\n", __func__, 
-					skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP])->tx_flags);
 		} else {
 			time_stamp_capture = TSN_TIMESTAMP_ID_NORMAL;
 			priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL] = skb_get(tmp_skb);
-			pr_err("%s: normal skb_shinfo(skb) = %p\n", __func__, 
-					skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL]));
 			skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL])->tx_flags |= SKBTX_IN_PROGRESS;
-			//priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL] = skb_get(tc6->ongoing_tx_skb);
-			//skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL])->tx_flags |= SKBTX_IN_PROGRESS;
-			pr_err("%s: normal skb->tx_flags = 0x%X\n", __func__,
-					skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL])->tx_flags);
 		}
 	}
 
@@ -1082,21 +1069,11 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
 		pr_err("%s: skb_clone() failed\n", __func__);
 	}
 
-	/*
-	pr_err("%s: skb_shinfo(tc6->ongoing_tx_skb)->tx_flags = 0x%X\n", __func__, 
-			skb_shinfo(tc6->ongoing_tx_skb)->tx_flags);
-	pr_err("%s: skb_shinfo(tmp_skb)->tx_flags = 0x%X\n", __func__, 
-			skb_shinfo(tmp_skb)->tx_flags);
-	*/
-
 	/* NOTE: 
 	 *	skb_clone() does not copy the user-space socket (sk) information.
 	 *	However, TX timestamping requires a valid sk to queue the timestamp to the user socket.
 	 *	Therefore, we manually copy the sk pointer from the original skb. */
 	tmp_skb->sk = tc6->ongoing_tx_skb->sk;
-
-	//pr_err("%s: tmp_skb->sk = %p, tmp_skb->cb = %p\n", __func__, tmp_skb->sk, tmp_skb->cb);
-
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
     /* Set end valid if the current tx chunk contains the end of the tx
@@ -1242,8 +1219,6 @@ static int oa_tc6_spi_thread_handler(void* data) {
         wait_event_interruptible(tc6->spi_wq,
                                  tc6->int_flag || (tc6->waiting_tx_skb && tc6->tx_credits) || kthread_should_stop());
 
-		//pr_err("Wake-Up %s\n", __func__);
-
         if (kthread_should_stop())
             break;
 
@@ -1275,22 +1250,6 @@ static int oa_tc6_update_buffer_status_from_register(struct oa_tc6* tc6) {
 
 static irqreturn_t oa_tc6_macphy_isr(int irq, void* data) {
     struct oa_tc6* tc6 = data;
-
-	pr_err("Wake-Up %s\n", __func__);
-#if 0
-#ifdef FRAME_TIMESTAMP_ENABLE
-	u32 regval = 0;
-
-	oa_tc6_read_register(tc6, 0x00000008, &regval);
-	pr_err("%s: OA_STATUS0 = 0x%08X\n", __func__, regval);
-
-	if (regval & ((1<<8) | (1<<9) | (1<<10))) {
-		tc6->ts_int_flag = true;
-		wake_up_interruptible(&tc6->spi_wq);
-		return IRQ_HANDLED;
-	}
-#endif /* FRAME_TIMESTAMP_ENABLE */
-#endif /* 0 */
 
     /* MAC-PHY interrupt can occur for the following reasons.
      * - availability of tx credits if it was 0 before and not reported in
