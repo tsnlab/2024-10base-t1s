@@ -880,9 +880,9 @@ static int oa_tc6_prcs_complete_rx_frame(struct oa_tc6* tc6, u8* payload, u16 si
     }
 
     oa_tc6_update_rx_skb(tc6, &payload[sizeof(struct timestamp_format)], size - sizeof(struct timestamp_format));
-#else
+#else /* FRAME_TIMESETAMP_ENABLE */
     oa_tc6_update_rx_skb(tc6, payload, size);
-#endif
+#endif /* FRAME_TIMESTAMP_ENABLE */
 
     oa_tc6_submit_rx_skb(tc6);
 
@@ -916,7 +916,12 @@ static int oa_tc6_prcs_rx_frame_start(struct oa_tc6* tc6, u8* payload, u16 size)
 }
 
 static void oa_tc6_prcs_rx_frame_end(struct oa_tc6* tc6, u8* payload, u16 size) {
+#ifdef FRAME_TIMESTAMP_ENABLE
+	// FIXME: end 4 is unnecessary bytes.
+    oa_tc6_update_rx_skb(tc6, payload, size - 4);
+#else /* FRAME_TIMESTAMP_ENABLE */
     oa_tc6_update_rx_skb(tc6, payload, size);
+#endif /* FRAME_TIMESTAMP_ENABLE */
 
     oa_tc6_submit_rx_skb(tc6);
 }
