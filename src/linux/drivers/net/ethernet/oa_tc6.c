@@ -127,6 +127,9 @@ struct oa_tc6 {
     u8 rx_chunks_available;
     bool rx_buf_overflow;
     bool int_flag;
+#if 1
+	bool ts_int_flag;
+#endif /* 1 */
 };
 
 enum oa_tc6_header_type {
@@ -181,7 +184,10 @@ struct lan865x_priv {
     struct net_device* netdev;
     struct spi_device* spi;
     struct oa_tc6* tc6;
+
+    struct ptp_device* ptpdev;
     struct hwtstamp_config tstamp_config;
+	struct sk_buff *waiting_txts_skb[TSN_TIMESTAMP_ID_MAX-1];
 
     uint64_t total_tx_count;
     uint64_t total_tx_drop_count;
@@ -199,9 +205,9 @@ struct timestamp_format {
 };
 
 bool lan865x_is_gptp_packet(const uint8_t* payload);
-u8 lan865x_get_time_stamp_capture(struct oa_tc6* tc6, bool is_gptp);
+u8 lan865x_get_time_stamp_capture(struct oa_tc6* tc6, struct sk_buff* tmp_skb, bool is_gptp);
 
-#endif
+#endif /* FRAME_TIMESTAMP_ENABLE */
 
 static int oa_tc6_spi_transfer(struct oa_tc6* tc6, enum oa_tc6_header_type header_type, u16 length) {
     struct spi_transfer xfer = {0};
@@ -807,6 +813,7 @@ static bool filter_rx_timestamp(struct oa_tc6* tc6, uint8_t* data) {
 bool lan865x_is_gptp_packet(const uint8_t* payload) {
     struct ethhdr* eth = (struct ethhdr*)payload;
     uint16_t eth_type = ntohs(eth->h_proto);
+
     if (eth_type == ETH_P_8021Q) {
         struct tsn_vlan_hdr* vlan = (struct tsn_vlan_hdr*)(eth + 1);
         eth_type = vlan->pid;
@@ -815,18 +822,39 @@ bool lan865x_is_gptp_packet(const uint8_t* payload) {
     return eth_type == ETH_P_1588;
 }
 
-u8 lan865x_get_time_stamp_capture(struct oa_tc6* tc6, bool is_gptp) {
+u8 lan865x_get_time_stamp_capture(struct oa_tc6* tc6, struct sk_buff* tmp_skb, bool is_gptp) {
     u8 time_stamp_capture;
     struct net_device* netdev = tc6->netdev;
-    struct lan865x_priv* priv = netdev_priv(netdev);
+    struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
+	struct hwtstamp_config hwts_config = priv->tstamp_config;
 
-    if (priv->tstamp_config.tx_type != HWTSTAMP_TX_ON) {
-        time_stamp_capture = TSN_TIMESTAMP_ID_NONE;
-    } else if (is_gptp) {
-        time_stamp_capture = TSN_TIMESTAMP_ID_GPTP;
-    } else {
-        time_stamp_capture = TSN_TIMESTAMP_ID_NORMAL;
-    }
+	//pr_err("%s: skb_shinfo(tmp_skb)->tx_flags = 0x%X\n", __func__, skb_shinfo(tmp_skb)->tx_flags);
+	if (skb_shinfo(tmp_skb)->tx_flags & SKBTX_HW_TSTAMP) {
+		if (hwts_config.tx_type != HWTSTAMP_TX_ON) {
+			time_stamp_capture = TSN_TIMESTAMP_ID_NONE;
+			kfree_skb(tmp_skb);
+		} else if (is_gptp) {
+			time_stamp_capture = TSN_TIMESTAMP_ID_GPTP;
+			priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP] = skb_get(tmp_skb);
+			pr_err("%s: gptp skb_shinfo(skb) = %p\n", __func__, 
+					skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP]));
+			skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP])->tx_flags |= SKBTX_IN_PROGRESS;
+			//priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP] = skb_get(tc6->ongoing_tx_skb);
+			//skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP])->tx_flags |= SKBTX_IN_PROGRESS;
+			pr_err("%s: gptp skb->tx_flags = 0x%X\n", __func__, 
+					skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP])->tx_flags);
+		} else {
+			time_stamp_capture = TSN_TIMESTAMP_ID_NORMAL;
+			priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL] = skb_get(tmp_skb);
+			pr_err("%s: normal skb_shinfo(skb) = %p\n", __func__, 
+					skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL]));
+			skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL])->tx_flags |= SKBTX_IN_PROGRESS;
+			//priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL] = skb_get(tc6->ongoing_tx_skb);
+			//skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL])->tx_flags |= SKBTX_IN_PROGRESS;
+			pr_err("%s: normal skb->tx_flags = 0x%X\n", __func__,
+					skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL])->tx_flags);
+		}
+	}
 
     return time_stamp_capture;
 }
@@ -844,7 +872,7 @@ static __be32 oa_tc6_prepare_data_header_with_tsc(bool data_valid, bool start_va
 
     return cpu_to_be32(header);
 }
-#endif
+#endif /* FRAME_TIMESTAMP_ENABLE */
 
 static int oa_tc6_prcs_complete_rx_frame(struct oa_tc6* tc6, u8* payload, u16 size) {
     int ret;
@@ -893,9 +921,9 @@ static int oa_tc6_prcs_rx_frame_start(struct oa_tc6* tc6, u8* payload, u16 size)
     }
 
     oa_tc6_update_rx_skb(tc6, &payload[sizeof(struct timestamp_format)], size - sizeof(struct timestamp_format));
-#else
+#else /* FRAME_TIMESTAMP_ENABLE */
     oa_tc6_update_rx_skb(tc6, payload, size);
-#endif
+#endif /* FRAME_TIMESTAMP_ENABLE */
 
     return 0;
 }
@@ -1046,6 +1074,31 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
     memcpy(tx_buf + 1, tx_skb_data, length_to_copy);
     tc6->tx_skb_offset += length_to_copy;
 
+#ifdef FRAME_TIMESTAMP_ENABLE
+	struct sk_buff* tmp_skb;
+
+	tmp_skb = skb_clone(tc6->ongoing_tx_skb, GFP_ATOMIC);
+	if (!tmp_skb) {
+		pr_err("%s: skb_clone() failed\n", __func__);
+	}
+
+	/*
+	pr_err("%s: skb_shinfo(tc6->ongoing_tx_skb)->tx_flags = 0x%X\n", __func__, 
+			skb_shinfo(tc6->ongoing_tx_skb)->tx_flags);
+	pr_err("%s: skb_shinfo(tmp_skb)->tx_flags = 0x%X\n", __func__, 
+			skb_shinfo(tmp_skb)->tx_flags);
+	*/
+
+	/* NOTE: 
+	 *	skb_clone() does not copy the user-space socket (sk) information.
+	 *	However, TX timestamping requires a valid sk to queue the timestamp to the user socket.
+	 *	Therefore, we manually copy the sk pointer from the original skb. */
+	tmp_skb->sk = tc6->ongoing_tx_skb->sk;
+
+	//pr_err("%s: tmp_skb->sk = %p, tmp_skb->cb = %p\n", __func__, tmp_skb->sk, tmp_skb->cb);
+
+#endif /* FRAME_TIMESTAMP_ENABLE */
+
     /* Set end valid if the current tx chunk contains the end of the tx
      * ethernet frame.
      */
@@ -1055,7 +1108,7 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
         tc6->tx_skb_offset = 0;
         tc6->netdev->stats.tx_bytes += tc6->ongoing_tx_skb->len;
         tc6->netdev->stats.tx_packets++;
-        kfree_skb(tc6->ongoing_tx_skb);
+		kfree_skb(tc6->ongoing_tx_skb);
         tc6->ongoing_tx_skb = NULL;
     }
 
@@ -1065,16 +1118,16 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
     if (!tc6->tx_skb_offset) {
         bool is_gptp;
 
-        is_gptp = lan865x_is_gptp_packet(tc6->spi_data_tx_buf);
+        is_gptp = lan865x_is_gptp_packet(tx_skb_data);
 
-        time_stamp_capture = lan865x_get_time_stamp_capture(tc6, is_gptp);
+        time_stamp_capture = lan865x_get_time_stamp_capture(tc6, tmp_skb, is_gptp);
     }
 
     *tx_buf = oa_tc6_prepare_data_header_with_tsc(OA_TC6_DATA_VALID, start_valid, end_valid, end_byte_offset,
                                                   time_stamp_capture);
-#else
+#else /* FRAME_TIMESTAMP_ENABLE */
     *tx_buf = oa_tc6_prepare_data_header(OA_TC6_DATA_VALID, start_valid, end_valid, end_byte_offset);
-#endif
+#endif /* FRAME_TIMESTAMP_ENABLE */
     tc6->spi_data_tx_buf_offset += OA_TC6_CHUNK_SIZE;
 }
 
@@ -1189,6 +1242,8 @@ static int oa_tc6_spi_thread_handler(void* data) {
         wait_event_interruptible(tc6->spi_wq,
                                  tc6->int_flag || (tc6->waiting_tx_skb && tc6->tx_credits) || kthread_should_stop());
 
+		//pr_err("Wake-Up %s\n", __func__);
+
         if (kthread_should_stop())
             break;
 
@@ -1220,6 +1275,22 @@ static int oa_tc6_update_buffer_status_from_register(struct oa_tc6* tc6) {
 
 static irqreturn_t oa_tc6_macphy_isr(int irq, void* data) {
     struct oa_tc6* tc6 = data;
+
+	pr_err("Wake-Up %s\n", __func__);
+#if 0
+#ifdef FRAME_TIMESTAMP_ENABLE
+	u32 regval = 0;
+
+	oa_tc6_read_register(tc6, 0x00000008, &regval);
+	pr_err("%s: OA_STATUS0 = 0x%08X\n", __func__, regval);
+
+	if (regval & ((1<<8) | (1<<9) | (1<<10))) {
+		tc6->ts_int_flag = true;
+		wake_up_interruptible(&tc6->spi_wq);
+		return IRQ_HANDLED;
+	}
+#endif /* FRAME_TIMESTAMP_ENABLE */
+#endif /* 0 */
 
     /* MAC-PHY interrupt can occur for the following reasons.
      * - availability of tx credits if it was 0 before and not reported in
@@ -1468,7 +1539,7 @@ int init_lan865x(struct oa_tc6* tc6) {
 
 #ifdef FRAME_TIMESTAMP_ENABLE
     oa_tc6_write_register(tc6, LAN8650_REG_MMS1_MAC_TI, TIMER_INCREMENT); /* Enable MACPHY TX, RX */
-#endif
+#endif /* FRAME_TIMESTAMP_ENABLE */
 
     /* Read OA_CONFIG0 */
     oa_tc6_read_register(tc6, LAN8650_REG_MMS0_OA_CONFIG0, &regval);
@@ -1481,7 +1552,7 @@ int init_lan865x(struct oa_tc6* tc6) {
 
     /* Set FTSS Frame Timestamp Select bit of OA_CONFIG0 */
     regval |= MMS0_OA_CONFIG0_FTSS_SHIFT;
-#endif
+#endif /* FRAME_TIMESTAMP_ENABLE */
     oa_tc6_write_register(tc6, LAN8650_REG_MMS0_OA_CONFIG0, regval);
 
     /* Read OA_STATUS0 */

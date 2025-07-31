@@ -17,6 +17,7 @@
 
 #include "lan865x_arch.h"
 #include "lan865x_ioctl.h"
+#include "lan865x_ptp.h"
 
 #define DRV_NAME "lan8650"
 
@@ -97,10 +98,48 @@ static int lan865x_set_hw_macaddr(struct lan865x_priv* priv, const u8* mac) {
     return ret;
 }
 
+static int lan865x_ethtool_get_ts_info(struct net_device *netdev, struct ethtool_ts_info *ts_info) {
+    struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
+
+	ts_info->phc_index = ptp_clock_index(priv->ptpdev->ptp_clock);
+
+	ts_info->so_timestamping =  SOF_TIMESTAMPING_TX_SOFTWARE |
+								SOF_TIMESTAMPING_RX_SOFTWARE |
+								SOF_TIMESTAMPING_SOFTWARE |
+								SOF_TIMESTAMPING_TX_HARDWARE |
+								SOF_TIMESTAMPING_RX_HARDWARE |
+								SOF_TIMESTAMPING_RAW_HARDWARE;
+
+	ts_info->tx_types = BIT(HWTSTAMP_TX_OFF) | BIT(HWTSTAMP_TX_ON);
+
+	ts_info->rx_filters = BIT(HWTSTAMP_FILTER_NONE)
+						| BIT(HWTSTAMP_FILTER_ALL)
+						| BIT(HWTSTAMP_FILTER_PTP_V2_L2_EVENT)
+						| BIT(HWTSTAMP_FILTER_PTP_V2_L2_SYNC)
+						| BIT(HWTSTAMP_FILTER_PTP_V2_L2_DELAY_REQ);
+
+	return 0;
+}
+
 static const struct ethtool_ops lan865x_ethtool_ops = {
     .get_link_ksettings = phy_ethtool_get_link_ksettings,
     .set_link_ksettings = phy_ethtool_set_link_ksettings,
+	.get_ts_info = lan865x_ethtool_get_ts_info,
 };
+
+static int lan865x_get_ts_config(struct net_device* netdev, struct ifreq *ifr) {
+    struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
+	struct hwtstamp_config *hwts_config = &priv->tstamp_config;
+
+	return copy_to_user(ifr->ifr_data, hwts_config, sizeof(*hwts_config)) ? -EFAULT : 0;
+}
+
+static int lan865x_set_ts_config(struct net_device* netdev, struct ifreq *ifr) {
+    struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
+	struct hwtstamp_config *hwts_config = &priv->tstamp_config;
+
+	return copy_from_user(hwts_config, ifr->ifr_data, sizeof(*hwts_config)) ? -EFAULT : 0;
+}
 
 static int lan865x_set_mac_address(struct net_device* netdev, void* addr) {
     struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
@@ -326,12 +365,24 @@ static int lan865x_net_open(struct net_device* netdev) {
     return 0;
 }
 
+static int lan865x_netdev_ioctl(struct net_device* netdev, struct ifreq* ifr, int cmd) {
+	switch (cmd) {
+		case SIOCGHWTSTAMP:
+			return lan865x_get_ts_config(netdev, ifr);
+		case SIOCSHWTSTAMP:
+			return lan865x_set_ts_config(netdev, ifr);
+		default:
+			return -EOPNOTSUPP;
+	}
+}
+
 static const struct net_device_ops lan865x_netdev_ops = {
     .ndo_open = lan865x_net_open,
     .ndo_stop = lan865x_net_close,
     .ndo_start_xmit = lan865x_send_packet,
     .ndo_set_rx_mode = lan865x_set_multicast_list,
     .ndo_set_mac_address = lan865x_set_mac_address,
+	.ndo_eth_ioctl = lan865x_netdev_ioctl,
 };
 
 static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg);
@@ -448,6 +499,12 @@ static int lan865x_probe(struct spi_device* spi) {
         goto oa_tc6_exit;
     }
 
+	priv->ptpdev = ptp_device_init(dev, priv->tc6, (s32)spi->max_speed_hz);
+	if (!priv->ptpdev) {
+		dev_err(dev, "ptp_device_init()");
+		goto oa_tc6_exit;
+	}
+
     return misc_register(&lan865x_miscdev);
 
 oa_tc6_exit:
@@ -495,7 +552,7 @@ static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg
 
         ret = oa_tc6_write_register(g_tc6, reg.addr, reg.value);
         break;
-
+	
     default:
         return -ENOTTY;
     }
