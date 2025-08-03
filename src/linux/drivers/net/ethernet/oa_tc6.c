@@ -743,12 +743,15 @@ static void oa_tc6_submit_rx_skb(struct oa_tc6* tc6) {
     tc6->netdev->stats.rx_packets++;
     tc6->netdev->stats.rx_bytes += tc6->rx_skb->len;
 
+	//print_hex_dump(KERN_ERR, __func__, DUMP_PREFIX_OFFSET, 16, 1, tc6->rx_skb->data, tc6->rx_skb->len, false);
+
     netif_rx(tc6->rx_skb);
 
     tc6->rx_skb = NULL;
 }
 
 static void oa_tc6_update_rx_skb(struct oa_tc6* tc6, u8* payload, u8 length) {
+	//print_hex_dump(KERN_ERR, __func__, DUMP_PREFIX_OFFSET, 16, 1, payload, length, false);
     memcpy(skb_put(tc6->rx_skb, length), payload, length);
 }
 
@@ -876,6 +879,8 @@ static int oa_tc6_prcs_complete_rx_frame(struct oa_tc6* tc6, u8* payload, u16 si
         timestamp.seconds = ntohl(net_timestamp->seconds);
         timestamp.nanoseconds = ntohl(net_timestamp->nanoseconds);
 
+		pr_err("%s: rx timestamp: sec = %u, nsec = %u\n", __func__, timestamp.seconds, timestamp.nanoseconds);
+
         skb_hwtstamps(tc6->rx_skb)->hwtstamp = timestamp.seconds * NS_IN_1S + timestamp.nanoseconds;
     }
 
@@ -903,6 +908,8 @@ static int oa_tc6_prcs_rx_frame_start(struct oa_tc6* tc6, u8* payload, u16 size)
 
         timestamp.seconds = ntohl(net_timestamp->seconds);
         timestamp.nanoseconds = ntohl(net_timestamp->nanoseconds);
+
+		pr_err("%s: rx timestamp: sec = %u, nsec = %u\n", __func__, timestamp.seconds, timestamp.nanoseconds);
 
         skb_hwtstamps(tc6->rx_skb)->hwtstamp = timestamp.seconds * NS_IN_1S + timestamp.nanoseconds;
     }

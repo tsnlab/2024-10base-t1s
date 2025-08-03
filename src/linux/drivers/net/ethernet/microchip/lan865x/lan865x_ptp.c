@@ -32,43 +32,34 @@ static int lan865x_ptp_thread_handler(void* data)
 	struct skb_shared_hwtstamps skb_hwts;
 
 	while(true) {
-		//wait_event_interruptible(ptpdev->tc6->spi_wq, ptpdev->tc6->ts_int_flag);
 		udelay(10);
-
-		//if (ptpdev->tc6->ts_int_flag) {
-		//	ptpdev->tc6->ts_int_flag = false;
-		//}
-		
-		//pr_err("Wake-Up %s\n", __func__);
 
 		oa_tc6_read_register(ptpdev->tc6, MMS0_OA_STATUS0, &status);
 
 		// GPTP
 		if (status & TS_A_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 1);
-			pr_err("%s: A Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			//pr_err("%s: A Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 
 			skb_hwts.hwtstamp = ns_to_ktime(tx_ts);	
-			pr_err("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
+			//pr_err("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
 			skb_tstamp_tx(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_A], &skb_hwts);
-			//dev_kfree_skb_any(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_A]);
 			kfree_skb(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_A]);
 		}
 		// NORMAL
 		if (status & TS_B_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 2);
-			pr_err("%s: B Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			//pr_err("%s: B Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 
 			skb_hwts.hwtstamp = ns_to_ktime(tx_ts);	
-			pr_err("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
+			//pr_err("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
 			skb_tstamp_tx(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_B], &skb_hwts);
-			//dev_kfree_skb_any(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_A]);
 			kfree_skb(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_B]);
 		}
 		// RESERVED
 		if (status & TS_C_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 3);
-			pr_err("%s: C Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			//pr_err("%s: C Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 		}
 
 		if (status & (TS_A_MASK | TS_B_MASK | TS_C_MASK) ) {
@@ -167,10 +158,10 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info *ptp_info, s64 delta_ns)
 static int lan865x_ptp_gettimex64(struct ptp_clock_info *ptp_info, struct timespec64 *ts,
 			struct ptp_system_timestamp *sts) 
 {
-	u64 clock, timestamp;
+	u64 timestamp;
 	unsigned long flags;
 
-	//pr_err("call %s", __func__);
+	pr_err("lan865x: call %s", __func__);
 
 	struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
 	struct ptp_device* ptpdev = priv->ptpdev;
@@ -191,13 +182,13 @@ static int lan865x_ptp_gettimex64(struct ptp_clock_info *ptp_info, struct timesp
 
 static int lan865x_ptp_settime64(struct ptp_clock_info *ptp_info, const struct timespec64 *ts)
 {
-	u64 hw_timestamp, host_timestamp, sys_clock;
+	u64 hw_timestamp, host_timestamp;
 	unsigned long flags;
 
 	struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
 	struct ptp_device* ptpdev = priv->ptpdev;
 
-	pr_err("call %s", __func__);
+	pr_err("lan865x: call %s", __func__);
 
 	spin_lock_irqsave(&ptpdev->lock, flags);
 
@@ -216,7 +207,6 @@ static int lan865x_ptp_settime64(struct ptp_clock_info *ptp_info, const struct t
 struct ptp_device* ptp_device_init(struct device *dev, struct oa_tc6 *tc6, s32 max_adj)
 {
 	struct ptp_device *ptpdev;
-	struct timespec64 ts;
 
 	ptpdev = kzalloc(sizeof(struct ptp_device), GFP_KERNEL);
 	if (!ptpdev) {
