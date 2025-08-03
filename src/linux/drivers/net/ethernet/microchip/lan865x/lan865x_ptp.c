@@ -82,11 +82,9 @@ static int lan865x_ptp_thread_handler(void* data)
 
 static int lan865x_ptp_adjfine(struct ptp_clock_info *ptp_info, long scaled_ppm)
 {
-	u64 cur_timestamp, new_timestamp;
-	u64 sys_clock;
 	u64 diff;
 	unsigned long flags;
-	u32 ppm, tmp_ticks_scale;
+	u32 ppm;
 	int is_negative = 0;
 
 	struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
@@ -112,14 +110,14 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info *ptp_info, long scaled_ppm)
 	lan865x_set_sys_clock_nanocount(priv, (u8)ptpdev->ticks_scale);
 
 	if (is_negative) {
-		lan865x_add_sys_clock(priv, (ppm & 0xFFFFFFFF));
-		pr_err("%s: add_sys_clock to ppm(us) = %u\n", __func__, ppm);
-	} else {
 		lan865x_sub_sys_clock(priv, (ppm & 0xFFFFFFFF));
 		pr_err("%s: sub_sys_clock to ppm(us) = %u\n", __func__, ppm);
+	} else {
+		lan865x_add_sys_clock(priv, (ppm & 0xFFFFFFFF));
+		pr_err("%s: add_sys_clock to ppm(us) = %u\n", __func__, ppm);
 	}
 
-	pr_err("%s: is_negative = %d, scaled_ppm = %d, ptpdev->ticks_scale = %u\n", __func__, 
+	pr_err("%s: is_negative = %d, scaled_ppm = %d, ptpdev->ticks_scale = %u\n", __func__,
 			is_negative, scaled_ppm, ptpdev->ticks_scale); 
 	pr_err("%s: set_sys_clock_ns = %u\n", __func__, (u8)ptpdev->ticks_scale & 0xFF);
 
