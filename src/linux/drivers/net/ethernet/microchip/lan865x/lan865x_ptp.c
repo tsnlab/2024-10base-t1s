@@ -135,8 +135,7 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info *ptp_info, s64 delta_ns)
 	struct ptp_device* ptpdev = priv->ptpdev;
 
 	bool is_negative = false;
-	u32 sec, nsec;
-	timestamp_t hw_timestamp;
+	timestamp_t hw_timestamp, curr_hw_timestamp;
 
 	pr_err("lan865x: call %s\n", __func__);
 
@@ -155,8 +154,10 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info *ptp_info, s64 delta_ns)
 	hw_timestamp += is_negative ? -delta_ns : delta_ns;
 
 	lan865x_set_sys_clock(priv, hw_timestamp);
+	curr_hw_timestamp = lan865x_get_sys_clock(priv);
 
-	pr_err("%s: delta_ns = %c%llu, hw_timestamp = %llu\n", __func__, is_negative ? '-':'+', delta_ns, hw_timestamp);
+	pr_err("%s: delta_ns = %c%llu, curr_hw_timestamp = %llu\n", __func__,
+				is_negative ? '-':'+', delta_ns, curr_hw_timestamp);
 
 	spin_unlock_irqrestore(&ptpdev->lock, flags);
 
