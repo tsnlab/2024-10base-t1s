@@ -39,27 +39,27 @@ static int lan865x_ptp_thread_handler(void* data)
 		// GPTP
 		if (status & TS_A_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 1);
-			//pr_err("%s: A Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			lan865x_debug("%s: A Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 
 			skb_hwts.hwtstamp = ns_to_ktime(tx_ts);	
-			//pr_err("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
+			lan865x_debug("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
 			skb_tstamp_tx(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_A], &skb_hwts);
 			kfree_skb(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_A]);
 		}
 		// NORMAL
 		if (status & TS_B_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 2);
-			//pr_err("%s: B Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			lan865x_debug("%s: B Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 
 			skb_hwts.hwtstamp = ns_to_ktime(tx_ts);	
-			//pr_err("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
+			lan865x_debug("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
 			skb_tstamp_tx(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_B], &skb_hwts);
 			kfree_skb(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_B]);
 		}
 		// RESERVED
 		if (status & TS_C_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 3);
-			//pr_err("%s: C Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			lan865x_debug("%s: C Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 		}
 
 		if (status & (TS_A_MASK | TS_B_MASK | TS_C_MASK) ) {
@@ -81,7 +81,7 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info *ptp_info, long scaled_ppm)
 	struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
 	struct ptp_device* ptpdev = priv->ptpdev;
 
-	pr_err("lan865x: call %s", __func__);
+	lan865x_debug("lan865x: call %s", __func__);
 
 	spin_lock_irqsave(&ptpdev->lock, flags);
 
@@ -102,15 +102,15 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info *ptp_info, long scaled_ppm)
 
 	if (is_negative) {
 		lan865x_sub_sys_clock(priv, (ppm & 0xFFFFFFFF));
-		pr_err("%s: sub_sys_clock to ppm(us) = %u\n", __func__, ppm);
+		lan865x_debug("%s: sub_sys_clock to ppm(us) = %u\n", __func__, ppm);
 	} else {
 		lan865x_add_sys_clock(priv, (ppm & 0xFFFFFFFF));
-		pr_err("%s: add_sys_clock to ppm(us) = %u\n", __func__, ppm);
+		lan865x_debug("%s: add_sys_clock to ppm(us) = %u\n", __func__, ppm);
 	}
 
-	pr_err("%s: is_negative = %d, scaled_ppm = %d, ptpdev->ticks_scale = %u\n", __func__,
+	lan865x_debug("%s: is_negative = %d, scaled_ppm = %d, ptpdev->ticks_scale = %u\n", __func__,
 			is_negative, scaled_ppm, ptpdev->ticks_scale); 
-	pr_err("%s: set_sys_clock_ns = %u\n", __func__, (u8)ptpdev->ticks_scale & 0xFF);
+	lan865x_debug("%s: set_sys_clock_ns = %u\n", __func__, (u8)ptpdev->ticks_scale & 0xFF);
 
 exit:
 	spin_unlock_irqrestore(&ptpdev->lock, flags);
@@ -128,7 +128,7 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info *ptp_info, s64 delta_ns)
 	bool is_negative = false;
 	timestamp_t hw_timestamp, curr_hw_timestamp;
 
-	pr_err("lan865x: call %s\n", __func__);
+	lan865x_debug("lan865x: call %s\n", __func__);
 
 	spin_lock_irqsave(&ptpdev->lock, flags);
 
@@ -147,7 +147,7 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info *ptp_info, s64 delta_ns)
 	lan865x_set_sys_clock(priv, hw_timestamp);
 	curr_hw_timestamp = lan865x_get_sys_clock(priv);
 
-	pr_err("%s: delta_ns = %c%llu, curr_hw_timestamp = %llu\n", __func__,
+	lan865x_debug("%s: delta_ns = %c%llu, curr_hw_timestamp = %llu\n", __func__,
 				is_negative ? '-':'+', delta_ns, curr_hw_timestamp);
 
 	spin_unlock_irqrestore(&ptpdev->lock, flags);
@@ -161,7 +161,7 @@ static int lan865x_ptp_gettimex64(struct ptp_clock_info *ptp_info, struct timesp
 	u64 timestamp;
 	unsigned long flags;
 
-	pr_err("lan865x: call %s", __func__);
+	lan865x_debug("lan865x: call %s", __func__);
 
 	struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
 	struct ptp_device* ptpdev = priv->ptpdev;
@@ -188,7 +188,7 @@ static int lan865x_ptp_settime64(struct ptp_clock_info *ptp_info, const struct t
 	struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
 	struct ptp_device* ptpdev = priv->ptpdev;
 
-	pr_err("lan865x: call %s", __func__);
+	lan865x_debug("lan865x: call %s", __func__);
 
 	spin_lock_irqsave(&ptpdev->lock, flags);
 
@@ -251,30 +251,30 @@ struct ptp_device* ptp_device_init(struct device *dev, struct oa_tc6 *tc6, s32 m
 
 	u32 regval;
 
-#if 1
 	regval = 0;
 	oa_tc6_read_register(ptpdev->tc6, 0x00000004, &regval); // 0x0000_0004 = MMS0_OA_CONFIG0
-	pr_err("%s: OA_CONFIG0 = 0x%08X\n", __func__, regval);
+	lan865x_debug("%s: OA_CONFIG0 = 0x%08X\n", __func__, regval);
 
 	regval = 0;
 	oa_tc6_read_register(ptpdev->tc6, 0x00000008, &regval); // 0x0000_0008 = MMS0_OA_STATUS0
-	pr_err("%s: OA_STATUS0 = 0x%08X\n", __func__, regval);
+	lan865x_debug("%s: OA_STATUS0 = 0x%08X\n", __func__, regval);
 
 	regval = 40; // 40ns
 	oa_tc6_write_register(ptpdev->tc6, MMS1_MAC_TI, regval);
 
-	//regval = 0;
-	//oa_tc6_read_register(ptpdev->tc6, 0x0000000C, &regval); // 0x0000_000C = MMS0_OA_MASK0
-	//pr_err("%s: OA_MASK0 = 0x%08X\n", __func__, regval);
+#if 0
+	regval = 0;
+	oa_tc6_read_register(ptpdev->tc6, 0x0000000C, &regval); // 0x0000_000C = MMS0_OA_MASK0
+	lan865x_debug("%s: OA_MASK0 = 0x%08X\n", __func__, regval);
 
 	// Configure the OA_MASK0 register to generate an interrupt on Tx Timestamp Capture.
-	//regval &= ~(TS_A_INT_ENABLE | TS_B_INT_ENABLE | TS_C_INT_ENABLE);
-	//oa_tc6_write_register(ptpdev->tc6, 0x0000000C, &regval); // 0x0000_000C = MMS0_OA_MASK0
+	regval &= ~(TS_A_INT_ENABLE | TS_B_INT_ENABLE | TS_C_INT_ENABLE);
+	oa_tc6_write_register(ptpdev->tc6, 0x0000000C, &regval); // 0x0000_000C = MMS0_OA_MASK0
 	
-	//regval = 0;
-	//oa_tc6_read_register(ptpdev->tc6, 0x0000000C, &regval); // 0x0000_000C = MMS0_OA_MASK0
-	//pr_err("%s: OA_MASK0 = 0x%08X\n", __func__, regval);
-#endif /* 1 */
+	regval = 0;
+	oa_tc6_read_register(ptpdev->tc6, 0x0000000C, &regval); // 0x0000_000C = MMS0_OA_MASK0
+	lan865x_debug("%s: OA_MASK0 = 0x%08X\n", __func__, regval);
+#endif /* 0 */
 
 	return ptpdev;
 }

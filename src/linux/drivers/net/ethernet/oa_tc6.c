@@ -879,7 +879,7 @@ static int oa_tc6_prcs_complete_rx_frame(struct oa_tc6* tc6, u8* payload, u16 si
         timestamp.seconds = ntohl(net_timestamp->seconds);
         timestamp.nanoseconds = ntohl(net_timestamp->nanoseconds);
 
-		pr_err("%s: rx timestamp: sec = %u, nsec = %u\n", __func__, timestamp.seconds, timestamp.nanoseconds);
+		lan865x_debug("%s: rx timestamp: sec = %u, nsec = %u\n", __func__, timestamp.seconds, timestamp.nanoseconds);
 
         skb_hwtstamps(tc6->rx_skb)->hwtstamp = timestamp.seconds * NS_IN_1S + timestamp.nanoseconds;
     }
@@ -909,7 +909,7 @@ static int oa_tc6_prcs_rx_frame_start(struct oa_tc6* tc6, u8* payload, u16 size)
         timestamp.seconds = ntohl(net_timestamp->seconds);
         timestamp.nanoseconds = ntohl(net_timestamp->nanoseconds);
 
-		pr_err("%s: rx timestamp: sec = %u, nsec = %u\n", __func__, timestamp.seconds, timestamp.nanoseconds);
+		lan865x_debug("%s: rx timestamp: sec = %u, nsec = %u\n", __func__, timestamp.seconds, timestamp.nanoseconds);
 
         skb_hwtstamps(tc6->rx_skb)->hwtstamp = timestamp.seconds * NS_IN_1S + timestamp.nanoseconds;
     }
@@ -1078,7 +1078,7 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
 
 	tmp_skb = skb_clone(tc6->ongoing_tx_skb, GFP_ATOMIC);
 	if (!tmp_skb) {
-		pr_err("%s: skb_clone() failed\n", __func__);
+		netdev_err(tc6->netdev, "%s: skb_clone() failed\n", __func__);
 	}
 
 	/* NOTE: 

@@ -37,7 +37,7 @@ int lan865x_set_sys_clock(struct lan865x_priv* priv, u64 timestamp) {
 	u32 sec = (u32)(timestamp / NS_IN_1S) & 0xFFFFFFFF;
 	u32 nsec = (u32)((timestamp % NS_IN_1S) & 0x3FFFFFFF);
 
-	pr_err("%s: sec_h = %u, sec = %u, nsec = %u\n", __func__, sec_h, sec, nsec);
+	lan865x_debug("%s: sec_h = %u, sec = %u, nsec = %u\n", __func__, sec_h, sec, nsec);
 
     if (oa_tc6_write_register(tc6, MMS1_MAC_TSH, sec_h)) return -ENODEV;
     if (oa_tc6_write_register(tc6, MMS1_MAC_TSL, sec)) return -ENODEV;
