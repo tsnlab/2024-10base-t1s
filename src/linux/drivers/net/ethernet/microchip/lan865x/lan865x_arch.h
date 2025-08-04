@@ -73,9 +73,6 @@ struct oa_tc6 {
 	u8 rx_chunks_available;
 	bool rx_buf_overflow;
 	bool int_flag;
-#if 1
-	bool ts_int_flag;
-#endif
 };
 
 struct ptp_device {
