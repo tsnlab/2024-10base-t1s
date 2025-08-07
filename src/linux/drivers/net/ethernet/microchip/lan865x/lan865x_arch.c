@@ -18,9 +18,9 @@ sysclock_t lan865x_get_sys_clock(struct lan865x_priv* priv) {
 	u32 sec, nsec;
     u64 tmp_sec, clock;
 
-    if (oa_tc6_read_register(tc6, MMS1_MAC_TSH, &sec_h)) return -ENODEV;
-    if (oa_tc6_read_register(tc6, MMS1_MAC_TSL, &sec)) return -ENODEV;
     if (oa_tc6_read_register(tc6, MMS1_MAC_TN, &nsec)) return -ENODEV;
+    if (oa_tc6_read_register(tc6, MMS1_MAC_TSL, &sec)) return -ENODEV;
+    if (oa_tc6_read_register(tc6, MMS1_MAC_TSH, &sec_h)) return -ENODEV;
 
 	tmp_sec = (u64)sec * NS_IN_1S;
 	nsec = nsec & 0x3FFFFFFF;
@@ -33,28 +33,40 @@ sysclock_t lan865x_get_sys_clock(struct lan865x_priv* priv) {
 int lan865x_set_sys_clock(struct lan865x_priv* priv, u64 timestamp) {
 	struct oa_tc6* tc6 = priv->tc6;
 
-	u32 sec_h = 0x00000000 & 0xFFFFFFFF;
-	u32 sec = (u32)(timestamp / NS_IN_1S) & 0xFFFFFFFF;
-	u32 nsec = (u32)((timestamp % NS_IN_1S) & 0x3FFFFFFF);
+	u64 sec = timestamp / NS_IN_1S;
+	u32 sec_h = (u32)(sec >> 32) & 0x0000FFFF;
+	u32 sec_l = (u32)(sec & 0xFFFFFFFF);
+	u32 nsec = (u32)(timestamp % NS_IN_1S) & 0x3FFFFFFF; // 30bit. Maybe not needed to mask
 
 	lan865x_debug("%s: sec_h = %u, sec = %u, nsec = %u\n", __func__, sec_h, sec, nsec);
 
-    if (oa_tc6_write_register(tc6, MMS1_MAC_TSH, sec_h)) return -ENODEV;
-    if (oa_tc6_write_register(tc6, MMS1_MAC_TSL, sec)) return -ENODEV;
+	// Reverse order for lower the error
     if (oa_tc6_write_register(tc6, MMS1_MAC_TN, nsec)) return -ENODEV;
+    if (oa_tc6_write_register(tc6, MMS1_MAC_TSL, sec)) return -ENODEV;
+    if (oa_tc6_write_register(tc6, MMS1_MAC_TSH, sec_h)) return -ENODEV;
 
     return 0;
 }
 
-void lan865x_set_sys_clock_nanocount(struct lan865x_priv* priv, u8 nano_count) {
+void lan865x_set_sys_clock_ti(struct lan865x_priv* priv, u64 subnano_b24) {
 	struct oa_tc6* tc6 = priv->tc6;
-	u32 reg_val = 0;
+	u32 reg_ti_val;
+	u32 reg_tisubn_val;
+	u32 nano = subnano_b24 >> 24;
+	u32 subnano = subnano_b24 & 0x00FFFFFF;
 
-    /* Bits 7:0 = CNS (nanosecond increment value) */
-    reg_val |= (nano_count & 0xFF);
+    // 8bit 000000xx
+    reg_ti_val = (nano & 0xFF);
+    oa_tc6_write_register(tc6, MMS1_MAC_TI, reg_ti_val);
 
-	/* Set MAC_TI(TSU Timer Increment) register */
-    oa_tc6_write_register(tc6, MMS1_MAC_TI, reg_val);
+	// 24bit 00123456 -> 56001234
+	reg_tisubn_val = ((subnano & 0xffff00) >> 8) | ((subnano & 0x0000FF) << 24);
+	/* reg_tisubn_val = (subnano & 0xffffff) << 8; */
+
+	// Set MAC_TI(TSU Timer Increment) register
+	// XXX: nano first
+    oa_tc6_write_register(tc6, MMS1_MAC_TISUBN, reg_tisubn_val);
+	lan865x_debug("%s: subnano = 0x%08X\n", __func__, subnano);
 }
 
 void lan865x_add_sys_clock(struct lan865x_priv* priv, u32 add_offset) {

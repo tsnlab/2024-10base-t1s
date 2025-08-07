@@ -39,7 +39,7 @@ static int lan865x_ptp_thread_handler(void* data)
 		// GPTP
 		if (status & TS_A_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 1);
-			lan865x_debug("%s: A Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			lan865x_debug("%s: A Timestamp = %llu.%llu\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 
 			skb_hwts.hwtstamp = ns_to_ktime(tx_ts);	
 			lan865x_debug("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
@@ -49,7 +49,7 @@ static int lan865x_ptp_thread_handler(void* data)
 		// NORMAL
 		if (status & TS_B_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 2);
-			lan865x_debug("%s: B Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			lan865x_debug("%s: B Timestamp = %llu.%llu\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 
 			skb_hwts.hwtstamp = ns_to_ktime(tx_ts);	
 			lan865x_debug("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
@@ -59,7 +59,7 @@ static int lan865x_ptp_thread_handler(void* data)
 		// RESERVED
 		if (status & TS_C_MASK) {
 			tx_ts = lan865x_read_tx_timestamp(priv, 3);
-			lan865x_debug("%s: C Timestamp = %u.%u\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
+			lan865x_debug("%s: C Timestamp = %llu.%llu\n", __func__, tx_ts/NS_IN_1S, tx_ts%NS_IN_1S);
 		}
 
 		if (status & (TS_A_MASK | TS_B_MASK | TS_C_MASK) ) {
@@ -73,7 +73,7 @@ static int lan865x_ptp_thread_handler(void* data)
 
 static int lan865x_ptp_adjfine(struct ptp_clock_info *ptp_info, long scaled_ppm)
 {
-	u64 diff;
+	u64 ticks_scale, diff_b24;
 	unsigned long flags;
 	u32 ppm;
 	int is_negative = 0;
@@ -96,21 +96,22 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info *ptp_info, long scaled_ppm)
 	ppm = scaled_ppm >> 16;
 
 	/* Adjust ticks_scale */
-	diff = mul_u64_u64_div_u64(TICKS_SCALE, (u64)scaled_ppm, 1000000ULL << 16);
-	ptpdev->ticks_scale = (TICKS_SCALE + (is_negative ? - diff : diff)) & 0xFF;
-	lan865x_set_sys_clock_nanocount(priv, (u8)ptpdev->ticks_scale);
+	diff_b24 = mul_u64_u64_div_u64(TICKS_SCALE << (24 - 16), (u64)scaled_ppm, 1000000ULL);
+	ticks_scale = ((TICKS_SCALE << 24) + (is_negative ? - diff_b24 : diff_b24));
 
-	if (is_negative) {
-		lan865x_sub_sys_clock(priv, (ppm & 0xFFFFFFFF));
-		lan865x_debug("%s: sub_sys_clock to ppm(us) = %u\n", __func__, ppm);
-	} else {
-		lan865x_add_sys_clock(priv, (ppm & 0xFFFFFFFF));
-		lan865x_debug("%s: add_sys_clock to ppm(us) = %u\n", __func__, ppm);
-	}
+	lan865x_set_sys_clock_ti(priv, ticks_scale);
+	ptpdev->ti_subnano_b24 = ticks_scale;
 
-	lan865x_debug("%s: is_negative = %d, scaled_ppm = %d, ptpdev->ticks_scale = %u\n", __func__,
-			is_negative, scaled_ppm, ptpdev->ticks_scale); 
-	lan865x_debug("%s: set_sys_clock_ns = %u\n", __func__, (u8)ptpdev->ticks_scale & 0xFF);
+
+	/* if (is_negative) { */
+	/* 	lan865x_sub_sys_clock(priv, (ppm & 0xFFFFFFFF)); */
+	/* 	lan865x_debug("%s: sub_sys_clock to ppm(us) = %u\n", __func__, ppm); */
+	/* } else { */
+	/* 	lan865x_add_sys_clock(priv, (ppm & 0xFFFFFFFF)); */
+	/* 	lan865x_debug("%s: add_sys_clock to ppm(us) = %u\n", __func__, ppm); */
+	/* } */
+	lan865x_debug("%s: scaled_ppm = %ld, diff = %llu, ticks_scale = %llu = %014llx\n", __func__, scaled_ppm, diff_b24, ticks_scale, ticks_scale);
+
 
 exit:
 	spin_unlock_irqrestore(&ptpdev->lock, flags);
@@ -182,7 +183,7 @@ static int lan865x_ptp_gettimex64(struct ptp_clock_info *ptp_info, struct timesp
 
 static int lan865x_ptp_settime64(struct ptp_clock_info *ptp_info, const struct timespec64 *ts)
 {
-	u64 hw_timestamp, host_timestamp;
+	u64 host_timestamp;
 	unsigned long flags;
 
 	struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
@@ -195,9 +196,8 @@ static int lan865x_ptp_settime64(struct ptp_clock_info *ptp_info, const struct t
 	/* Get host timestamp */
 	host_timestamp = (u64)ts->tv_sec * NS_IN_1S + ts->tv_nsec;
 
-	ptpdev->ticks_scale = TICKS_SCALE;
-	hw_timestamp = lan865x_get_sys_clock(priv);
-	ptpdev->offset = host_timestamp - hw_timestamp;
+	// TODO add/sub
+	lan865x_set_sys_clock(priv, host_timestamp);
 
 	spin_unlock_irqrestore(&ptpdev->lock, flags);
 
@@ -240,7 +240,8 @@ struct ptp_device* ptp_device_init(struct device *dev, struct oa_tc6 *tc6, s32 m
 	}
 
 	ptpdev->ptp_info = ptp_info;
-	ptpdev->ticks_scale = TICKS_SCALE;
+	// TODO: read from register
+	ptpdev->ti_subnano_b24 = TICKS_SCALE << 24;
 
 	ptpdev->ptp_thread = kthread_run(lan865x_ptp_thread_handler, ptpdev, "lan865x-ptp-thread");
 	if (IS_ERR(ptpdev->ptp_thread)) {

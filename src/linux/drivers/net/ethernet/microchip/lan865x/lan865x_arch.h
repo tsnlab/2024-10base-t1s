@@ -23,6 +23,7 @@
 #define MMS1_MAC_TN  0x00010075
 #define MMS1_MAC_TA  0x00010076
 #define MMS1_MAC_TI  0x00010077
+#define MMS1_MAC_TISUBN  0x0001006F
 
 enum lan865x_timestamp_id {
     LAN865X_TIMESTAMP_ID_NONE = 0,
@@ -83,7 +84,7 @@ struct ptp_device {
 
 	struct task_struct *ptp_thread;
 
-	u32 ticks_scale;
+	u32 ti_subnano_b24; // timer increase every clock (25MHz) cycle
 	u64 offset;
 
 	spinlock_t lock;
@@ -112,7 +113,7 @@ void write32(uint32_t val, void* addr);
 sysclock_t lan865x_get_sys_clock(struct lan865x_priv* priv);
 int lan865x_set_sys_clock(struct lan865x_priv* priv, u64 timestamp);
 u32 lan865x_get_cycle_1s(void);
-void lan865x_set_sys_clock_nanocount(struct lan865x_priv* priv, u8 nano_count);
+void lan865x_set_sys_clock_ti(struct lan865x_priv* priv, u64 subnano_b24);
 void lan865x_add_sys_clock(struct lan865x_priv* priv, u32 add_offset);
 void lan865x_sub_sys_clock(struct lan865x_priv* priv, u32 sub_offset);
 timestamp_t lan865x_read_tx_timestamp(struct lan865x_priv* priv, int tx_id);
