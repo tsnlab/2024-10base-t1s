@@ -193,11 +193,11 @@ struct lan865x_priv {
 struct timestamp_format {
     uint32_t seconds;
     union {
-        uint32_t nanoseconds;
+        uint32_t _nano;
         struct {
             uint32_t nanoseconds : 30;
-            uint32_t rsvd : 2;
-        } nano;
+            uint32_t _rsvd : 2;
+        };
     };
 };
 
@@ -878,7 +878,7 @@ static int oa_tc6_prcs_complete_rx_frame(struct oa_tc6* tc6, u8* payload, u16 si
 
 		lan865x_debug("%s: rx timestamp: sec = %u, nsec = %u\n", __func__, timestamp.seconds, timestamp.nanoseconds);
 
-        skb_hwtstamps(tc6->rx_skb)->hwtstamp = timestamp.seconds * NS_IN_1S + timestamp.nanoseconds;
+        skb_hwtstamps(tc6->rx_skb)->hwtstamp = (u64)timestamp.seconds * NS_IN_1S + timestamp.nanoseconds;
     }
 
     oa_tc6_update_rx_skb(tc6, &payload[sizeof(struct timestamp_format)], size - sizeof(struct timestamp_format));
@@ -908,7 +908,7 @@ static int oa_tc6_prcs_rx_frame_start(struct oa_tc6* tc6, u8* payload, u16 size)
 
 		lan865x_debug("%s: rx timestamp: sec = %u, nsec = %u\n", __func__, timestamp.seconds, timestamp.nanoseconds);
 
-        skb_hwtstamps(tc6->rx_skb)->hwtstamp = timestamp.seconds * NS_IN_1S + timestamp.nanoseconds;
+        skb_hwtstamps(tc6->rx_skb)->hwtstamp = (u64)timestamp.seconds * NS_IN_1S + timestamp.nanoseconds;
     }
 
     oa_tc6_update_rx_skb(tc6, &payload[sizeof(struct timestamp_format)], size - sizeof(struct timestamp_format));
