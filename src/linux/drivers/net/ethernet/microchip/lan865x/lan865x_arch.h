@@ -34,6 +34,24 @@
 #define MMS0_STATS11 0x0213
 #define MMS0_STATS12 0x0214
 
+#define MMS0_OA_STATUS0 0x00000008
+#define TS_A_MASK (1 << 8)
+#define TS_B_MASK (1 << 9)
+#define TS_C_MASK (1 << 10)
+
+#define MMS0_OA_MASK0   0x00000013
+#define TS_A_INT_MASK (1 << 8)
+#define TS_B_INT_MASK (1 << 9)
+#define TS_C_INT_MASK (1 << 10)
+
+enum lan865x_timestamp_id {
+    LAN865X_TIMESTAMP_ID_NONE = 0,
+    LAN865X_TIMESTAMP_ID_GPTP, // GPTP
+    LAN865X_TIMESTAMP_ID_NORMAL, // NORMAL
+    LAN865X_TIMESTAMP_ID_RESERVED, // RESERVED
+    LAN865X_TIMESTAMP_ID_MAX,
+};
+
 #define NS_IN_1S 1000000000
 
 /* 25Mhz = LAN8650 SPI MAX Hz */
