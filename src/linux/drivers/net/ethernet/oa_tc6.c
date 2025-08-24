@@ -12,7 +12,9 @@
 #include <linux/phy.h>
 #include <linux/ptp_classify.h>
 
-#define FRAME_TIMESTAMP_ENABLE // TSN Lab
+#ifdef FRAME_TIMESTAMP_ENABLE
+#include <linux/if_vlan.h>
+#endif /* FRAME_TIMESTAMP_ENABLE */
 
 /* OPEN Alliance TC6 registers */
 /* Standard Capabilities Register */
@@ -165,6 +167,7 @@ enum oa_tc6_data_end_valid_info {
 
 #define NS_IN_1S (1000000000)
 
+// TODO: Cleanup
 enum tsn_timestamp_id {
     TSN_TIMESTAMP_ID_NONE = 0,
     TSN_TIMESTAMP_ID_GPTP = 1,
@@ -174,13 +177,7 @@ enum tsn_timestamp_id {
     TSN_TIMESTAMP_ID_MAX,
 };
 
-struct tsn_vlan_hdr {
-    uint16_t pid;
-    uint8_t pcp : 3;
-    uint8_t dei : 1;
-    uint16_t vid : 12;
-} __attribute__((packed, scalar_storage_order("big-endian")));
-
+// TODO: Cleanup
 struct lan865x_priv {
     struct work_struct multicast_work;
     struct net_device* netdev;
@@ -195,6 +192,7 @@ struct lan865x_priv {
     uint64_t total_tx_drop_count;
 };
 
+// TODO: Cleanup
 struct timestamp_format {
     uint32_t seconds;
     union {
@@ -206,9 +204,53 @@ struct timestamp_format {
     };
 };
 
-bool lan865x_is_gptp_packet(const uint8_t* payload);
-u8 lan865x_get_time_stamp_capture(struct oa_tc6* tc6, struct sk_buff* tmp_skb, bool is_gptp);
+// TODO: Cleanup
+static bool filter_rx_timestamp(struct oa_tc6* tc6, uint8_t* data) {
+    struct net_device* netdev = tc6->netdev;
+    struct lan865x_priv* priv = netdev_priv(netdev);
+    int rx_filter = priv->tstamp_config.rx_filter;
+    struct ethhdr* eth;
+    uint8_t* payload = data;
+    u16 eth_type;
+    struct vlan_hdr* vlan;
+    struct ptp_header* ptp;
+    u8 msg_type;
 
+    if (rx_filter == HWTSTAMP_FILTER_NONE) {
+        return false;
+    } else if (rx_filter == HWTSTAMP_FILTER_ALL) {
+        return true;
+    }
+
+    eth = (struct ethhdr*)payload;
+    payload += sizeof(*eth);
+    eth_type = ntohs(eth->h_proto);
+    if (eth_type == ETH_P_8021Q) {
+        vlan = (struct vlan_hdr*)payload;
+        eth_type = ntohs(vlan->h_vlan_encapsulated_proto);
+        payload += sizeof(*vlan);
+    }
+
+    if (eth_type != ETH_P_1588) {
+        return false;
+    }
+
+    ptp = (struct ptp_header*)payload;
+    msg_type = ptp->tsmt & 0xF;
+    switch (rx_filter) {
+    case HWTSTAMP_FILTER_PTP_V2_EVENT:
+    case HWTSTAMP_FILTER_PTP_V2_L2_EVENT:
+        return true;
+    case HWTSTAMP_FILTER_PTP_V2_SYNC:
+    case HWTSTAMP_FILTER_PTP_V2_L2_SYNC:
+        return msg_type == PTP_MSGTYPE_SYNC;
+    case HWTSTAMP_FILTER_PTP_V2_DELAY_REQ:
+    case HWTSTAMP_FILTER_PTP_V2_L2_DELAY_REQ:
+        return msg_type == PTP_MSGTYPE_DELAY_REQ;
+    default:
+        return false;
+    }
+}
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
 static int oa_tc6_spi_transfer(struct oa_tc6* tc6, enum oa_tc6_header_type header_type, u16 length) {
@@ -767,105 +809,6 @@ static int oa_tc6_allocate_rx_skb(struct oa_tc6* tc6) {
     return 0;
 }
 
-#ifdef FRAME_TIMESTAMP_ENABLE
-static bool filter_rx_timestamp(struct oa_tc6* tc6, uint8_t* data) {
-    struct net_device* netdev = tc6->netdev;
-    struct lan865x_priv* priv = netdev_priv(netdev);
-    int rx_filter = priv->tstamp_config.rx_filter;
-    struct ethhdr* eth;
-    uint8_t* payload = data;
-    u16 eth_type;
-    struct tsn_vlan_hdr* vlan;
-    struct ptp_header* ptp;
-    u8 msg_type;
-
-    if (rx_filter == HWTSTAMP_FILTER_NONE) {
-        return false;
-    } else if (rx_filter == HWTSTAMP_FILTER_ALL) {
-        return true;
-    }
-
-    eth = (struct ethhdr*)payload;
-    payload += sizeof(*eth);
-    eth_type = ntohs(eth->h_proto);
-    if (eth_type == ETH_P_8021Q) {
-        vlan = (struct tsn_vlan_hdr*)payload;
-        eth_type = vlan->pid;
-        payload += sizeof(*vlan);
-    }
-
-    if (eth_type != ETH_P_1588) {
-        return false;
-    }
-
-    ptp = (struct ptp_header*)payload;
-    msg_type = ptp->tsmt & 0xF;
-    switch (rx_filter) {
-    case HWTSTAMP_FILTER_PTP_V2_EVENT:
-    case HWTSTAMP_FILTER_PTP_V2_L2_EVENT:
-        return true;
-    case HWTSTAMP_FILTER_PTP_V2_SYNC:
-    case HWTSTAMP_FILTER_PTP_V2_L2_SYNC:
-        return msg_type == PTP_MSGTYPE_SYNC;
-    case HWTSTAMP_FILTER_PTP_V2_DELAY_REQ:
-    case HWTSTAMP_FILTER_PTP_V2_L2_DELAY_REQ:
-        return msg_type == PTP_MSGTYPE_DELAY_REQ;
-    default:
-        return false;
-    }
-}
-
-bool lan865x_is_gptp_packet(const uint8_t* payload) {
-    struct ethhdr* eth = (struct ethhdr*)payload;
-    uint16_t eth_type = ntohs(eth->h_proto);
-
-    if (eth_type == ETH_P_8021Q) {
-        struct tsn_vlan_hdr* vlan = (struct tsn_vlan_hdr*)(eth + 1);
-        eth_type = vlan->pid;
-    }
-
-    return eth_type == ETH_P_1588;
-}
-
-u8 lan865x_get_time_stamp_capture(struct oa_tc6* tc6, struct sk_buff* tmp_skb, bool is_gptp) {
-    u8 time_stamp_capture;
-    struct net_device* netdev = tc6->netdev;
-    struct lan865x_priv* priv = (struct lan865x_priv*)netdev_priv(netdev);
-	struct hwtstamp_config hwts_config = priv->tstamp_config;
-
-	if (skb_shinfo(tmp_skb)->tx_flags & SKBTX_HW_TSTAMP) {
-		if (hwts_config.tx_type != HWTSTAMP_TX_ON) {
-			time_stamp_capture = TSN_TIMESTAMP_ID_NONE;
-			kfree_skb(tmp_skb);
-		} else if (is_gptp) {
-			time_stamp_capture = TSN_TIMESTAMP_ID_GPTP;
-			priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP] = skb_get(tmp_skb);
-			skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_GPTP])->tx_flags |= SKBTX_IN_PROGRESS;
-		} else {
-			time_stamp_capture = TSN_TIMESTAMP_ID_NORMAL;
-			priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL] = skb_get(tmp_skb);
-			skb_shinfo(priv->waiting_txts_skb[TSN_TIMESTAMP_ID_NORMAL])->tx_flags |= SKBTX_IN_PROGRESS;
-		}
-	}
-
-    return time_stamp_capture;
-}
-
-static __be32 oa_tc6_prepare_data_header_with_tsc(bool data_valid, bool start_valid, bool end_valid, u8 end_byte_offset,
-                                                  u8 time_stamp_capture) {
-    u32 header = FIELD_PREP(OA_TC6_DATA_HEADER_DATA_NOT_CTRL, OA_TC6_DATA_HEADER) |
-                 FIELD_PREP(OA_TC6_DATA_HEADER_DATA_VALID, data_valid) |
-                 FIELD_PREP(OA_TC6_DATA_HEADER_START_VALID, start_valid) |
-                 FIELD_PREP(OA_TC6_DATA_HEADER_END_VALID, end_valid) |
-                 FIELD_PREP(OA_TC6_DATA_HEADER_END_BYTE_OFFSET, end_byte_offset) |
-                 FIELD_PREP(OA_TC6_DATA_HEADER_TIME_STAMP_CAPTURE, time_stamp_capture);
-
-    header |= FIELD_PREP(OA_TC6_DATA_HEADER_PARITY, oa_tc6_get_parity(header));
-
-    return cpu_to_be32(header);
-}
-#endif /* FRAME_TIMESTAMP_ENABLE */
-
 static int oa_tc6_prcs_complete_rx_frame(struct oa_tc6* tc6, u8* payload, u16 size) {
     int ret;
 
@@ -1084,23 +1027,6 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
     memcpy(tx_buf + 1, tx_skb_data, length_to_copy);
     tc6->tx_skb_offset += length_to_copy;
 
-#if 0
-#ifdef FRAME_TIMESTAMP_ENABLE
-	struct sk_buff* tmp_skb;
-
-	tmp_skb = skb_clone(tc6->ongoing_tx_skb, GFP_ATOMIC);
-	if (!tmp_skb) {
-		netdev_err(tc6->netdev, "%s: skb_clone() failed\n", __func__);
-	}
-
-	/* NOTE: 
-	 *	skb_clone() does not copy the user-space socket (sk) information.
-	 *	However, TX timestamping requires a valid sk to queue the timestamp to the user socket.
-	 *	Therefore, we manually copy the sk pointer from the original skb. */
-	tmp_skb->sk = tc6->ongoing_tx_skb->sk;
-#endif /* FRAME_TIMESTAMP_ENABLE */
-#endif /* 0 */
-
     /* Set end valid if the current tx chunk contains the end of the tx
      * ethernet frame.
      */
@@ -1117,23 +1043,6 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
         tc6->ongoing_tx_ts_capture_mode = 0;
 #endif /* FRAME_TIMESTAMP_ENABLE */
     }
-
-#if 0
-#ifdef FRAME_TIMESTAMP_ENABLE
-    u8 time_stamp_capture = 0;
-
-    if (!tc6->tx_skb_offset) {
-        bool is_gptp;
-
-        is_gptp = lan865x_is_gptp_packet(tx_skb_data);
-
-        time_stamp_capture = lan865x_get_time_stamp_capture(tc6, tmp_skb, is_gptp);
-    }
-
-    *tx_buf = oa_tc6_prepare_data_header_with_tsc(OA_TC6_DATA_VALID, start_valid, end_valid, end_byte_offset,
-                                                  time_stamp_capture);
-#endif /* FRAME_TIMESTAMP_ENABLE */
-#endif /* 0 */
 
 #ifdef FRAME_TIMESTAMP_ENABLE
     *tx_buf = oa_tc6_prepare_data_header(OA_TC6_DATA_VALID, start_valid, end_valid, end_byte_offset, ts_capture_mode);
@@ -1367,6 +1276,7 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6* tc6, struct sk_buff* skb) {
 }
 EXPORT_SYMBOL_GPL(oa_tc6_start_xmit);
 
+// TODO: Cleanup
 #ifdef FRAME_TIMESTAMP_ENABLE
 
 /* PHY Vendor Specific Registers Collision Detector Control 0 Register */
