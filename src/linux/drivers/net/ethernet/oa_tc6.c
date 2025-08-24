@@ -668,10 +668,10 @@ static int oa_tc6_unmask_macphy_error_interrupts(struct oa_tc6* tc6) {
         return ret;
 
 #if 0 /* 20250317 POOKY */
-	regval &=
-		~(INT_MASK0_TX_PROTOCOL_ERR_MASK |
-		  INT_MASK0_RX_BUFFER_OVERFLOW_ERR_MASK |
-		  INT_MASK0_LOSS_OF_FRAME_ERR_MASK | INT_MASK0_HEADER_ERR_MASK);
+    regval &=
+        ~(INT_MASK0_TX_PROTOCOL_ERR_MASK |
+          INT_MASK0_RX_BUFFER_OVERFLOW_ERR_MASK |
+          INT_MASK0_LOSS_OF_FRAME_ERR_MASK | INT_MASK0_HEADER_ERR_MASK);
 #endif
 
     return oa_tc6_write_register(tc6, OA_TC6_REG_INT_MASK0, regval);
