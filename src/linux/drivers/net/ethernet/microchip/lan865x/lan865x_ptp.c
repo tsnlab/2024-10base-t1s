@@ -14,6 +14,9 @@ struct lan865x_priv* get_lan865x_priv_by_ptp_info(struct ptp_clock_info *ptp_inf
 }
 
 #if 1
+/**
+ * NOTE: ptp_thread_handler operates at 10 µs intervals, which may affect PTP accuracy.
+ */
 #include <linux/delay.h>
 static int lan865x_ptp_thread_handler(void* data) 
 {
@@ -62,6 +65,7 @@ static int lan865x_ptp_thread_handler(void* data)
 
 	return 0;
 }
+#endif
 
 bool is_gptp_packet(const struct sk_buff* skb) {
     struct ethhdr *eth;
