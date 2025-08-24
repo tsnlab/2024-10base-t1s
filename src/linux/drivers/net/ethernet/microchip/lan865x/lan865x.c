@@ -599,7 +599,7 @@ static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg
 
         ret = oa_tc6_write_register(g_tc6, reg.addr, reg.value);
         break;
-	
+
     default:
         return -ENOTTY;
     }

@@ -15,17 +15,6 @@ struct lan865x_priv* get_lan865x_priv_by_ptp_info(struct ptp_clock_info *ptp_inf
 
 #if 1
 #include <linux/delay.h>
-#define MMS0_OA_STATUS0 0x00000008
-#define TS_A_MASK (1 << 8)
-#define TS_B_MASK (1 << 9)
-#define TS_C_MASK (1 << 10)
-
-#define MMS0_OA_MASK0	0x0000000C
-#define TS_A_INT_ENABLE (1 << 8)
-#define TS_B_INT_ENABLE (1 << 9)
-#define TS_C_INT_ENABLE (1 << 10)
-#endif
-
 static int lan865x_ptp_thread_handler(void* data) 
 {
 	struct ptp_device* ptpdev = (struct ptp_device*)data;
@@ -122,14 +111,6 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info *ptp_info, long scaled_ppm)
 	lan865x_set_sys_clock_ti(priv, ticks_scale);
 	ptpdev->ti_subnano_b24 = ticks_scale;
 
-
-	/* if (is_negative) { */
-	/* 	lan865x_sub_sys_clock(priv, (ppm & 0xFFFFFFFF)); */
-	/* 	lan865x_debug("%s: sub_sys_clock to ppm(us) = %u\n", __func__, ppm); */
-	/* } else { */
-	/* 	lan865x_add_sys_clock(priv, (ppm & 0xFFFFFFFF)); */
-	/* 	lan865x_debug("%s: add_sys_clock to ppm(us) = %u\n", __func__, ppm); */
-	/* } */
 	lan865x_debug("%s: scaled_ppm = %ld, diff = %llu, ticks_scale = %llu = %014llx\n", __func__, scaled_ppm, diff_b24, ticks_scale, ticks_scale);
 
 

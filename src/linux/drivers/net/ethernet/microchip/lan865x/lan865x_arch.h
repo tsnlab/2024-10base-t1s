@@ -25,14 +25,6 @@
 #define MMS1_MAC_TI  0x00010077
 #define MMS1_MAC_TISUBN  0x0001006F
 
-enum lan865x_timestamp_id {
-    LAN865X_TIMESTAMP_ID_NONE = 0,
-    LAN865X_TIMESTAMP_ID_GPTP, // GPTP
-    LAN865X_TIMESTAMP_ID_NORMAL, // NORMAL
-    LAN865X_TIMESTAMP_ID_RESERVED, // RESERVED
-    LAN865X_TIMESTAMP_ID_MAX,
-};
-
 #define MMS0_TTSCAH 0x10
 #define MMS0_TTSCAL 0x11
 #define MMS0_TTSCBH 0x12
@@ -50,33 +42,6 @@ enum lan865x_timestamp_id {
 
 typedef u64 sysclock_t;
 typedef u64 timestamp_t;
-
-#if 0
-struct oa_tc6 {
-	struct device *dev;
-	struct net_device *netdev;
-	struct phy_device *phydev;
-	struct mii_bus *mdiobus;
-	struct spi_device *spi;
-	struct mutex spi_ctrl_lock; /* Protects spi control transfer */
-	spinlock_t tx_skb_lock; /* Protects tx skb handling */
-	void *spi_ctrl_tx_buf;
-	void *spi_ctrl_rx_buf;
-	void *spi_data_tx_buf;
-	void *spi_data_rx_buf;
-	struct sk_buff *ongoing_tx_skb;
-	struct sk_buff *waiting_tx_skb;
-	struct sk_buff *rx_skb;
-	struct task_struct *spi_thread;
-	wait_queue_head_t spi_wq;
-	u16 tx_skb_offset;
-	u16 spi_data_tx_buf_offset;
-	u16 tx_credits;
-	u8 rx_chunks_available;
-	bool rx_buf_overflow;
-	bool int_flag;
-};
-#endif
 
 struct ptp_device {
 	struct device *dev;
