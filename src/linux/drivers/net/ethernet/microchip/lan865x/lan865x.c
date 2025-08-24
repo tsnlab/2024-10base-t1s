@@ -441,6 +441,7 @@ static struct miscdevice lan865x_miscdev = {
     .mode = 0666,
 };
 
+// TODO: Cleanup
 static struct oa_tc6* g_tc6;
 
 static int lan865x_probe(struct spi_device* spi) {
@@ -470,6 +471,7 @@ static int lan865x_probe(struct spi_device* spi) {
 	// ref: oa_tc6.c -> indirect_read()
 
     priv->tc6 = oa_tc6_init(spi, netdev);
+    // TODO: Cleanup
     g_tc6 = priv->tc6;
     if (!priv->tc6) {
         ret = -ENODEV;
@@ -568,6 +570,7 @@ static void lan865x_remove(struct spi_device* spi) {
     misc_deregister(&lan865x_miscdev);
 }
 
+// TODO: Cleanup
 static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg) {
     struct lan865x_reg reg;
     int ret = 0;
