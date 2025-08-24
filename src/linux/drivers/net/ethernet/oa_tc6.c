@@ -1328,6 +1328,8 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6* tc6, struct sk_buff* skb) {
 }
 EXPORT_SYMBOL_GPL(oa_tc6_start_xmit);
 
+#define FRAME_TIMESTAMP_ENABLE
+
 /* PHY Vendor Specific Registers Collision Detector Control 0 Register */
 #define LAN8650_REG_MMS4_CDCTL0 0x00040087
 #define MMS4_CDCTL0_CDEN_SHIFT BIT(15) /* Collision Detect Enable */
@@ -1505,22 +1507,16 @@ int init_lan865x(struct oa_tc6* tc6) {
     oa_tc6_write_register(tc6, LAN8650_REG_MMS1_MAC_NCFGR, MMS1_MAC_NCFGR_INIT_VAL);   /* Enable unicast, multicast */
     oa_tc6_write_register(tc6, LAN8650_REG_MMS1_MAC_NCR, MMS1_MAC_NCR_INIT_VAL);       /* Enable MACPHY TX, RX */
 
-#ifdef FRAME_TIMESTAMP_ENABLE
     oa_tc6_write_register(tc6, LAN8650_REG_MMS1_MAC_TI, TIMER_INCREMENT); /* Enable MACPHY TX, RX */
-#endif /* FRAME_TIMESTAMP_ENABLE */
 
     /* Read OA_CONFIG0 */
     oa_tc6_read_register(tc6, LAN8650_REG_MMS0_OA_CONFIG0, &regval);
-
     /* Set SYNC bit of OA_CONFIG0 */
     regval |= MMS0_OA_CONFIG0_SYNC_SHIFT;
-#ifdef FRAME_TIMESTAMP_ENABLE
     /* Set FTSE Frame Timestamp Enable bit of OA_CONFIG0 */
     regval |= MMS0_OA_CONFIG0_FTSE_SHIFT;
-
     /* Set FTSS Frame Timestamp Select bit of OA_CONFIG0 */
     regval |= MMS0_OA_CONFIG0_FTSS_SHIFT;
-#endif /* FRAME_TIMESTAMP_ENABLE */
     oa_tc6_write_register(tc6, LAN8650_REG_MMS0_OA_CONFIG0, regval);
 
     /* Read OA_STATUS0 */
@@ -1532,6 +1528,7 @@ int init_lan865x(struct oa_tc6* tc6) {
 
     return 0;
 }
+#endif /* FRAME_TIMESTAMP_ENABLE */
 
 /**
  * oa_tc6_init - allocates and initializes oa_tc6 structure.

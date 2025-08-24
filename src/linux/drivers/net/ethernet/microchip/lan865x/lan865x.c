@@ -297,8 +297,30 @@ static void lan865x_set_multicast_list(struct net_device* netdev) {
     schedule_work(&priv->multicast_work);
 }
 
+// TODO
+//
+// lan865x_recv_packet() {
+//		rxfilter(); // for RX HW Timestamp, Ref: oa_tc6.c
+//		netif_rx();			
+// }
+
 static netdev_tx_t lan865x_send_packet(struct sk_buff* skb, struct net_device* netdev) {
     struct lan865x_priv* priv = netdev_priv(netdev);
+
+	/*
+	 * TODO: TX HW Timestamp Processing
+	 *
+	 *  1. SKB에서 HW TIMESTAMP가 활성화 되어 있는지 확인
+	 *		1.0. 활성화되어 있다면, 
+	 *		1.1. skb_clone()으로 SKB와 내부 sk 필드를 복사하기
+	 *		1.2. 복사한 결과는 lan865x_priv->waiting_txts_skb에 집어넣기
+	 *		1.3. 내부적으로 PTP 패킷인지 확인하기
+	 *
+	 *	2. OA_TC6 구조에 TX Timestamp를 요청하는 것은 oa_tc6.c에서 처리하기
+	 *	    2.1. oa_tc6.c에서 lan865x_priv으로 접근한 뒤에 waiting_txts_skb를 점검하기
+	 *	    2.2. waiting_txts_skb의 순서가 GPTP, NORMAL로 되어있기 때문에 거기에 패킷이 있는지 확인만 하면됨
+	 *	    2.3. 이 내용은 oa_tc6.c의 oa_tc6_prepare_data_header()에 집어넣기
+	 */
 
     return oa_tc6_start_xmit(priv->tc6, skb);
 }
@@ -424,6 +446,11 @@ static int lan865x_probe(struct spi_device* spi) {
     priv->spi = spi;
     spi_set_drvdata(spi, priv);
     INIT_WORK(&priv->multicast_work, lan865x_multicast_work_handler);
+
+	// TODO: lan865x register init
+	// ref: oa_tc6.c -> init_lan865x()
+	// ref: oa_tc6.c -> set_macphy_register()
+	// ref: oa_tc6.c -> indirect_read()
 
     priv->tc6 = oa_tc6_init(spi, netdev);
     g_tc6 = priv->tc6;
