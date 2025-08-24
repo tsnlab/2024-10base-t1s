@@ -1,5 +1,8 @@
 #include "lan865x_ptp.h"
 
+#include <linux/if_vlan.h>
+#include <linux/if_ether.h>
+
 #define NSEC_PER_MHZ 1000
 #define MHZ_TO_NS(mhz) (NSEC_PER_MHZ / (mhz))
 
@@ -43,8 +46,8 @@ static int lan865x_ptp_thread_handler(void* data)
 
 			skb_hwts.hwtstamp = ns_to_ktime(tx_ts);	
 			lan865x_debug("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
-			skb_tstamp_tx(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_A], &skb_hwts);
-			kfree_skb(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_A]);
+			skb_tstamp_tx(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_GPTP], &skb_hwts);
+			kfree_skb(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_GPTP]);
 		}
 		// NORMAL
 		if (status & TS_B_MASK) {
@@ -53,8 +56,8 @@ static int lan865x_ptp_thread_handler(void* data)
 
 			skb_hwts.hwtstamp = ns_to_ktime(tx_ts);	
 			lan865x_debug("%s: tx_ts = %llu, skb_hwts.hwtstamp = %llu\n", __func__, tx_ts, skb_hwts.hwtstamp);
-			skb_tstamp_tx(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_B], &skb_hwts);
-			kfree_skb(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_B]);
+			skb_tstamp_tx(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_NORMAL], &skb_hwts);
+			kfree_skb(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_NORMAL]);
 		}
 		// RESERVED
 		if (status & TS_C_MASK) {
@@ -69,6 +72,23 @@ static int lan865x_ptp_thread_handler(void* data)
 	}
 
 	return 0;
+}
+
+bool is_gptp_packet(const struct sk_buff* skb) {
+    struct ethhdr *eth;
+    struct vlan_hdr *vh;
+    __be16 proto;
+
+    eth = (struct ethhdr *)skb->data;
+    proto = ntohs(eth->h_proto);
+
+    if (proto == ETH_P_8021Q || proto == ETH_P_8021AD) {
+        vh = (struct vlan_hdr *)(skb->data + sizeof(struct ethhdr));
+		
+		return ntohs(vh->h_vlan_encapsulated_proto) == ETH_P_1588;
+    }
+
+	return proto == ETH_P_1588;
 }
 
 static int lan865x_ptp_adjfine(struct ptp_clock_info *ptp_info, long scaled_ppm)

@@ -105,15 +105,15 @@ timestamp_t lan865x_read_tx_timestamp(struct lan865x_priv* priv, int tx_id) {
     u64 timestamp = 0;
 
     switch (tx_id) {
-    case LAN865X_TIMESTAMP_ID_A:
+    case LAN865X_TIMESTAMP_ID_GPTP:
         oa_tc6_read_register(tc6, MMS0_TTSCAH, &ts_h);
         oa_tc6_read_register(tc6, MMS0_TTSCAL, &ts_l);
         break;
-    case LAN865X_TIMESTAMP_ID_B:
+    case LAN865X_TIMESTAMP_ID_NORMAL:
         oa_tc6_read_register(tc6, MMS0_TTSCBH, &ts_h);
         oa_tc6_read_register(tc6, MMS0_TTSCBL, &ts_l);
         break;
-    case LAN865X_TIMESTAMP_ID_C:
+    case LAN865X_TIMESTAMP_ID_RESERVED:
         oa_tc6_read_register(tc6, MMS0_TTSCCH, &ts_h);
         oa_tc6_read_register(tc6, MMS0_TTSCCL, &ts_l);
         break;

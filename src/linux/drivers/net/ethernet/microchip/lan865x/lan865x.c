@@ -306,23 +306,40 @@ static void lan865x_set_multicast_list(struct net_device* netdev) {
 
 static netdev_tx_t lan865x_send_packet(struct sk_buff* skb, struct net_device* netdev) {
     struct lan865x_priv* priv = netdev_priv(netdev);
+    struct hwtstamp_config hwts_config = priv->tstamp_config;
 
-	/*
-	 * TODO: TX HW Timestamp Processing
-	 *
-	 *  1. SKB에서 HW TIMESTAMP가 활성화 되어 있는지 확인
-	 *		1.0. 활성화되어 있다면, 
-	 *		1.1. skb_clone()으로 SKB와 내부 sk 필드를 복사하기
-	 *		1.2. 복사한 결과는 lan865x_priv->waiting_txts_skb에 집어넣기
-	 *		1.3. 내부적으로 PTP 패킷인지 확인하기
-	 *
-	 *	2. OA_TC6 구조에 TX Timestamp를 요청하는 것은 oa_tc6.c에서 처리하기
-	 *	    2.1. oa_tc6.c에서 lan865x_priv으로 접근한 뒤에 waiting_txts_skb를 점검하기
-	 *	    2.2. waiting_txts_skb의 순서가 GPTP, NORMAL로 되어있기 때문에 거기에 패킷이 있는지 확인만 하면됨
-	 *	    2.3. 이 내용은 oa_tc6.c의 oa_tc6_prepare_data_header()에 집어넣기
-	 */
+    struct sk_buff* cloned_skb;
+    u8 ts_capture_mode;
 
-    return oa_tc6_start_xmit(priv->tc6, skb);
+	if (skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP) {
+
+        cloned_skb = skb_clone(skb, GFP_ATOMIC);
+        if (!cloned_skb) {
+            netdev_err(netdev, "%s: skb_clone() failed\n", __func__);
+            return -1; // FIXME
+        }
+
+        /* NOTE:
+        *	skb_clone() does not copy the user-space socket (sk) information.
+        *	However, TX timestamping requires a valid sk to queue the timestamp to the user socket.
+        *	Therefore, we manually copy the sk pointer from the original skb. */
+        cloned_skb->sk = skb->sk;
+
+		if (hwts_config.tx_type != HWTSTAMP_TX_ON) {
+			ts_capture_mode = LAN865X_TIMESTAMP_ID_NONE;
+			kfree_skb(cloned_skb);
+		} else if (is_gptp_packet(skb)) {
+			ts_capture_mode = LAN865X_TIMESTAMP_ID_GPTP;
+			priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_GPTP] = skb_get(cloned_skb);
+			skb_shinfo(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_GPTP])->tx_flags |= SKBTX_IN_PROGRESS;
+		} else {
+			ts_capture_mode = LAN865X_TIMESTAMP_ID_NORMAL;
+			priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_NORMAL] = skb_get(cloned_skb);
+			skb_shinfo(priv->waiting_txts_skb[LAN865X_TIMESTAMP_ID_NORMAL])->tx_flags |= SKBTX_IN_PROGRESS;
+		}
+	}
+
+    return oa_tc6_start_xmit(priv->tc6, skb, ts_capture_mode);
 }
 
 static int lan865x_hw_disable(struct lan865x_priv* priv) {
