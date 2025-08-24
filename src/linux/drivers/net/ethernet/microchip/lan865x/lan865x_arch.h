@@ -51,6 +51,7 @@ enum lan865x_timestamp_id {
 typedef u64 sysclock_t;
 typedef u64 timestamp_t;
 
+#if 0
 struct oa_tc6 {
 	struct device *dev;
 	struct net_device *netdev;
@@ -75,6 +76,7 @@ struct oa_tc6 {
 	bool rx_buf_overflow;
 	bool int_flag;
 };
+#endif
 
 struct ptp_device {
 	struct device *dev;
