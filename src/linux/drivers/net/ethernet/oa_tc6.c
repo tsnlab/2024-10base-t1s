@@ -983,10 +983,7 @@ static __be32 oa_tc6_prepare_data_header(bool data_valid, bool start_valid, bool
                  FIELD_PREP(OA_TC6_DATA_HEADER_END_VALID, end_valid) |
                  FIELD_PREP(OA_TC6_DATA_HEADER_END_BYTE_OFFSET, end_byte_offset)
 #ifdef FRAME_TIMESTAMP_ENABLE
-                 |
-                 FIELD_PREP(OA_TC6_DATA_HEADER_TIME_STAMP_CAPTURE, ts_capture_mode);
-#else /* FRAME_TIMESTAMP_ENABLE */
-                 ;
+    header |= FIELD_PREP(OA_TC6_DATA_HEADER_TIME_STAMP_CAPTURE, ts_capture_mode);
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
     header |= FIELD_PREP(OA_TC6_DATA_HEADER_PARITY, oa_tc6_get_parity(header));
