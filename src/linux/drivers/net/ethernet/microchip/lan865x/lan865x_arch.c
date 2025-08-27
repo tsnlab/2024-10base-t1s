@@ -40,7 +40,7 @@ int lan865x_set_sys_clock(struct lan865x_priv* priv, u64 timestamp) {
     u32 sec_l = (u32)(sec & 0xFFFFFFFF);
     u32 nsec = (u32)(timestamp % NS_IN_1S) & 0x3FFFFFFF; // 30bit. Maybe not needed to mask
 
-    lan865x_debug("%s: sec_h = %u, sec = %u, nsec = %u\n", __func__, sec_h, sec, nsec);
+    LAN865X_DEBUG("%s: sec_h = %u, sec = %u, nsec = %u\n", __func__, sec_h, sec, nsec);
 
     // Reverse order for lower the error
     if (oa_tc6_write_register(tc6, MMS1_MAC_TN, nsec))
@@ -109,22 +109,22 @@ timestamp_t lan865x_read_tx_timestamp(struct lan865x_priv* priv, int tx_id) {
     u64 tmp_sec = 0;
     u64 timestamp = 0;
 
-    switch (tx_id) {
-    case LAN865X_TIMESTAMP_ID_GPTP:
-        oa_tc6_read_register(tc6, MMS0_TTSCAH, &ts_h);
-        oa_tc6_read_register(tc6, MMS0_TTSCAL, &ts_l);
-        break;
-    case LAN865X_TIMESTAMP_ID_NORMAL:
-        oa_tc6_read_register(tc6, MMS0_TTSCBH, &ts_h);
-        oa_tc6_read_register(tc6, MMS0_TTSCBL, &ts_l);
-        break;
-    case LAN865X_TIMESTAMP_ID_RESERVED:
-        oa_tc6_read_register(tc6, MMS0_TTSCCH, &ts_h);
-        oa_tc6_read_register(tc6, MMS0_TTSCCL, &ts_l);
-        break;
-    default:
-        return timestamp;
-    }
+    static const u16 reg_hi[] = {
+        [LAN865X_TIMESTAMP_ID_GPTP]    = MMS0_TTSCAH,
+        [LAN865X_TIMESTAMP_ID_NORMAL]  = MMS0_TTSCBH,
+        [LAN865X_TIMESTAMP_ID_RESERVED]= MMS0_TTSCCH,
+    };
+    static const u16 reg_lo[] = {
+        [LAN865X_TIMESTAMP_ID_GPTP]    = MMS0_TTSCAL,
+        [LAN865X_TIMESTAMP_ID_NORMAL]  = MMS0_TTSCBL,
+        [LAN865X_TIMESTAMP_ID_RESERVED]= MMS0_TTSCCL,
+    };
+
+    if (tx_id < 0 || tx_id >= ARRAY_SIZE(reg_hi) || !reg_hi[tx_id] || !reg_lo[tx_id])
+        return -EINVAL;
+
+    oa_tc6_read_register(tc6, reg_hi[tx_id], &ts_h);
+    oa_tc6_read_register(tc6, reg_lo[tx_id], &ts_l);
 
     tmp_sec = (u64)ts_h * NS_IN_1S;
     ts_l = ts_l & 0xFFFFFFFF;

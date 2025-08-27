@@ -5,6 +5,13 @@
  * Author: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
  */
 
+/* ----------------------------------------------------------------
+ * NOTE:
+ *  Lint disabled for the this file to avoid changes that
+ *  would conflict with the Upstream Kernel source on rebase.
+ * ----------------------------------------------------------------*/
+/* NOLINTBEGIN */
+
 #include <linux/bitfield.h>
 #include <linux/iopoll.h>
 #include <linux/mdio.h>
@@ -1606,3 +1613,5 @@ EXPORT_SYMBOL_GPL(oa_tc6_exit);
 MODULE_DESCRIPTION("OPEN Alliance 10BASE‑T1x MAC‑PHY Serial Interface Lib");
 MODULE_AUTHOR("Parthiban Veerasooran <parthiban.veerasooran@microchip.com>");
 MODULE_LICENSE("GPL");
+
+/* NOLINTEND */

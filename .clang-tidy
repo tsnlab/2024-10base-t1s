@@ -1,4 +1,4 @@
-Checks: '-*,misc-*,-misc-include-cleaner,modernize-*,-modernize-macro-to-enum,performance-*,readability-*,bugprone-*,-bugprone-easily-swappable-parameters,llvm-include-order'
+Checks: '-*,misc-*,-misc-include-cleaner,modernize-*,-modernize-macro-to-enum,performance-*,readability-*,bugprone-*,-bugprone-easily-swappable-parameters,llvm-include-order,-performance-no-int-to-ptr'
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
     value: CamelCase
@@ -24,6 +24,8 @@ CheckOptions:
     value: UPPER_CASE
   - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
     value: '^DEBUG$'
+  - key: readability-identifier-naming.FunctionIgnoredRegexp
+    value: '^(MODULE_.*|THIS_MODULE|EXPORT_SYMBOL.*)$'
   - key: readability-identifier-length.IgnoredParameterNames
     value: '^[abijkpqr]$'
   - key: readability-identifier-length.IgnoredVariableNames

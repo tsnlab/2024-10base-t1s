@@ -9,9 +9,9 @@
 #include <net/pkt_sched.h>
 
 #ifdef __LAN865X_DEBUG__
-#define lan865x_debug(...) pr_debug(__VA_ARGS__)
+#define LAN865X_DEBUG(...) pr_debug(__VA_ARGS__)
 #else
-#define lan865x_debug(...)
+#define LAN865X_DEBUG(...)
 #endif // __LAN865X_DEBUG__
 
 #define FRAME_TIMESTAMP_ENABLE
@@ -24,6 +24,7 @@
 #define MMS1_MAC_TA 0x00010076
 #define MMS1_MAC_TI 0x00010077
 #define MMS1_MAC_TISUBN 0x0001006F
+#define TISUBNS_FRAC_BITS 24
 
 #define MMS0_TTSCAH 0x10
 #define MMS0_TTSCAL 0x11
