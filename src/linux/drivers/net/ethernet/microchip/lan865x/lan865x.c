@@ -320,7 +320,7 @@ static netdev_tx_t lan865x_send_packet(struct sk_buff* skb, struct net_device* n
         cloned_skb = skb_clone(skb, GFP_ATOMIC);
         if (!cloned_skb) {
             netdev_err(netdev, "%s: skb_clone() failed\n", __func__);
-            return NULL;
+            return -EAGAIN;
         }
 
         /* NOTE:
@@ -576,7 +576,7 @@ static void lan865x_remove(struct spi_device* spi) {
 
 // TODO: Cleanup
 static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg) {
-	(void*) file;
+	(void)file;
 
     struct lan865x_reg reg;
     int ret = 0;
@@ -614,8 +614,8 @@ static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg
 }
 
 static int lan865x_open(struct inode* inode, struct file* file) {
-	(void*) inode;
-	(void*) file;
+	(void)inode;
+	(void)file;
 
     struct spi_device* spi = container_of(file->private_data, struct spi_device, dev);
     file->private_data = spi;
@@ -623,7 +623,7 @@ static int lan865x_open(struct inode* inode, struct file* file) {
 }
 
 static int lan865x_release(struct inode* inode, struct file* file) {
-	(void*) inode;
+	(void)inode;
 
     file->private_data = NULL;
     return 0;

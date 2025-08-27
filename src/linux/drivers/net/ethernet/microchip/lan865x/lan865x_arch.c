@@ -40,6 +40,8 @@ int lan865x_set_sys_clock(struct lan865x_priv* priv, u64 timestamp) {
     u32 sec_l = (u32)(sec & 0xFFFFFFFF);
     u32 nsec = (u32)(timestamp % NS_IN_1S) & 0x3FFFFFFF; // 30bit. Maybe not needed to mask
 
+    (void)sec_l;
+
     LAN865X_DEBUG("%s: sec_h = %u, sec = %u, nsec = %u\n", __func__, sec_h, sec, nsec);
 
     // Reverse order for lower the error
