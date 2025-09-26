@@ -327,6 +327,18 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     sysclock_t now = lan865x_get_sys_clock(priv);
 
 #if 1
+    struct oa_tc6* tc6 = priv->tc6;
+    u32 sts11, sts12;
+
+#define MMS1_MAC_STATS11 0x00010213
+#define MMS1_MAC_STATS12 0x00010214
+
+    oa_tc6_read_register(tc6, MMS1_MAC_STATS11, &sts11);
+    oa_tc6_read_register(tc6, MMS1_MAC_STATS12, &sts12);
+
+    pr_err("%s - Total Frames Transmitted (including errors) : %d, Frames Transmitted without Error: %d\n", __func__,
+           sts11, sts12);
+
     if (priv->tstamp_retry[tstamp_id] == 0) {
         pr_err("%s - priv->magic: 0x%llx, tstamp_id: %d\n", __func__, priv->magic, tstamp_id);
     }
@@ -369,8 +381,8 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
         if (++(priv->tstamp_retry[tstamp_id]) >= TX_TSTAMP_MAX_RETRY) {
             /* TODO: track the number of skipped packets for ethtool stats */
             pr_err("Failed to get timestamp: timestamp is not getting updated, "
-                   "the packet might have been dropped, now: 0x%llx\n",
-                   now);
+                   "the packet might have been dropped, now: 0x%llx, tx_tstamp: 0x%llx\n",
+                   now, tx_tstamp);
             goto return_error;
         }
         goto retry;

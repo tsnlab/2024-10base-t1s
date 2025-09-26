@@ -134,7 +134,11 @@ timestamp_t lan865x_read_tx_timestamp(struct lan865x_priv* priv, int tx_id) {
     oa_tc6_read_register(tc6, reg_hi[tx_id], &ts_h);
     oa_tc6_read_register(tc6, reg_lo[tx_id], &ts_l);
 
+#if 1
+    tmp_sec = (u64)ts_h << 32;
+#else
     tmp_sec = (u64)ts_h * NS_IN_1S;
+#endif
     ts_l = ts_l & 0xFFFFFFFF;
 
     timestamp = tmp_sec + ts_l;
