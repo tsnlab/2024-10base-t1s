@@ -219,8 +219,13 @@ struct timestamp_format {
     union {
         uint32_t _nano;
         struct {
+#if 1
+            uint32_t _rsvd : 2;
+            uint32_t nanoseconds : 30;
+#else
             uint32_t nanoseconds : 30;
             uint32_t _rsvd : 2;
+#endif
         };
     };
 };
@@ -1143,7 +1148,7 @@ static void wake_up_worker(struct oa_tc6* tc6, u8 ts_capture_mode, struct lan865
         now = lan865x_get_sys_clock(priv);
 
         priv->tx_work_start_after[ts_capture_mode] = now + 0x1a000;
-        priv->tx_work_wait_until[ts_capture_mode] = now + 0x40000;
+        priv->tx_work_wait_until[ts_capture_mode] = now + 0x60000;
 
         schedule_work(&priv->tx_work[ts_capture_mode]);
 
