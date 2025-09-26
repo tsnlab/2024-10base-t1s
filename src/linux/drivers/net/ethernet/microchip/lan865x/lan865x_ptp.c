@@ -326,7 +326,7 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     struct sk_buff* skb = priv->tx_work_skb[tstamp_id];
     sysclock_t now = lan865x_get_sys_clock(priv);
 
-#if 0
+#if 1
     pr_err("%s - priv->magic: 0x%llx, tstamp_id: %d\n", __func__, priv->magic, tstamp_id);
 #endif
 
@@ -340,7 +340,7 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
         goto return_error;
     }
 
-#if 0
+#if 1
     if (now < priv->tx_work_start_after[tstamp_id]) {
         goto retry;
     }
@@ -352,9 +352,10 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
      */
     tx_tstamp = lan865x_read_tx_timestamp(priv, tstamp_id);
     if (tx_tstamp == priv->last_tx_tstamp[tstamp_id]) {
-#if 0
+#if 1
         if (lan865x_get_sys_clock(priv) < priv->tx_work_wait_until[tstamp_id]) {
             /* The packet might have not been sent yet */
+            // pr_err("%s - The packet might have not been sent yet\n", __func__);
             goto retry;
         }
 #endif
@@ -371,14 +372,22 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
         }
         goto retry;
     }
+
+    pr_err("tstamp_id: %d, priv->tstamp_retry: %d\n", tstamp_id, priv->tstamp_retry[tstamp_id]);
+
     priv->tstamp_retry[tstamp_id] = 0;
+#if 1
+    shhwtstamps.hwtstamp = ns_to_ktime(tx_tstamp);
+#else
     shhwtstamps.hwtstamp = ns_to_ktime(lan865x_sysclock_to_txtstamp(priv, tx_tstamp));
+#endif
     priv->last_tx_tstamp[tstamp_id] = tx_tstamp;
 
     priv->tx_work_skb[tstamp_id] = NULL;
     clear_bit_unlock(tstamp_id, &priv->state);
     skb_tstamp_tx(skb, &shhwtstamps);
     dev_kfree_skb_any(skb);
+    pr_err("<<< %s - priv->last_tx_tstamp[%d] - 0x%llx\n", __func__, tstamp_id, priv->last_tx_tstamp[tstamp_id]);
     return;
 
 return_error:

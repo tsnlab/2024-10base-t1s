@@ -1134,27 +1134,21 @@ static void wake_up_worker(struct oa_tc6* tc6, u8 ts_capture_mode, struct lan865
 
     sysclock_t now;
 
+    pr_err(">>> %s - ts_capture_mode: %d\n", __func__, ts_capture_mode);
+
     if (priv->tstamp_config.tx_type == HWTSTAMP_TX_ON && !test_and_set_bit_lock(ts_capture_mode, &priv->state)) {
         skb_shinfo(tc6->ongoing_tx_skb)->tx_flags |= SKBTX_IN_PROGRESS;
         priv->tx_work_skb[ts_capture_mode] = skb_get(tc6->ongoing_tx_skb);
 
         now = lan865x_get_sys_clock(priv);
 
-        priv->tx_work_start_after[ts_capture_mode] = now;
-        priv->tx_work_wait_until[ts_capture_mode] = now + 1000000;
+        priv->tx_work_start_after[ts_capture_mode] = now + 0x10000;
+        priv->tx_work_wait_until[ts_capture_mode] = now + 0x40000;
 
-        /* Check context before scheduling work */
-        if (in_atomic()) {
-            pr_warn("Cannot schedule work in atomic context, ts_capture_mode=%d\n", ts_capture_mode);
-            // pr_err("%s - %d\n", __func__, __LINE__);
-            /* Fallback: try to schedule on current CPU */
-            queue_work_on(smp_processor_id(), system_wq, &priv->tx_work[ts_capture_mode]);
-        } else {
-            schedule_work(&priv->tx_work[ts_capture_mode]);
-        }
+        schedule_work(&priv->tx_work[ts_capture_mode]);
 
-        /* Track work queue state */
-        atomic_inc(&priv->tx_work_pending[ts_capture_mode]);
+        pr_err("<<< %s - now: 0x%llx\n", __func__, now);
+
     } else if (priv->tstamp_config.tx_type != HWTSTAMP_TX_ON) {
         pr_err("Timestamp skipped: timestamp config is off\n");
     } else {
