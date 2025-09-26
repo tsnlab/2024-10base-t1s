@@ -367,7 +367,8 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
         if (++(priv->tstamp_retry[tstamp_id]) >= TX_TSTAMP_MAX_RETRY) {
             /* TODO: track the number of skipped packets for ethtool stats */
             pr_err("Failed to get timestamp: timestamp is not getting updated, "
-                   "the packet might have been dropped\n");
+                   "the packet might have been dropped, now: 0x%llx\n",
+                   now);
             goto return_error;
         }
         goto retry;

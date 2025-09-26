@@ -3,7 +3,7 @@
 
 #include "lan865x_arch.h"
 
-#define TX_TSTAMP_MAX_RETRY 40
+#define TX_TSTAMP_MAX_RETRY 400
 #define TX_ADJUST_NS 0
 
 bool is_gptp_packet(const struct sk_buff* skb);
