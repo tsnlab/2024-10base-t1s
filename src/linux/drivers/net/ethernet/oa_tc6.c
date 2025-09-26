@@ -274,6 +274,107 @@ static bool filter_rx_timestamp(struct oa_tc6* tc6, uint8_t* data) {
 }
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
+/* #define OA_SPI_DATA_DEBUG */
+
+#ifdef OA_SPI_DATA_DEBUG
+
+#define HDR_DNC (1U << 31)
+#define HDR_SEQ (1U << 30)
+#define HDR_NORX (1U << 29)
+#define HDR_VS(x) (((x) >> 22) & 0x3)
+#define HDR_DV (1U << 21)
+#define HDR_SV (1U << 20)
+#define HDR_SWO(x) (((x) >> 16) & 0xF)
+#define HDR_EV (1U << 14)
+#define HDR_EBO(x) (((x) >> 8) & 0x3F)
+#define HDR_TSC(x) (((x) >> 6) & 0x3)
+#define HDR_P (1U << 0)
+
+#define FTR_EXST (1U << 31)
+#define FTR_HDRB (1U << 30)
+#define FTR_SYNC (1U << 29)
+#define FTR_RCA(x) (((x) >> 24) & 0x1F)
+#define FTR_VS(x) (((x) >> 22) & 0x3)
+#define FTR_DV (1U << 21)
+#define FTR_SV (1U << 20)
+#define FTR_SWO(x) (((x) >> 16) & 0xF)
+#define FTR_FD (1U << 15)
+#define FTR_EV (1U << 14)
+#define FTR_EBO(x) (((x) >> 8) & 0x3F)
+#define FTR_RTSA (1U << 7)
+#define FTR_RTSP (1U << 6)
+#define FTR_TXC(x) (((x) >> 1) & 0x1F)
+#define FTR_P (1U << 0)
+
+static inline uint32_t get_u32(const unsigned char* buf) {
+    return ((uint32_t)buf[0] << 24) | ((uint32_t)buf[1] << 16) | ((uint32_t)buf[2] << 8) | ((uint32_t)buf[3]);
+}
+
+void print_header(uint32_t val) {
+    pr_err("Header: 0x%08X\n", val);
+    pr_err("  DNC = %u\n", !!(val & HDR_DNC));
+    pr_err("  SEQ = %u\n", !!(val & HDR_SEQ));
+    pr_err("  NORX = %u\n", !!(val & HDR_NORX));
+    pr_err("  VS = %u\n", HDR_VS(val));
+    pr_err("  DV = %u\n", !!(val & HDR_DV));
+    pr_err("  SV = %u\n", !!(val & HDR_SV));
+    pr_err("  SWO = %u\n", HDR_SWO(val));
+    pr_err("  EV = %u\n", !!(val & HDR_EV));
+    pr_err("  EBO = %u\n", HDR_EBO(val));
+    pr_err("  TSC = %u\n", HDR_TSC(val));
+    pr_err("  P = %u\n", !!(val & HDR_P));
+}
+
+void print_footer(uint32_t val) {
+    pr_err("Footer: 0x%08X\n", val);
+    pr_err("  EXST = %u\n", !!(val & FTR_EXST));
+    pr_err("  HDRB = %u\n", !!(val & FTR_HDRB));
+    pr_err("  SYNC = %u\n", !!(val & FTR_SYNC));
+    pr_err("  RCA = %u\n", FTR_RCA(val));
+    pr_err("  VS = %u\n", FTR_VS(val));
+    pr_err("  DV = %u\n", !!(val & FTR_DV));
+    pr_err("  SV = %u\n", !!(val & FTR_SV));
+    pr_err("  SWO = %u\n", FTR_SWO(val));
+    pr_err("  FD = %u\n", !!(val & FTR_FD));
+    pr_err("  EV = %u\n", !!(val & FTR_EV));
+    pr_err("  EBO = %u\n", FTR_EBO(val));
+    pr_err("  RTSA = %u\n", !!(val & FTR_RTSA));
+    pr_err("  RTSP = %u\n", !!(val & FTR_RTSP));
+    pr_err("  TXC = %u\n", FTR_TXC(val));
+    pr_err("  P = %u\n", !!(val & FTR_P));
+}
+
+void dump_buffer(unsigned char* buf, int len, int dir) {
+    int i;
+    char buffer[64];
+    for (i = 0; i + 68 <= len; i += 68) {
+        if (dir == 0) {
+            uint32_t header = get_u32(&buf[i]);
+            print_header(header);
+            pr_err("Data [0x%04x ~ 0x%04x]: \n", i + 4, i + 67);
+            for (int j = 0; j < 4; j++) {
+                memset(buffer, 0, 64);
+                for (int k = 0; k < 16; k++) {
+                    sprintf(buffer, "%s%02x ", buffer, buf[i + 4 + j * 16 + k]);
+                }
+                pr_err("%s\n", buffer);
+            }
+        } else {
+            pr_err("Data [0x%04x ~ 0x%04x]: \n", i, i + 63);
+            for (int j = 0; j < 4; j++) {
+                memset(buffer, 0, 64);
+                for (int k = 0; k < 16; k++) {
+                    sprintf(buffer, "%s%02x ", buffer, buf[i + j * 16 + k]);
+                }
+                pr_err("%s\n", buffer);
+            }
+            uint32_t footer = get_u32(&buf[i + 64]);
+            print_footer(footer);
+        }
+    }
+}
+#endif
+
 static int oa_tc6_spi_transfer(struct oa_tc6* tc6, enum oa_tc6_header_type header_type, u16 length) {
     struct spi_transfer xfer = {0};
     struct spi_message msg;
@@ -295,6 +396,14 @@ static int oa_tc6_spi_transfer(struct oa_tc6* tc6, enum oa_tc6_header_type heade
     ret = spi_sync(tc6->spi, &msg);
 
     mutex_unlock(&tc6->spi_transfer_lock);
+#ifdef OA_SPI_DATA_DEBUG
+    if (header_type == OA_TC6_DATA_HEADER) {
+        dev_err(&tc6->spi->dev, "xfer.tx_buf - length : %d\n", length);
+        dump_buffer((unsigned char*)tc6->spi_data_tx_buf, (int)length, 0);
+        dev_err(&tc6->spi->dev, "xfer.rx_buf - length : %d\n", length);
+        dump_buffer((unsigned char*)tc6->spi_data_rx_buf, (int)length, 1);
+    }
+#endif
     return ret;
 }
 
@@ -1018,6 +1127,42 @@ static __be32 oa_tc6_prepare_data_header(bool data_valid, bool start_valid, bool
     return cpu_to_be32(header);
 }
 
+#ifdef FRAME_TIMESTAMP_ENABLE
+typedef u64 sysclock_t;
+sysclock_t lan865x_get_sys_clock(struct lan865x_priv* priv);
+static void wake_up_worker(struct oa_tc6* tc6, u8 ts_capture_mode, struct lan865x_priv* priv) {
+
+    sysclock_t now;
+
+    if (priv->tstamp_config.tx_type == HWTSTAMP_TX_ON && !test_and_set_bit_lock(ts_capture_mode, &priv->state)) {
+        skb_shinfo(tc6->ongoing_tx_skb)->tx_flags |= SKBTX_IN_PROGRESS;
+        priv->tx_work_skb[ts_capture_mode] = skb_get(tc6->ongoing_tx_skb);
+
+        now = lan865x_get_sys_clock(priv);
+
+        priv->tx_work_start_after[ts_capture_mode] = now;
+        priv->tx_work_wait_until[ts_capture_mode] = now + 1000000;
+
+        /* Check context before scheduling work */
+        if (in_atomic()) {
+            pr_warn("Cannot schedule work in atomic context, ts_capture_mode=%d\n", ts_capture_mode);
+            // pr_err("%s - %d\n", __func__, __LINE__);
+            /* Fallback: try to schedule on current CPU */
+            queue_work_on(smp_processor_id(), system_wq, &priv->tx_work[ts_capture_mode]);
+        } else {
+            schedule_work(&priv->tx_work[ts_capture_mode]);
+        }
+
+        /* Track work queue state */
+        atomic_inc(&priv->tx_work_pending[ts_capture_mode]);
+    } else if (priv->tstamp_config.tx_type != HWTSTAMP_TX_ON) {
+        pr_err("Timestamp skipped: timestamp config is off\n");
+    } else {
+        pr_err("Timestamp skipped: driver is waiting for previous packet's timestamp\n");
+    }
+}
+#endif
+
 static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
     enum oa_tc6_data_end_valid_info end_valid = OA_TC6_DATA_END_INVALID;
     __be32* tx_buf = tc6->spi_data_tx_buf + tc6->spi_data_tx_buf_offset;
@@ -1065,8 +1210,7 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
         ts_capture_mode = tc6->ongoing_tx_ts_capture_mode;
         if ((ts_capture_mode == 1 /* LAN865X_TIMESTAMP_ID_GPTP */) ||
             (ts_capture_mode == 2 /* LAN865X_TIMESTAMP_ID_NORMAL */)) {
-            priv->tx_work_skb[ts_capture_mode] = skb_get(tc6->ongoing_tx_skb);
-            schedule_work(&priv->tx_work[ts_capture_mode]);
+            wake_up_worker(tc6, ts_capture_mode, priv);
         }
         tc6->ongoing_tx_ts_capture_mode = 0;
 #endif /* FRAME_TIMESTAMP_ENABLE */
@@ -1093,10 +1237,8 @@ static u16 oa_tc6_prepare_spi_tx_buf_for_tx_skbs(struct oa_tc6* tc6) {
             spin_lock_bh(&tc6->tx_skb_lock);
             tc6->ongoing_tx_skb = tc6->waiting_tx_skb;
             tc6->waiting_tx_skb = NULL;
-#ifdef FRAME_TIMESTAMP_ENABLE
             tc6->ongoing_tx_ts_capture_mode = tc6->waiting_tx_ts_capture_mode;
             tc6->waiting_tx_ts_capture_mode = 0;
-#endif /* FRAME_TIMESTAMP_ENABLE */
             spin_unlock_bh(&tc6->tx_skb_lock);
         }
         if (!tc6->ongoing_tx_skb)
@@ -1278,11 +1420,7 @@ EXPORT_SYMBOL_GPL(oa_tc6_zero_align_receive_frame_enable);
  * Return: NETDEV_TX_OK if the transmit ethernet frame skb added in the tx_skb_q
  * otherwise returns NETDEV_TX_BUSY.
  */
-#ifdef FRAME_TIMESTAMP_ENABLE
 netdev_tx_t oa_tc6_start_xmit(struct oa_tc6* tc6, struct sk_buff* skb, u8 ts_capture_mode) {
-#else  /* FRAME_TIMESTAMP_ENABLE */
-netdev_tx_t oa_tc6_start_xmit(struct oa_tc6* tc6, struct sk_buff* skb) {
-#endif /* FRAME_TIMESTAMP_ENABLE */
     if (tc6->waiting_tx_skb) {
         netif_stop_queue(tc6->netdev);
         return NETDEV_TX_BUSY;
@@ -1296,9 +1434,7 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6* tc6, struct sk_buff* skb) {
 
     spin_lock_bh(&tc6->tx_skb_lock);
     tc6->waiting_tx_skb = skb;
-#ifdef FRAME_TIMESTAMP_ENABLE
     tc6->waiting_tx_ts_capture_mode = ts_capture_mode;
-#endif
     spin_unlock_bh(&tc6->tx_skb_lock);
 
     /* Wake spi kthread to perform spi transfer */
