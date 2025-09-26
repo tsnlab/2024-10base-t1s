@@ -327,7 +327,9 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     sysclock_t now = lan865x_get_sys_clock(priv);
 
 #if 1
-    pr_err("%s - priv->magic: 0x%llx, tstamp_id: %d\n", __func__, priv->magic, tstamp_id);
+    if (priv->tstamp_retry[tstamp_id] == 0) {
+        pr_err("%s - priv->magic: 0x%llx, tstamp_id: %d\n", __func__, priv->magic, tstamp_id);
+    }
 #endif
 
     if (tstamp_id >= LAN865X_TIMESTAMP_ID_MAX) {
@@ -386,6 +388,10 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
 
     priv->tx_work_skb[tstamp_id] = NULL;
     clear_bit_unlock(tstamp_id, &priv->state);
+
+    /* Update work queue state - work completed */
+    atomic_dec(&priv->tx_work_pending[tstamp_id]);
+
     skb_tstamp_tx(skb, &shhwtstamps);
     dev_kfree_skb_any(skb);
     pr_err("<<< %s - priv->last_tx_tstamp[%d] - 0x%llx\n", __func__, tstamp_id, priv->last_tx_tstamp[tstamp_id]);
@@ -397,7 +403,17 @@ return_error:
     return;
 
 retry:
-    schedule_work(&priv->tx_work[tstamp_id]);
+    /* Check context before scheduling work */
+    if (in_atomic()) {
+        pr_warn("Cannot schedule work in atomic context during retry, tstamp_id=%d\n", tstamp_id);
+        /* Fallback: try to schedule on current CPU */
+        queue_work_on(smp_processor_id(), system_wq, &priv->tx_work[tstamp_id]);
+    } else {
+        schedule_work(&priv->tx_work[tstamp_id]);
+    }
+
+    /* Track work queue state */
+    atomic_inc(&priv->tx_work_pending[tstamp_id]);
     return;
 }
 
