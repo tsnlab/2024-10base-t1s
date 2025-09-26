@@ -24,7 +24,7 @@ sysclock_t lan865x_get_sys_clock(struct lan865x_priv* priv) {
     if (oa_tc6_read_register(tc6, MMS1_MAC_TSH, &sec_h))
         return -ENODEV;
 
-#if 1
+#if 0
     u64 tsu_timer_seconds;
     tsu_timer_seconds = (((u64)sec_h & 0x0000FFFF) << 32) | (u64)sec;
     tmp_sec = tsu_timer_seconds * NS_IN_1S;

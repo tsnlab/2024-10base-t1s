@@ -219,7 +219,7 @@ struct timestamp_format {
     union {
         uint32_t _nano;
         struct {
-#if 1
+#if 0
             uint32_t _rsvd : 2;
             uint32_t nanoseconds : 30;
 #else
