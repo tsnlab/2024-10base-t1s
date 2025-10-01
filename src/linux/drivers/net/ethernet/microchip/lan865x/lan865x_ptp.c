@@ -243,12 +243,14 @@ struct ptp_device* ptp_device_init(struct device* dev, struct oa_tc6* tc6, s32 m
     // TODO: read from register
     ptpdev->ti_subnano_b24 = TICKS_SCALE << TISUBNS_FRAC_BITS;
 
+#ifndef __TSN_PTP__
     ptpdev->ptp_thread = kthread_run(lan865x_ptp_thread_handler, ptpdev, "lan865x-ptp-thread");
     if (IS_ERR(ptpdev->ptp_thread)) {
         dev_err(ptpdev->dev, "Failed to create PTP thread\n");
         kfree(ptpdev);
         return NULL;
     }
+#endif
 
     /* TODO: Configure the OA_MASK0 register to generate an interrupt on Tx Timestamp Capture.
     u32 regval;
