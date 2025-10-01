@@ -24,7 +24,13 @@ sysclock_t lan865x_get_sys_clock(struct lan865x_priv* priv) {
     if (oa_tc6_read_register(tc6, MMS1_MAC_TSH, &sec_h))
         return -ENODEV;
 
+#if 1
+    u64 tsu_timer_seconds;
+    tsu_timer_seconds = (((u64)sec_h & 0x0000FFFF) << 32) | (u64)sec;
+    tmp_sec = tsu_timer_seconds * NS_IN_1S;
+#else
     tmp_sec = (u64)sec * NS_IN_1S;
+#endif
     nsec = nsec & 0x3FFFFFFF;
 
     clock = tmp_sec + nsec;
@@ -112,14 +118,14 @@ timestamp_t lan865x_read_tx_timestamp(struct lan865x_priv* priv, int tx_id) {
     u64 timestamp = 0;
 
     static const u16 reg_hi[] = {
-        [LAN865X_TIMESTAMP_ID_GPTP]    = MMS0_TTSCAH,
-        [LAN865X_TIMESTAMP_ID_NORMAL]  = MMS0_TTSCBH,
-        [LAN865X_TIMESTAMP_ID_RESERVED]= MMS0_TTSCCH,
+        [LAN865X_TIMESTAMP_ID_GPTP] = MMS0_TTSCAH,
+        [LAN865X_TIMESTAMP_ID_NORMAL] = MMS0_TTSCBH,
+        [LAN865X_TIMESTAMP_ID_RESERVED] = MMS0_TTSCCH,
     };
     static const u16 reg_lo[] = {
-        [LAN865X_TIMESTAMP_ID_GPTP]    = MMS0_TTSCAL,
-        [LAN865X_TIMESTAMP_ID_NORMAL]  = MMS0_TTSCBL,
-        [LAN865X_TIMESTAMP_ID_RESERVED]= MMS0_TTSCCL,
+        [LAN865X_TIMESTAMP_ID_GPTP] = MMS0_TTSCAL,
+        [LAN865X_TIMESTAMP_ID_NORMAL] = MMS0_TTSCBL,
+        [LAN865X_TIMESTAMP_ID_RESERVED] = MMS0_TTSCCL,
     };
 
     if (tx_id < 0 || tx_id >= ARRAY_SIZE(reg_hi) || !reg_hi[tx_id] || !reg_lo[tx_id])

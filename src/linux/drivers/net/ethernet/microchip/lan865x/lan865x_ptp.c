@@ -1,9 +1,8 @@
 #include "lan865x_ptp.h"
 
+#include <linux/delay.h>
 #include <linux/if_ether.h>
 #include <linux/if_vlan.h>
-
-#include <linux/delay.h>
 
 #define NSEC_PER_MHZ 1000
 #define MHZ_TO_NS(mhz) (NSEC_PER_MHZ / (mhz))
@@ -129,7 +128,7 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info* ptp_info, s64 delta_ns) {
 
     bool is_negative = false;
     timestamp_t hw_timestamp = 0;
-    timestamp_t curr_hw_timestamp = 0 ;
+    timestamp_t curr_hw_timestamp = 0;
 
     LAN865X_DEBUG("lan865x: call %s\n", __func__);
 
@@ -219,7 +218,7 @@ struct ptp_device* ptp_device_init(struct device* dev, struct oa_tc6* tc6, s32 m
     struct ptp_clock_info ptp_info = {
         .owner = THIS_MODULE,
         .name = "ptp",
-        .max_adj = max_adj,
+        .max_adj = RESERVED_CYCLE, /* max_adj, */
         .n_ext_ts = 0,
         .pps = 0,
         .adjfine = lan865x_ptp_adjfine,
@@ -265,3 +264,144 @@ struct ptp_device* ptp_device_init(struct device* dev, struct oa_tc6* tc6, s32 m
 
     return ptpdev;
 }
+
+/**
+ * lan865x_get_timestamp - Convert system count to timestamp
+ * @sys_count: System count value
+ * @ticks_scale: Scale factor for ticks
+ * @offset: Offset value
+ * @return: Calculated timestamp
+ */
+static timestamp_t lan865x_get_timestamp(u64 sys_count, double ticks_scale, u64 offset) {
+    timestamp_t timestamp = ticks_scale * sys_count;
+
+    return timestamp + offset;
+}
+
+/**
+ * lan865x_sysclock_to_timestamp - Convert system clock to timestamp
+ * @tc6: lan865x_spi struct pointer
+ * @sysclock: System clock value to convert
+ * @return: Timestamp value, 0 on failure
+ */
+timestamp_t lan865x_sysclock_to_timestamp(struct lan865x_priv* priv, sysclock_t sysclock) {
+    struct ptp_device* ptp_data = priv->ptpdev;
+
+    if (!ptp_data) {
+        pr_err("%s - PTP not available\n", __func__);
+        return 0;
+    }
+
+    u64 offset = ptp_data->offset;
+
+    return lan865x_get_timestamp(sysclock, ptp_data->ticks_scale, offset);
+}
+
+/**
+ * lan865x_sysclock_to_txtstamp - Convert system clock to TX timestamp
+ * @tc6: lan865x_spi struct pointer
+ * @sysclock: System clock value to convert
+ * @return: TX timestamp value
+ */
+timestamp_t lan865x_sysclock_to_txtstamp(struct lan865x_priv* priv, sysclock_t sysclock) {
+    return lan865x_sysclock_to_timestamp(priv, sysclock) + TX_ADJUST_NS;
+}
+
+/**
+ * do_tx_work - Process TX work for timestamp handling
+ * @work: Work structure
+ * @tstamp_id: Timestamp ID to process
+ *
+ * This function handles TX timestamp processing in workqueue context,
+ * including retry logic and timestamp validation.
+ */
+static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
+    sysclock_t tx_tstamp;
+    struct skb_shared_hwtstamps shhwtstamps;
+    struct lan865x_priv* priv = container_of(work - tstamp_id, struct lan865x_priv, tx_work[0]);
+    struct sk_buff* skb = priv->tx_work_skb[tstamp_id];
+    sysclock_t now = lan865x_get_sys_clock(priv);
+
+    if (tstamp_id >= LAN865X_TIMESTAMP_ID_MAX) {
+        pr_err("Invalid timestamp ID\n");
+        return;
+    }
+
+    if (!priv->tx_work_skb[tstamp_id]) {
+        goto return_error;
+    }
+
+    if (now < priv->tx_work_start_after[tstamp_id]) {
+        goto retry;
+    }
+    /*
+     * Read TX timestamp several times because
+     * the work thread might try to read TX timestamp
+     * before the register gets updated
+     */
+    tx_tstamp = lan865x_read_tx_timestamp(priv, tstamp_id);
+    if (tx_tstamp == priv->last_tx_tstamp[tstamp_id]) {
+        if (lan865x_get_sys_clock(priv) < priv->tx_work_wait_until[tstamp_id]) {
+            /* The packet might have not been sent yet */
+            goto retry;
+        }
+        /*
+         * Tx timestamp is not updated. Try again.
+         * Waiting for it to be updated forever is not desirable,
+         * so limit the number of retries
+         */
+        if (++(priv->tstamp_retry[tstamp_id]) >= TX_TSTAMP_MAX_RETRY) {
+            /* TODO: track the number of skipped packets for ethtool stats */
+            pr_warn("Failed to get timestamp: timestamp is not getting updated, "
+                    "the packet might have been dropped\n");
+            goto return_error;
+        }
+        goto retry;
+    }
+    priv->tstamp_retry[tstamp_id] = 0;
+    shhwtstamps.hwtstamp = ns_to_ktime(lan865x_sysclock_to_txtstamp(priv, tx_tstamp));
+    priv->last_tx_tstamp[tstamp_id] = tx_tstamp;
+
+    priv->tx_work_skb[tstamp_id] = NULL;
+    clear_bit_unlock(tstamp_id, &priv->state);
+
+    /* Update work queue state - work completed */
+    atomic_dec(&priv->tx_work_pending[tstamp_id]);
+
+    skb_tstamp_tx(skb, &shhwtstamps);
+    dev_kfree_skb_any(skb);
+    return;
+
+return_error:
+    priv->tstamp_retry[tstamp_id] = 0;
+    clear_bit_unlock(tstamp_id, &priv->state);
+
+    /* Update work queue state - work completed with error */
+    atomic_dec(&priv->tx_work_pending[tstamp_id]);
+
+    return;
+
+retry:
+    /* Check context before scheduling work */
+    if (in_atomic()) {
+        pr_warn("Cannot schedule work in atomic context during retry, tstamp_id=%d\n", tstamp_id);
+        /* Fallback: try to schedule on current CPU */
+        queue_work_on(smp_processor_id(), system_wq, &priv->tx_work[tstamp_id]);
+    } else {
+        schedule_work(&priv->tx_work[tstamp_id]);
+    }
+
+    /* Track work queue state */
+    atomic_inc(&priv->tx_work_pending[tstamp_id]);
+    return;
+}
+
+#define DEFINE_TX_WORK(n)                               \
+    void lan865x_tx_work##n(struct work_struct* work) { \
+        do_tx_work(work, n);                            \
+    }
+
+DEFINE_TX_WORK(1);
+DEFINE_TX_WORK(2);
+DEFINE_TX_WORK(3);
+DEFINE_TX_WORK(4);

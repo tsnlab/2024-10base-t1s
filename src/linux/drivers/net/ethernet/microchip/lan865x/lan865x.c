@@ -180,7 +180,7 @@ static u32 lan865x_hash(u8 addr[ETH_ALEN]) {
 }
 
 /* ----------------------------------------------------------------
- * NOTE: 
+ * NOTE:
  *  Lint disabled for the following function to avoid changes that
  *  would conflict with the Upstream Kernel source on rebase.
  * ----------------------------------------------------------------*/
@@ -306,7 +306,7 @@ static void lan865x_set_multicast_list(struct net_device* netdev) {
  *      rxfilter(); // for RX HW Timestamp, Ref: oa_tc6.c
  *      netif_rx();
  * }
-*/
+ */
 
 static netdev_tx_t lan865x_send_packet(struct sk_buff* skb, struct net_device* netdev) {
     struct lan865x_priv* priv = netdev_priv(netdev);
@@ -458,10 +458,30 @@ static int lan865x_probe(struct spi_device* spi) {
     u32 node_id = 0;
     u8 mac_addr[ETH_ALEN];
 
+#ifdef __TSN_PTP__
+    /* Allocate the network device */
+    /* TC command requires multiple TX queues */
+    netdev = alloc_etherdev_mq(sizeof(struct lan865x_priv), TX_QUEUE_COUNT);
+    if (!netdev) {
+        pr_err("alloc_etherdev failed\n");
+        return -ENOMEM;
+    }
+    /*
+     * Multiple RX queues drops throughput significantly.
+     * TODO: Find out why RX queue count affects throughput
+     * and see if it can be resolved in another way
+     */
+    ret = netif_set_real_num_rx_queues(netdev, RX_QUEUE_COUNT);
+    if (ret) {
+        pr_err("netif_set_real_num_rx_queues failed\n");
+        return ret;
+    }
+#else
     netdev = alloc_etherdev(sizeof(struct lan865x_priv));
     if (!netdev) {
         return -ENOMEM;
     }
+#endif
 
     priv = netdev_priv(netdev);
     priv->netdev = netdev;
@@ -549,6 +569,14 @@ static int lan865x_probe(struct spi_device* spi) {
         goto oa_tc6_exit;
     }
 
+#ifdef __TSN_PTP__
+    /* Tx works for each timestamp id */
+    INIT_WORK(&priv->tx_work[1], lan865x_tx_work1);
+    INIT_WORK(&priv->tx_work[2], lan865x_tx_work2);
+    INIT_WORK(&priv->tx_work[3], lan865x_tx_work3);
+    INIT_WORK(&priv->tx_work[4], lan865x_tx_work4);
+#endif
+
     priv->ptpdev = ptp_device_init(dev, priv->tc6, (s32)spi->max_speed_hz);
     if (!priv->ptpdev) {
         dev_err(dev, "ptp_device_init()");
@@ -576,7 +604,7 @@ static void lan865x_remove(struct spi_device* spi) {
 
 // TODO: Cleanup
 static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg) {
-	(void)file;
+    (void)file;
 
     struct lan865x_reg reg;
     int ret = 0;
@@ -614,8 +642,8 @@ static long lan865x_ioctl(struct file* file, unsigned int cmd, unsigned long arg
 }
 
 static int lan865x_open(struct inode* inode, struct file* file) {
-	(void)inode;
-	(void)file;
+    (void)inode;
+    (void)file;
 
     struct spi_device* spi = container_of(file->private_data, struct spi_device, dev);
     file->private_data = spi;
@@ -623,7 +651,7 @@ static int lan865x_open(struct inode* inode, struct file* file) {
 }
 
 static int lan865x_release(struct inode* inode, struct file* file) {
-	(void)inode;
+    (void)inode;
 
     file->private_data = NULL;
     return 0;

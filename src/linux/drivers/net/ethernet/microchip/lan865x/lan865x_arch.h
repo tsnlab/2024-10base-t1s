@@ -55,9 +55,13 @@ enum lan865x_timestamp_id {
 
 #define NS_IN_1S 1000000000
 
+#define TX_QUEUE_COUNT 8
+#define RX_QUEUE_COUNT 8
+
 /* 25Mhz = LAN8650 SPI MAX Hz */
-#define TICKS_SCALE 40
-#define RESERVED_CYCLE 25000000
+/* 10Mbps = 10BASE-T1S */
+#define TICKS_SCALE 100         /* 40 */
+#define RESERVED_CYCLE 10000000 /* 25000000 */
 
 typedef u64 sysclock_t;
 typedef u64 timestamp_t;
@@ -71,6 +75,7 @@ struct ptp_device {
     struct task_struct* ptp_thread;
 
     u32 ti_subnano_b24; // timer increase every clock (25MHz) cycle
+    double ticks_scale;
     u64 offset;
 
     spinlock_t lock;
@@ -86,8 +91,19 @@ struct lan865x_priv {
     struct hwtstamp_config tstamp_config;
     struct sk_buff* waiting_txts_skb[LAN865X_TIMESTAMP_ID_MAX - 1];
 
+    struct work_struct tx_work[LAN865X_TIMESTAMP_ID_MAX];
+    struct sk_buff* tx_work_skb[LAN865X_TIMESTAMP_ID_MAX];
+    sysclock_t tx_work_start_after[LAN865X_TIMESTAMP_ID_MAX];
+    sysclock_t tx_work_wait_until[LAN865X_TIMESTAMP_ID_MAX];
+    sysclock_t last_tx_tstamp[LAN865X_TIMESTAMP_ID_MAX];
+    int tstamp_retry[LAN865X_TIMESTAMP_ID_MAX];
+
+    atomic_t tx_work_pending[LAN865X_TIMESTAMP_ID_MAX];
+
     uint64_t total_tx_count;
     uint64_t total_tx_drop_count;
+
+    unsigned long state;
 };
 
 struct lan865x_priv* get_lan865x_priv_by_ptp_info(struct ptp_clock_info* ptp_info);

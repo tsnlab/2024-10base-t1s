@@ -122,7 +122,8 @@ struct oa_tc6 {
     struct mii_bus* mdiobus;
     struct spi_device* spi;
     struct mutex spi_ctrl_lock; /* Protects spi control transfer */
-    spinlock_t tx_skb_lock;     /* Protects tx skb handling */
+    struct mutex spi_transfer_lock;
+    spinlock_t tx_skb_lock; /* Protects tx skb handling */
     void* spi_ctrl_tx_buf;
     void* spi_ctrl_rx_buf;
     void* spi_data_tx_buf;
@@ -143,6 +144,7 @@ struct oa_tc6 {
     u8 ongoing_tx_ts_capture_mode;
     u8 waiting_tx_ts_capture_mode;
 #endif /* FRAME_TIMESTAMP_ENABLE */
+    struct lan865x_priv* priv;
 };
 
 enum oa_tc6_header_type {
@@ -193,10 +195,21 @@ struct lan865x_priv {
 
     struct ptp_device* ptpdev;
     struct hwtstamp_config tstamp_config;
-	struct sk_buff *waiting_txts_skb[TSN_TIMESTAMP_ID_MAX-1];
+    struct sk_buff* waiting_txts_skb[TSN_TIMESTAMP_ID_MAX - 1];
+
+    struct work_struct tx_work[TSN_TIMESTAMP_ID_MAX];
+    struct sk_buff* tx_work_skb[TSN_TIMESTAMP_ID_MAX];
+    uint64_t tx_work_start_after[TSN_TIMESTAMP_ID_MAX];
+    uint64_t tx_work_wait_until[TSN_TIMESTAMP_ID_MAX];
+    uint64_t last_tx_tstamp[TSN_TIMESTAMP_ID_MAX];
+    int tstamp_retry[TSN_TIMESTAMP_ID_MAX];
+
+    atomic_t tx_work_pending[TSN_TIMESTAMP_ID_MAX];
 
     uint64_t total_tx_count;
     uint64_t total_tx_drop_count;
+
+    unsigned long state;
 };
 
 // TODO: Cleanup
@@ -263,7 +276,9 @@ static bool filter_rx_timestamp(struct oa_tc6* tc6, uint8_t* data) {
 static int oa_tc6_spi_transfer(struct oa_tc6* tc6, enum oa_tc6_header_type header_type, u16 length) {
     struct spi_transfer xfer = {0};
     struct spi_message msg;
+    int ret;
 
+    mutex_lock(&tc6->spi_transfer_lock);
     if (header_type == OA_TC6_DATA_HEADER) {
         xfer.tx_buf = tc6->spi_data_tx_buf;
         xfer.rx_buf = tc6->spi_data_rx_buf;
@@ -276,7 +291,10 @@ static int oa_tc6_spi_transfer(struct oa_tc6* tc6, enum oa_tc6_header_type heade
     spi_message_init(&msg);
     spi_message_add_tail(&xfer, &msg);
 
-    return spi_sync(tc6->spi, &msg);
+    ret = spi_sync(tc6->spi, &msg);
+
+    mutex_unlock(&tc6->spi_transfer_lock);
+    return ret;
 }
 
 static int oa_tc6_get_parity(u32 p) {
@@ -794,7 +812,7 @@ static void oa_tc6_submit_rx_skb(struct oa_tc6* tc6) {
     tc6->netdev->stats.rx_packets++;
     tc6->netdev->stats.rx_bytes += tc6->rx_skb->len;
 
-	//print_hex_dump(KERN_ERR, __func__, DUMP_PREFIX_OFFSET, 16, 1, tc6->rx_skb->data, tc6->rx_skb->len, false);
+    // print_hex_dump(KERN_ERR, __func__, DUMP_PREFIX_OFFSET, 16, 1, tc6->rx_skb->data, tc6->rx_skb->len, false);
 
     netif_rx(tc6->rx_skb);
 
@@ -802,7 +820,7 @@ static void oa_tc6_submit_rx_skb(struct oa_tc6* tc6) {
 }
 
 static void oa_tc6_update_rx_skb(struct oa_tc6* tc6, u8* payload, u8 length) {
-	//print_hex_dump(KERN_ERR, __func__, DUMP_PREFIX_OFFSET, 16, 1, payload, length, false);
+    // print_hex_dump(KERN_ERR, __func__, DUMP_PREFIX_OFFSET, 16, 1, payload, length, false);
     memcpy(skb_put(tc6->rx_skb, length), payload, length);
 }
 
@@ -835,7 +853,7 @@ static int oa_tc6_prcs_complete_rx_frame(struct oa_tc6* tc6, u8* payload, u16 si
     }
 
     oa_tc6_update_rx_skb(tc6, &payload[sizeof(struct timestamp_format)], size - sizeof(struct timestamp_format));
-#else /* FRAME_TIMESETAMP_ENABLE */
+#else  /* FRAME_TIMESETAMP_ENABLE */
     oa_tc6_update_rx_skb(tc6, payload, size);
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
@@ -863,7 +881,7 @@ static int oa_tc6_prcs_rx_frame_start(struct oa_tc6* tc6, u8* payload, u16 size)
     }
 
     oa_tc6_update_rx_skb(tc6, &payload[sizeof(struct timestamp_format)], size - sizeof(struct timestamp_format));
-#else /* FRAME_TIMESTAMP_ENABLE */
+#else  /* FRAME_TIMESTAMP_ENABLE */
     oa_tc6_update_rx_skb(tc6, payload, size);
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
@@ -874,7 +892,7 @@ static void oa_tc6_prcs_rx_frame_end(struct oa_tc6* tc6, u8* payload, u16 size) 
 #ifdef FRAME_TIMESTAMP_ENABLE
     // NOTE: Remove unnecessary last 4 bytes.
     oa_tc6_update_rx_skb(tc6, payload, size - 4);
-#else /* FRAME_TIMESTAMP_ENABLE */
+#else  /* FRAME_TIMESTAMP_ENABLE */
     oa_tc6_update_rx_skb(tc6, payload, size);
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
@@ -980,8 +998,9 @@ static int oa_tc6_process_spi_data_rx_buf(struct oa_tc6* tc6, u16 length) {
 }
 
 #ifdef FRAME_TIMESTAMP_ENABLE
-static __be32 oa_tc6_prepare_data_header(bool data_valid, bool start_valid, bool end_valid, u8 end_byte_offset, u8 ts_capture_mode) {
-#else /* FRAME_TIMESTAMP_ENABLE */
+static __be32 oa_tc6_prepare_data_header(bool data_valid, bool start_valid, bool end_valid, u8 end_byte_offset,
+                                         u8 ts_capture_mode) {
+#else  /* FRAME_TIMESTAMP_ENABLE */
 static __be32 oa_tc6_prepare_data_header(bool data_valid, bool start_valid, bool end_valid, u8 end_byte_offset) {
 #endif /* FRAME_TIMESTAMP_ENABLE */
     u32 header = FIELD_PREP(OA_TC6_DATA_HEADER_DATA_NOT_CTRL, OA_TC6_DATA_HEADER) |
@@ -1008,6 +1027,7 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
     u16 length_to_copy;
 #ifdef FRAME_TIMESTAMP_ENABLE
     u8 ts_capture_mode = 0;
+    struct lan865x_priv* priv = netdev_priv(tc6->netdev);
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
     /* Initial value is assigned here to avoid more than 80 characters in
@@ -1040,17 +1060,21 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
         tc6->tx_skb_offset = 0;
         tc6->netdev->stats.tx_bytes += tc6->ongoing_tx_skb->len;
         tc6->netdev->stats.tx_packets++;
-		kfree_skb(tc6->ongoing_tx_skb);
+        kfree_skb(tc6->ongoing_tx_skb);
         tc6->ongoing_tx_skb = NULL;
 #ifdef FRAME_TIMESTAMP_ENABLE
         ts_capture_mode = tc6->ongoing_tx_ts_capture_mode;
+        if ((ts_capture_mode == 1 /* LAN865X_TIMESTAMP_ID_GPTP */) ||
+            (ts_capture_mode == 2 /* LAN865X_TIMESTAMP_ID_NORMAL */)) {
+            schedule_work(&priv->tx_work[ts_capture_mode]);
+        }
         tc6->ongoing_tx_ts_capture_mode = 0;
 #endif /* FRAME_TIMESTAMP_ENABLE */
     }
 
 #ifdef FRAME_TIMESTAMP_ENABLE
     *tx_buf = oa_tc6_prepare_data_header(OA_TC6_DATA_VALID, start_valid, end_valid, end_byte_offset, ts_capture_mode);
-#else /* FRAME_TIMESTAMP_ENABLE */
+#else  /* FRAME_TIMESTAMP_ENABLE */
     *tx_buf = oa_tc6_prepare_data_header(OA_TC6_DATA_VALID, start_valid, end_valid, end_byte_offset);
 #endif /* FRAME_TIMESTAMP_ENABLE */
     tc6->spi_data_tx_buf_offset += OA_TC6_CHUNK_SIZE;
@@ -1086,7 +1110,7 @@ static void oa_tc6_add_empty_chunks_to_spi_buf(struct oa_tc6* tc6, u16 needed_em
 
 #ifdef FRAME_TIMESTAMP_ENABLE
     header = oa_tc6_prepare_data_header(OA_TC6_DATA_INVALID, OA_TC6_DATA_START_INVALID, OA_TC6_DATA_END_INVALID, 0, 0);
-#else /* FRAME_TIMETAMP_ENABLE */
+#else  /* FRAME_TIMETAMP_ENABLE */
     header = oa_tc6_prepare_data_header(OA_TC6_DATA_INVALID, OA_TC6_DATA_START_INVALID, OA_TC6_DATA_END_INVALID, 0);
 #endif /* FRAME_TIMESTAMP_ENABLE */
 
@@ -1254,7 +1278,7 @@ EXPORT_SYMBOL_GPL(oa_tc6_zero_align_receive_frame_enable);
  */
 #ifdef FRAME_TIMESTAMP_ENABLE
 netdev_tx_t oa_tc6_start_xmit(struct oa_tc6* tc6, struct sk_buff* skb, u8 ts_capture_mode) {
-#else /* FRAME_TIMESTAMP_ENABLE */
+#else  /* FRAME_TIMESTAMP_ENABLE */
 netdev_tx_t oa_tc6_start_xmit(struct oa_tc6* tc6, struct sk_buff* skb) {
 #endif /* FRAME_TIMESTAMP_ENABLE */
     if (tc6->waiting_tx_skb) {
@@ -1270,7 +1294,9 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6* tc6, struct sk_buff* skb) {
 
     spin_lock_bh(&tc6->tx_skb_lock);
     tc6->waiting_tx_skb = skb;
+#ifdef FRAME_TIMESTAMP_ENABLE
     tc6->waiting_tx_ts_capture_mode = ts_capture_mode;
+#endif
     spin_unlock_bh(&tc6->tx_skb_lock);
 
     /* Wake spi kthread to perform spi transfer */
@@ -1503,6 +1529,7 @@ struct oa_tc6* oa_tc6_init(struct spi_device* spi, struct net_device* netdev) {
     tc6->netdev = netdev;
     SET_NETDEV_DEV(netdev, &spi->dev);
     mutex_init(&tc6->spi_ctrl_lock);
+    mutex_init(&tc6->spi_transfer_lock);
     spin_lock_init(&tc6->tx_skb_lock);
 
     /* Set the SPI controller to pump at realtime priority */
