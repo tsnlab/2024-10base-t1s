@@ -16,6 +16,7 @@ struct lan865x_priv* get_lan865x_priv_by_ptp_info(struct ptp_clock_info* ptp_inf
     return priv;
 }
 
+#ifndef __TSN_PTP__
 static int lan865x_ptp_thread_handler(void* data) {
     struct ptp_device* ptpdev = (struct ptp_device*)data;
     struct lan865x_priv* priv = dev_get_drvdata(ptpdev->dev);
@@ -63,6 +64,7 @@ static int lan865x_ptp_thread_handler(void* data) {
 
     return 0;
 }
+#endif
 
 bool is_gptp_packet(const struct sk_buff* skb) {
     struct ethhdr* eth;
@@ -324,6 +326,8 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     struct sk_buff* skb = priv->tx_work_skb[tstamp_id];
     sysclock_t now = lan865x_get_sys_clock(priv);
 
+    pr_err("%s - priv->magic: 0x%llx, tstamp_id: %d\n", __func__, priv->magic, tstamp_id);
+
     if (tstamp_id >= LAN865X_TIMESTAMP_ID_MAX) {
         pr_err("Invalid timestamp ID\n");
         return;
@@ -354,8 +358,8 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
          */
         if (++(priv->tstamp_retry[tstamp_id]) >= TX_TSTAMP_MAX_RETRY) {
             /* TODO: track the number of skipped packets for ethtool stats */
-            pr_warn("Failed to get timestamp: timestamp is not getting updated, "
-                    "the packet might have been dropped\n");
+            pr_err("Failed to get timestamp: timestamp is not getting updated, "
+                   "the packet might have been dropped\n");
             goto return_error;
         }
         goto retry;

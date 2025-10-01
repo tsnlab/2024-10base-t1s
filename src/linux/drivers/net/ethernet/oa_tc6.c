@@ -188,6 +188,7 @@ enum tsn_timestamp_id {
 
 // TODO: Cleanup
 struct lan865x_priv {
+    uint64_t magic;
     struct work_struct multicast_work;
     struct net_device* netdev;
     struct spi_device* spi;

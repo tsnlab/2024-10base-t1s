@@ -486,6 +486,7 @@ static int lan865x_probe(struct spi_device* spi) {
     priv = netdev_priv(netdev);
     priv->netdev = netdev;
     priv->spi = spi;
+    priv->magic = 0x9530234203;
     spi_set_drvdata(spi, priv);
     INIT_WORK(&priv->multicast_work, lan865x_multicast_work_handler);
 
