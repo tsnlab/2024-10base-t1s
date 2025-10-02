@@ -326,7 +326,9 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     struct sk_buff* skb = priv->tx_work_skb[tstamp_id];
     sysclock_t now = lan865x_get_sys_clock(priv);
 
+#if 0
     pr_err("%s - priv->magic: 0x%llx, tstamp_id: %d\n", __func__, priv->magic, tstamp_id);
+#endif
 
     if (tstamp_id >= LAN865X_TIMESTAMP_ID_MAX) {
         pr_err("Invalid timestamp ID\n");
@@ -334,12 +336,15 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     }
 
     if (!priv->tx_work_skb[tstamp_id]) {
+        pr_err("%s - priv->tx_work_skb[%d] is NULL\n", __func__, tstamp_id);
         goto return_error;
     }
 
+#if 0
     if (now < priv->tx_work_start_after[tstamp_id]) {
         goto retry;
     }
+#endif
     /*
      * Read TX timestamp several times because
      * the work thread might try to read TX timestamp
@@ -347,10 +352,12 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
      */
     tx_tstamp = lan865x_read_tx_timestamp(priv, tstamp_id);
     if (tx_tstamp == priv->last_tx_tstamp[tstamp_id]) {
+#if 0
         if (lan865x_get_sys_clock(priv) < priv->tx_work_wait_until[tstamp_id]) {
             /* The packet might have not been sent yet */
             goto retry;
         }
+#endif
         /*
          * Tx timestamp is not updated. Try again.
          * Waiting for it to be updated forever is not desirable,
@@ -370,10 +377,6 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
 
     priv->tx_work_skb[tstamp_id] = NULL;
     clear_bit_unlock(tstamp_id, &priv->state);
-
-    /* Update work queue state - work completed */
-    atomic_dec(&priv->tx_work_pending[tstamp_id]);
-
     skb_tstamp_tx(skb, &shhwtstamps);
     dev_kfree_skb_any(skb);
     return;
@@ -381,24 +384,10 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
 return_error:
     priv->tstamp_retry[tstamp_id] = 0;
     clear_bit_unlock(tstamp_id, &priv->state);
-
-    /* Update work queue state - work completed with error */
-    atomic_dec(&priv->tx_work_pending[tstamp_id]);
-
     return;
 
 retry:
-    /* Check context before scheduling work */
-    if (in_atomic()) {
-        pr_warn("Cannot schedule work in atomic context during retry, tstamp_id=%d\n", tstamp_id);
-        /* Fallback: try to schedule on current CPU */
-        queue_work_on(smp_processor_id(), system_wq, &priv->tx_work[tstamp_id]);
-    } else {
-        schedule_work(&priv->tx_work[tstamp_id]);
-    }
-
-    /* Track work queue state */
-    atomic_inc(&priv->tx_work_pending[tstamp_id]);
+    schedule_work(&priv->tx_work[tstamp_id]);
     return;
 }
 

@@ -1061,16 +1061,17 @@ static void oa_tc6_add_tx_skb_to_spi_buf(struct oa_tc6* tc6) {
         tc6->tx_skb_offset = 0;
         tc6->netdev->stats.tx_bytes += tc6->ongoing_tx_skb->len;
         tc6->netdev->stats.tx_packets++;
-        kfree_skb(tc6->ongoing_tx_skb);
-        tc6->ongoing_tx_skb = NULL;
 #ifdef FRAME_TIMESTAMP_ENABLE
         ts_capture_mode = tc6->ongoing_tx_ts_capture_mode;
         if ((ts_capture_mode == 1 /* LAN865X_TIMESTAMP_ID_GPTP */) ||
             (ts_capture_mode == 2 /* LAN865X_TIMESTAMP_ID_NORMAL */)) {
+            priv->tx_work_skb[ts_capture_mode] = skb_get(tc6->ongoing_tx_skb);
             schedule_work(&priv->tx_work[ts_capture_mode]);
         }
         tc6->ongoing_tx_ts_capture_mode = 0;
 #endif /* FRAME_TIMESTAMP_ENABLE */
+        kfree_skb(tc6->ongoing_tx_skb);
+        tc6->ongoing_tx_skb = NULL;
     }
 
 #ifdef FRAME_TIMESTAMP_ENABLE
