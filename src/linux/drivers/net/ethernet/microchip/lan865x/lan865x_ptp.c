@@ -403,6 +403,12 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     tx_tstamp = lan865x_read_tx_timestamp(priv, tstamp_id);
     if (tx_tstamp == priv->last_tx_tstamp[tstamp_id]) {
 #if 1
+        if (tx_tstamp <= (priv->tx_work_start_after[tstamp_id] - 0x10000)) {
+            /* The packet might have not been sent yet */
+            pr_err("%s - retry, tx_tstamp:0x%16llx, wakeup: 0x%16llx\n", __func__, tx_tstamp,
+                   priv->tx_work_start_after[tstamp_id] - 0x10000);
+            goto retry;
+        }
         if (lan865x_get_sys_clock(priv) < priv->tx_work_wait_until[tstamp_id]) {
             /* The packet might have not been sent yet */
             // pr_err("%s - The packet might have not been sent yet\n", __func__);
