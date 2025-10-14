@@ -60,8 +60,8 @@ enum lan865x_timestamp_id {
 
 /* 25Mhz = LAN8650 SPI MAX Hz */
 /* 10Mbps = 10BASE-T1S */
-#define TICKS_SCALE 100         /* 40 */
-#define RESERVED_CYCLE 10000000 /* 25000000 */
+#define TICKS_SCALE 40          /* 40 --> 100 */
+#define RESERVED_CYCLE 25000000 /* 25000000 --> 10000000 */
 
 typedef u64 sysclock_t;
 typedef u64 timestamp_t;

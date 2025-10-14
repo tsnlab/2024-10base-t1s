@@ -220,7 +220,7 @@ struct ptp_device* ptp_device_init(struct device* dev, struct oa_tc6* tc6, s32 m
     struct ptp_clock_info ptp_info = {
         .owner = THIS_MODULE,
         .name = "ptp",
-        .max_adj = RESERVED_CYCLE, /* max_adj, */
+        .max_adj = max_adj, /* max_adj --> RESERVED_CYCLE , */
         .n_ext_ts = 0,
         .pps = 0,
         .adjfine = lan865x_ptp_adjfine,
