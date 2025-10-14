@@ -385,7 +385,7 @@ static int oa_tc6_spi_transfer(struct oa_tc6* tc6, enum oa_tc6_header_type heade
     struct spi_message msg;
     int ret;
 
-#if 0
+#if 1
     mutex_lock(&tc6->spi_transfer_lock);
 #endif
     if (header_type == OA_TC6_DATA_HEADER) {
@@ -402,7 +402,7 @@ static int oa_tc6_spi_transfer(struct oa_tc6* tc6, enum oa_tc6_header_type heade
 
     ret = spi_sync(tc6->spi, &msg);
 
-#if 0
+#if 1
     mutex_unlock(&tc6->spi_transfer_lock);
 #endif
 #ifdef OA_SPI_DATA_DEBUG
