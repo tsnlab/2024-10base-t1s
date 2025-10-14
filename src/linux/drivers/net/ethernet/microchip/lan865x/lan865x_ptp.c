@@ -121,6 +121,7 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm)
     struct ptp_device* ptpdev = priv->ptpdev;
 
     LAN865X_DEBUG("lan865x: call %s", __func__);
+    pr_err("lan865x: call %s - scaled_ppm: %ld\n", __func__, scaled_ppm);
 
 #if 1
     mutex_lock(&ptpdev->lock);
@@ -154,6 +155,8 @@ exit:
 #else
     spin_unlock_irqrestore(&ptpdev->lock, flags);
 #endif
+    pr_err("%s: scaled_ppm = %ld, diff = %llu, ticks_scale = %llu = %014llx\n", __func__, scaled_ppm, diff_b24,
+           ticks_scale, ticks_scale);
 
     return 0;
 #endif

@@ -57,6 +57,9 @@ int lan865x_set_sys_clock(struct lan865x_priv* priv, u64 timestamp) {
     value[0] = sec_l;
     value[1] = nsec;
 
+    if (oa_tc6_write_register(tc6, MMS1_MAC_TSH, sec_h))
+        return -ENODEV;
+
     if (oa_tc6_write_registers(tc6, MMS1_MAC_TSL, value, 2)) {
         return -ENODEV;
     }
@@ -71,9 +74,9 @@ int lan865x_set_sys_clock(struct lan865x_priv* priv, u64 timestamp) {
     if (oa_tc6_write_register(tc6, MMS1_MAC_TSL, sec))
         return -ENODEV;
 #endif
-#endif
     if (oa_tc6_write_register(tc6, MMS1_MAC_TSH, sec_h))
         return -ENODEV;
+#endif
 
     return 0;
 }
