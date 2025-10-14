@@ -71,11 +71,12 @@ void lan865x_set_sys_clock_ti(struct lan865x_priv* priv, u64 subnano_b24) {
     // 8bit 000000xx
     u32 nano = subnano_b24 >> 24;
     reg_ti_val = (nano & 0xFF);
-    oa_tc6_write_register(tc6, MMS1_MAC_TI, reg_ti_val);
 
     // 24bit 00123456 -> 56001234
     u32 subnano = subnano_b24 & 0x00FFFFFF;
     reg_tisubn_val = ((subnano & 0xffff00) >> 8) | ((subnano & 0x0000FF) << 24);
+
+    oa_tc6_write_register(tc6, MMS1_MAC_TI, reg_ti_val);
 
     // Set MAC_TI(TSU Timer Increment) register
     oa_tc6_write_register(tc6, MMS1_MAC_TISUBN, reg_tisubn_val);
