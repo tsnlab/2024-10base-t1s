@@ -1139,7 +1139,7 @@ static void wake_up_worker(struct oa_tc6* tc6, u8 ts_capture_mode, struct lan865
 
     sysclock_t now;
 
-#if 1
+#if 0
     pr_err(">>> %s - ts_capture_mode: %d\n", __func__, ts_capture_mode);
 #endif
 
@@ -1149,7 +1149,7 @@ static void wake_up_worker(struct oa_tc6* tc6, u8 ts_capture_mode, struct lan865
 
         now = lan865x_get_sys_clock(priv);
 
-        priv->tx_work_start_after[ts_capture_mode] = now + 0x1a000;
+        priv->tx_work_start_after[ts_capture_mode] = now + 0x10000;
         priv->tx_work_wait_until[ts_capture_mode] = now + 0x60000;
 
         if (in_atomic()) {
@@ -1159,7 +1159,7 @@ static void wake_up_worker(struct oa_tc6* tc6, u8 ts_capture_mode, struct lan865
             schedule_work(&priv->tx_work[ts_capture_mode]);
         }
 
-#if 1
+#if 0
         pr_err("<<< %s - now: 0x%llx\n", __func__, now);
 #endif
 

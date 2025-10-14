@@ -326,7 +326,7 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     struct sk_buff* skb = priv->tx_work_skb[tstamp_id];
     sysclock_t now = lan865x_get_sys_clock(priv);
 
-#if 1
+#if 0
     struct oa_tc6* tc6 = priv->tc6;
     u32 sts11, sts12;
 
@@ -388,14 +388,16 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
         goto retry;
     }
 
+#if 0
     pr_err("tstamp_id: %d, priv->tstamp_retry: %d\n", tstamp_id, priv->tstamp_retry[tstamp_id]);
+#else
+    pr_err("%s - last_tx_tstamp: 0x%16llx,  wakeup: 0x%16llx, diff: 0x%llx\n", __func__, tx_tstamp,
+           priv->tx_work_start_after[ts_capture_mode] - 0x10000,
+           tx_tstamp - priv->tx_work_start_after[ts_capture_mode] + 0x10000);
+#endif
 
     priv->tstamp_retry[tstamp_id] = 0;
-#if 1
     shhwtstamps.hwtstamp = ns_to_ktime(tx_tstamp);
-#else
-    shhwtstamps.hwtstamp = ns_to_ktime(lan865x_sysclock_to_txtstamp(priv, tx_tstamp));
-#endif
     priv->last_tx_tstamp[tstamp_id] = tx_tstamp;
 
     priv->tx_work_skb[tstamp_id] = NULL;
@@ -406,7 +408,9 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
 
     skb_tstamp_tx(skb, &shhwtstamps);
     dev_kfree_skb_any(skb);
+#if 0
     pr_err("<<< %s - priv->last_tx_tstamp[%d] - 0x%llx\n", __func__, tstamp_id, priv->last_tx_tstamp[tstamp_id]);
+#endif
     return;
 
 return_error:
