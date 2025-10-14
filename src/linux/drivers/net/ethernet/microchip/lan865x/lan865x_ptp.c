@@ -84,8 +84,33 @@ bool is_gptp_packet(const struct sk_buff* skb) {
 }
 
 static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm) {
-#if 0
+#if 1
     return 0;
+#if 0
+    struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
+    struct ptp_device* ptpdev = priv->ptpdev;
+    u64 sys_clock;
+	double diff;
+    int is_negative = 0;
+
+
+    if (scaled_ppm == 0) {
+        return 0;
+    }
+
+    mutex_lock(&ptpdev->lock);
+
+    sys_clock = lan865x_get_sys_clock(priv);
+
+    if (scaled_ppm < 0) {
+        is_negative = 1;
+        scaled_ppm = -scaled_ppm;
+    }
+
+    mutex_unlock(&ptpdev->lock);
+
+    return 0;
+#endif
 #else
     u64 ticks_scale, diff_b24;
     unsigned long flags;
@@ -136,6 +161,16 @@ exit:
 
 static int lan865x_ptp_adjtime(struct ptp_clock_info* ptp_info, s64 delta_ns) {
 #if 0
+    struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
+    struct ptp_device* ptpdev = priv->ptpdev;
+
+    mutex_lock(&ptpdev->lock);
+
+    /* Adjust offset */
+    ptp_data->offset += delta;
+
+    mutex_unlock(&ptpdev->lock);
+
     return 0;
 #else
     unsigned long flags;
