@@ -392,8 +392,7 @@ static void do_tx_work(struct work_struct* work, u16 tstamp_id) {
     pr_err("tstamp_id: %d, priv->tstamp_retry: %d\n", tstamp_id, priv->tstamp_retry[tstamp_id]);
 #else
     pr_err("%s - last_tx_tstamp: 0x%16llx,  wakeup: 0x%16llx, diff: 0x%llx\n", __func__, tx_tstamp,
-           priv->tx_work_start_after[ts_capture_mode] - 0x10000,
-           tx_tstamp - priv->tx_work_start_after[ts_capture_mode] + 0x10000);
+           priv->tx_work_start_after[tstamp_id] - 0x10000, tx_tstamp - priv->tx_work_start_after[tstamp_id] + 0x10000);
 #endif
 
     priv->tstamp_retry[tstamp_id] = 0;
