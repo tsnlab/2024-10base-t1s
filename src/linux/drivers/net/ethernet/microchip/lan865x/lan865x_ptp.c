@@ -84,6 +84,9 @@ bool is_gptp_packet(const struct sk_buff* skb) {
 }
 
 static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm) {
+#if 1
+    return 0
+#else
     u64 ticks_scale, diff_b24;
     unsigned long flags;
     u32 ppm;
@@ -128,9 +131,13 @@ exit:
 #endif
 
     return 0;
+#endif
 }
 
 static int lan865x_ptp_adjtime(struct ptp_clock_info* ptp_info, s64 delta_ns) {
+#if 1
+    return 0;
+#else
     unsigned long flags;
 
     struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
@@ -174,6 +181,7 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info* ptp_info, s64 delta_ns) {
 #endif
 
     return 0;
+#endif
 }
 
 static int lan865x_ptp_gettimex64(struct ptp_clock_info* ptp_info, struct timespec64* res_ts,
