@@ -78,7 +78,11 @@ struct ptp_device {
     double ticks_scale;
     u64 offset;
 
+#if 1
+    struct mutex lock;
+#else
     spinlock_t lock;
+#endif
 };
 
 struct lan865x_priv {

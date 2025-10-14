@@ -94,7 +94,11 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm)
 
     LAN865X_DEBUG("lan865x: call %s", __func__);
 
+#if 1
+    mutex_lock(&ptpdev->lock);
+#else
     spin_lock_irqsave(&ptpdev->lock, flags);
+#endif
 
     if (scaled_ppm == 0) {
         goto exit;
@@ -117,7 +121,11 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm)
                   ticks_scale, ticks_scale);
 
 exit:
+#if 1
+    mutex_unlock(&ptpdev->lock);
+#else
     spin_unlock_irqrestore(&ptpdev->lock, flags);
+#endif
 
     return 0;
 }
@@ -134,11 +142,15 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info* ptp_info, s64 delta_ns) {
 
     LAN865X_DEBUG("lan865x: call %s\n", __func__);
 
-    spin_lock_irqsave(&ptpdev->lock, flags);
-
     if (delta_ns == 0) {
         return 0;
     }
+
+#if 1
+    mutex_lock(&ptpdev->lock);
+#else
+    spin_lock_irqsave(&ptpdev->lock, flags);
+#endif
 
     hw_timestamp = lan865x_get_sys_clock(priv);
 
@@ -155,7 +167,11 @@ static int lan865x_ptp_adjtime(struct ptp_clock_info* ptp_info, s64 delta_ns) {
     LAN865X_DEBUG("%s: delta_ns = %c%llu, curr_hw_timestamp = %llu\n", __func__, is_negative ? '-' : '+', delta_ns,
                   curr_hw_timestamp);
 
+#if 1
+    mutex_unlock(&ptpdev->lock);
+#else
     spin_unlock_irqrestore(&ptpdev->lock, flags);
+#endif
 
     return 0;
 }
@@ -170,7 +186,11 @@ static int lan865x_ptp_gettimex64(struct ptp_clock_info* ptp_info, struct timesp
     struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
     struct ptp_device* ptpdev = priv->ptpdev;
 
+#if 1
+    mutex_lock(&ptpdev->lock);
+#else
     spin_lock_irqsave(&ptpdev->lock, flags);
+#endif
 
     ptp_read_system_prets(sts);
     timestamp = lan865x_get_sys_clock(priv);
@@ -179,7 +199,11 @@ static int lan865x_ptp_gettimex64(struct ptp_clock_info* ptp_info, struct timesp
     res_ts->tv_sec = timestamp / NS_IN_1S;
     res_ts->tv_nsec = timestamp % NS_IN_1S;
 
+#if 1
+    mutex_unlock(&ptpdev->lock);
+#else
     spin_unlock_irqrestore(&ptpdev->lock, flags);
+#endif
 
     return 0;
 }
@@ -194,7 +218,11 @@ static int lan865x_ptp_settime64(struct ptp_clock_info* ptp_info, const struct t
 
     LAN865X_DEBUG("lan865x: call %s", __func__);
 
+#if 1
+    mutex_lock(&ptpdev->lock);
+#else
     spin_lock_irqsave(&ptpdev->lock, flags);
+#endif
 
     /* Get host timestamp */
     host_timestamp = (u64)set_ts->tv_sec * NS_IN_1S + set_ts->tv_nsec;
@@ -202,7 +230,11 @@ static int lan865x_ptp_settime64(struct ptp_clock_info* ptp_info, const struct t
     // TODO add/sub
     lan865x_set_sys_clock(priv, host_timestamp);
 
+#if 1
+    mutex_unlock(&ptpdev->lock);
+#else
     spin_unlock_irqrestore(&ptpdev->lock, flags);
+#endif
 
     return 0;
 }
@@ -229,7 +261,11 @@ struct ptp_device* ptp_device_init(struct device* dev, struct oa_tc6* tc6, s32 m
         .settime64 = lan865x_ptp_settime64,
     };
 
+#if 1
+    mutex_init(&ptpdev->lock);
+#else
     spin_lock_init(&ptpdev->lock);
+#endif
 
     ptpdev->dev = dev;
     ptpdev->tc6 = tc6;
