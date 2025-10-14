@@ -45,7 +45,7 @@
 #define LAN865X_REG_PLCA_CTRL1 0x0004ca02
 
 /* NOTE: Knob MAX of the T1S HAT board is 16, but the LAN8650 supports a maximum count of only 8. */
-#define LAN8650_NODE_MAX_COUNT 250
+#define LAN8650_NODE_MAX_COUNT 32
 #define NODE_ID_BITS_WIDTH 8
 #define NODE_ID_MASK 0xFF
 
