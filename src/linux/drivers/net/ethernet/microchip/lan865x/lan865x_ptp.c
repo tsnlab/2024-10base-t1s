@@ -135,7 +135,7 @@ exit:
 }
 
 static int lan865x_ptp_adjtime(struct ptp_clock_info* ptp_info, s64 delta_ns) {
-#if 1
+#if 0
     return 0;
 #else
     unsigned long flags;
