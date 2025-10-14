@@ -581,7 +581,7 @@ static int lan865x_probe(struct spi_device* spi) {
     INIT_WORK(&priv->tx_work[4], lan865x_tx_work4);
 #endif
 
-    priv->ptpdev = ptp_device_init(dev, priv->tc6, (s32)(spi->max_speed_hz * 2));
+    priv->ptpdev = ptp_device_init(dev, priv->tc6, (s32)(spi->max_speed_hz * 8 / 10));
     if (!priv->ptpdev) {
         dev_err(dev, "ptp_device_init()");
         goto oa_tc6_exit;
