@@ -84,7 +84,7 @@ bool is_gptp_packet(const struct sk_buff* skb) {
 }
 
 static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm) {
-#if 1
+#if 0
     return 0;
 #if 0
     struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
