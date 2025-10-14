@@ -85,7 +85,7 @@ bool is_gptp_packet(const struct sk_buff* skb) {
 
 static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm) {
 #if 1
-    return 0
+    return 0;
 #else
     u64 ticks_scale, diff_b24;
     unsigned long flags;
