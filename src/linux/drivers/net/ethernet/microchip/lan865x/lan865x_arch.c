@@ -100,6 +100,7 @@ void lan865x_set_sys_clock_ti(struct lan865x_priv* priv, u64 subnano_b24) {
 
     // Set MAC_TI(TSU Timer Increment) register
     oa_tc6_write_register(tc6, MMS1_MAC_TISUBN, reg_tisubn_val);
+    pr_err("%s - reg_ti_val: %d, reg_tisubn_val: %d\n", __func__, reg_ti_val, reg_tisubn_val);
 }
 
 void lan865x_add_sys_clock(struct lan865x_priv* priv, u32 add_offset) {
