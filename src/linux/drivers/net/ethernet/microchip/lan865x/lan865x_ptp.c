@@ -84,33 +84,125 @@ bool is_gptp_packet(const struct sk_buff* skb) {
 }
 
 static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm) {
-#if 0
-    return 0;
-#if 0
+#if 1
+#define TSU_SUB_NSEC_RES_BITS 24       /* Sub-nanoseconds resolution bits */
+#define PTP_SCALE_FACTOR 16000000000LL /* Denominator for scaled_ppm (16 * 10^9) */
+
     struct lan865x_priv* priv = get_lan865x_priv_by_ptp_info(ptp_info);
     struct ptp_device* ptpdev = priv->ptpdev;
-    u64 sys_clock;
-	double diff;
-    int is_negative = 0;
+    struct oa_tc6* tc6 = priv->tc6;
 
+    uint32_t mac_ti_value;
+    uint32_t mac_tisubn_value;
+    uint32_t mac_tisubn_value2;
 
-    if (scaled_ppm == 0) {
-        return 0;
-    }
-
+#if 1
     mutex_lock(&ptpdev->lock);
+#if 1
+    const u32 base_inc_ns = 40; // 25 MHz clock → 40 ns per tick
+    s64 adj = scaled_ppm;
+    s64 ppb = (adj * 125) >> 13; // scaled_ppm → ppb 변환 (ppm × 2^-16)
 
-    sys_clock = lan865x_get_sys_clock(priv);
+    // 보정 주기 계산
+    s64 numerator = (s64)base_inc_ns * (1000000000LL + ppb);
+    s64 corrected_ns = numerator / 1000000000LL;
+    s64 corrected_subns = ((numerator % 1000000000LL) * 16777216LL) / 1000000000LL;
 
-    if (scaled_ppm < 0) {
-        is_negative = 1;
-        scaled_ppm = -scaled_ppm;
+    // 오버플로우 처리
+    if (corrected_subns >= 16777216LL) {
+        corrected_ns++;
+        corrected_subns -= 16777216LL;
     }
 
-    mutex_unlock(&ptpdev->lock);
+    mac_ti_value = (uint32_t)corrected_ns;
+    // 24비트로 마스킹
+    mac_tisubn_value = (uint32_t)(corrected_subns & 0xFFFFFF);
 
-    return 0;
+#else
+    // long long adjustment_factor_num;
+    // long long adjustment_factor_den;
+    //  Use 64-bit precision to minimize rounding errors in the adjustment calculation.
+    long long sub_nanosec_value_64;
+    uint32_t mac_ti_value;
+    uint32_t mac_tisubn_value;
+    uint32_t mac_tisubn_value2;
+
+    // long long sub_nanosec_value_64;
+    // uint32_t mac_ti_value;
+    // uint32_t mac_tisubn_value;
+
+    // 1. Set the base nanosecond increment value (40ns for 25MHz clock)
+    mac_ti_value = TICKS_SCALE;
+
+    // 2. Calculate the Sub-nanosecond adjustment value
+    // Target formula: Adjustment Ticks = (TICKS_SCALE * scaled_ppm * 2^TSU_SUB_NSEC_RES_BITS) / PTP_SCALE_FACTOR
+
+    // Calculate the base ticks per nanosecond unit (e.g., 2^24)
+    long long base_ticks_per_ns = (1LL << TSU_SUB_NSEC_RES_BITS);
+
+    // Optimized calculation for adjustment ticks
+    // Denominator = PTP_SCALE_FACTOR / TICKS_SCALE = 16,000,000,000 / 40 = 400,000,000
+    long long optimized_denominator = PTP_SCALE_FACTOR / TICKS_SCALE;
+
+    // Calculate the total adjustment ticks (numerator / denominator)
+    // sub_nanosec_value_64 = (scaled_ppm * base_ticks_per_ns) / optimized_denominator
+    sub_nanosec_value_64 = (scaled_ppm * base_ticks_per_ns);
+
+    // Add half of the denominator for rounding (equivalent to round())
+    sub_nanosec_value_64 += optimized_denominator / 2;
+
+    // Perform the division
+    sub_nanosec_value_64 /= optimized_denominator;
+
+    // 3. Apply the 32-bit value to the register
+    mac_tisubn_value = (uint32_t)sub_nanosec_value_64;
+
+    // 4. Write values to the registers
+    // MAC_TI_REG: Since 25MHz is an integer nanosecond (40ns), the integer part (40) is constant.
+    // The entire fractional adjustment is reflected in MAC_TISUBN_REG.
+
 #endif
+#else
+    // 1. Set the base nanosecond increment value (40ns for 25MHz clock)
+    mac_ti_value = TICKS_SCALE;
+
+    // 2. Calculate the Sub-nanosecond adjustment value
+    // Adjustment Ticks = (TICKS_SCALE * scaled_ppm * 2^TSU_SUB_NSEC_RES_BITS) / PTP_SCALE_FACTOR
+
+    // Calculate the base ticks per nanosecond unit (e.g., 2^24)
+    long long base_ticks_per_ns = (1LL << TSU_SUB_NSEC_RES_BITS);
+
+    adjustment_factor_num = (long long)TICKS_SCALE * scaled_ppm * base_ticks_per_ns;
+    adjustment_factor_den = PTP_SCALE_FACTOR;
+
+    // 조정 틱 계산
+    // round() 함수 대신 정수 연산으로 반올림 처리: (분자 + 분모/2) / 분모
+    // 나눗셈을 최소화하기 위해 공통 인수 제거 (40 / 16,000,000,000)
+    // 1/400,000,000
+
+    // 최적화된 계산: Adjustment Ticks = (scaled_ppm * (1 << TSU_SUB_NSEC_RES_BITS)) / 400,000,000
+    // 여기서 400,000,000 = PTP_SCALE_FACTOR / TICKS_SCALE
+
+    sub_nanosec_value_64 = (scaled_ppm * base_ticks_per_ns) / (PTP_SCALE_FACTOR / TICKS_SCALE);
+
+    // 정수 나눗셈 후 반올림을 위해 분모/2를 더함
+    sub_nanosec_value_64 = sub_nanosec_value_64 + (PTP_SCALE_FACTOR / (2 * TICKS_SCALE));
+    sub_nanosec_value_64 /= (PTP_SCALE_FACTOR / TICKS_SCALE);
+
+    // 32비트 레지스터에 맞게 값 적용
+    mac_tisubn_value = (uint32_t)sub_nanosec_value_64;
+
+    // 3. 레지스터에 값 쓰기
+    // MAC_TI_REG: 25MHz는 정수 나노초(40ns)이므로, 조정이 있어도 MAC_TI의 나노초 정수 부분은 변경되지 않습니다.
+    // 조정된 값은 모두 MAC_TISUBN_REG에 반영됩니다.
+
+#endif
+    oa_tc6_write_register(tc6, MMS1_MAC_TI, mac_ti_value);
+
+    mac_tisubn_value2 = ((mac_tisubn_value & 0xFF) << 24) | ((mac_tisubn_value & 0xFFFF00) >> 8);
+    // Set MAC_TI(TSU Timer Increment) register
+    oa_tc6_write_register(tc6, MMS1_MAC_TISUBN, mac_tisubn_value2);
+    mutex_unlock(&ptpdev->lock);
 #else
     u64 ticks_scale, diff_b24;
     unsigned long flags;
@@ -133,6 +225,35 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm)
         goto exit;
     }
 
+#if 1
+    double scale_mod;
+    double freq_m;
+    u32 integer_part, fractional_part;
+    u32 fractional_part2;
+    struct oa_tc6* tc6 = priv->tc6;
+
+    freq_m = (double)(RESERVED_CYCLE * 1.0) + (double)(scaled_ppm * RESERVED_CYCLE / 1000000.0);
+    scale_mod = (double)(1000000000.0 / freq_m);
+
+    integer_part = (u32)scale_mod;
+    fractional_part = (u32)((scale_mod - integer_part) * 1000000000);
+
+    pr_err("%s: scale_mod = %d.%09d\n", __func__, integer_part, fractional_part);
+
+    scale_mod = (double)(TICKS_SCALE * 1.0) + (double)(scaled_ppm * RESERVED_CYCLE * 1.0 / 1000000.0 / 1000000000.0);
+
+    integer_part = (u32)scale_mod;
+    fractional_part = (u32)((scale_mod - integer_part) * 1000000000);
+    fractional_part = ((u64)fractional_part << 24) / 1000000000;
+    //    fractional_part2 = ((fractional_part & 0xFF) << 24) | ((fractional_part & 0xFFFF00) >> 8);
+
+    pr_err("%s: scale_mod = %d.%09d\n", __func__, integer_part, fractional_part);
+
+    // oa_tc6_write_register(tc6, MMS1_MAC_TI, integer_part);
+
+    // Set MAC_TI(TSU Timer Increment) register
+    // oa_tc6_write_register(tc6, MMS1_MAC_TISUBN, fractional_part2);
+
     if (scaled_ppm < 0) {
         is_negative = 1;
         scaled_ppm = -scaled_ppm;
@@ -140,14 +261,20 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm)
     ppm = scaled_ppm >> 16;
 
     /* Adjust ticks_scale */
+    // diff_b24 = mul_u64_u64_div_u64(TICKS_SCALE << (24 - 16), (u64)scaled_ppm, 1000000ULL);
     diff_b24 = mul_u64_u64_div_u64(TICKS_SCALE << (24 - 16), (u64)scaled_ppm, 1000000ULL);
+    // diff_b24 = mul_u64_u64_div_u64(TICKS_SCALE << (24 - 16), (u64)ppm, 1000000ULL);
+    pr_err("%s - fractional_part: 0x%08x, diff_b24:  0x%08llx\n", __func__, fractional_part, diff_b24);
     ticks_scale = ((TICKS_SCALE << 24) + (is_negative ? -diff_b24 : diff_b24));
+
+    // ticks_scale = (integer_part << 24) + fractional_part;
 
     lan865x_set_sys_clock_ti(priv, ticks_scale);
     ptpdev->ti_subnano_b24 = ticks_scale;
 
     LAN865X_DEBUG("%s: scaled_ppm = %ld, diff = %llu, ticks_scale = %llu = %014llx\n", __func__, scaled_ppm, diff_b24,
                   ticks_scale, ticks_scale);
+#endif
 
 exit:
 #if 1
@@ -158,8 +285,8 @@ exit:
     pr_err("%s: scaled_ppm = %ld, diff = %llu, ticks_scale = %llu = %014llx\n", __func__, scaled_ppm, diff_b24,
            ticks_scale, ticks_scale);
 
-    return 0;
 #endif
+    return 0;
 }
 
 static int lan865x_ptp_adjtime(struct ptp_clock_info* ptp_info, s64 delta_ns) {
