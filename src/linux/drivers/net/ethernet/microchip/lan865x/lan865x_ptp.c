@@ -197,11 +197,11 @@ static int lan865x_ptp_adjfine(struct ptp_clock_info* ptp_info, long scaled_ppm)
     // 조정된 값은 모두 MAC_TISUBN_REG에 반영됩니다.
 
 #endif
-    oa_tc6_write_register(tc6, MMS1_MAC_TI, mac_ti_value);
-
     mac_tisubn_value2 = ((mac_tisubn_value & 0xFF) << 24) | ((mac_tisubn_value & 0xFFFF00) >> 8);
     // Set MAC_TI(TSU Timer Increment) register
     oa_tc6_write_register(tc6, MMS1_MAC_TISUBN, mac_tisubn_value2);
+
+    oa_tc6_write_register(tc6, MMS1_MAC_TI, mac_ti_value);
     mutex_unlock(&ptpdev->lock);
 #else
     u64 ticks_scale, diff_b24;
