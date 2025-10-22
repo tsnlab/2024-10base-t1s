@@ -65,7 +65,6 @@ void lan865x_set_sys_clock_ti(struct lan865x_priv* priv, u64 subnano_b24) {
     // 8bit 000000xx
     u32 nano = subnano_b24 >> 24;
     reg_ti_val = (nano & 0xFF);
-    oa_tc6_write_register(tc6, MMS1_MAC_TI, reg_ti_val);
 
     // 24bit 00123456 -> 56001234
     u32 subnano = subnano_b24 & 0x00FFFFFF;
@@ -73,6 +72,8 @@ void lan865x_set_sys_clock_ti(struct lan865x_priv* priv, u64 subnano_b24) {
 
     // Set MAC_TI(TSU Timer Increment) register
     oa_tc6_write_register(tc6, MMS1_MAC_TISUBN, reg_tisubn_val);
+
+    oa_tc6_write_register(tc6, MMS1_MAC_TI, reg_ti_val);
 }
 
 void lan865x_add_sys_clock(struct lan865x_priv* priv, u32 add_offset) {
@@ -112,14 +113,14 @@ timestamp_t lan865x_read_tx_timestamp(struct lan865x_priv* priv, int tx_id) {
     u64 timestamp = 0;
 
     static const u16 reg_hi[] = {
-        [LAN865X_TIMESTAMP_ID_GPTP]    = MMS0_TTSCAH,
-        [LAN865X_TIMESTAMP_ID_NORMAL]  = MMS0_TTSCBH,
-        [LAN865X_TIMESTAMP_ID_RESERVED]= MMS0_TTSCCH,
+        [LAN865X_TIMESTAMP_ID_GPTP] = MMS0_TTSCAH,
+        [LAN865X_TIMESTAMP_ID_NORMAL] = MMS0_TTSCBH,
+        [LAN865X_TIMESTAMP_ID_RESERVED] = MMS0_TTSCCH,
     };
     static const u16 reg_lo[] = {
-        [LAN865X_TIMESTAMP_ID_GPTP]    = MMS0_TTSCAL,
-        [LAN865X_TIMESTAMP_ID_NORMAL]  = MMS0_TTSCBL,
-        [LAN865X_TIMESTAMP_ID_RESERVED]= MMS0_TTSCCL,
+        [LAN865X_TIMESTAMP_ID_GPTP] = MMS0_TTSCAL,
+        [LAN865X_TIMESTAMP_ID_NORMAL] = MMS0_TTSCBL,
+        [LAN865X_TIMESTAMP_ID_RESERVED] = MMS0_TTSCCL,
     };
 
     if (tx_id < 0 || tx_id >= ARRAY_SIZE(reg_hi) || !reg_hi[tx_id] || !reg_lo[tx_id])
